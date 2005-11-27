@@ -1,0 +1,231 @@
+<HTML>
+<HEAD>
+<TITLE>Test scripts for Win32::SqlServer</TITLE>
+<META HTTP-EQUIV="Content-Language" CONTENT="en-gb" />
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=utf-8" />
+<STYLE TYPE="text/css">
+<!--
+.allcaps {font-size: 90%;}
+-->
+</STYLE>
+</HEAD>
+<BODY>
+<CENTER><H1>Test scripts for Win32::SqlServer</H1></CENTER>
+<P>
+This text gives some information on the test suite for Win32::SqlServer<SMALL CLASS="allcaps">. I</SMALL> have 
+tried to forsee differences your environment that may in relation to mine, but 
+it is likely you will see errors if your <SMALL CLASS="allcaps">ANSI</SMALL> Code Page is not Windows Latin-1. 
+Which does not mean that Win32::SqlServer only runs with Latin-1. It only means that the 
+test script are not perfect. Or so I hope.
+</P>
+<H2>
+Requirements for Running the Scripts</H2>
+<P>
+Obviously you need <SMALL CLASS="allcaps">SQL</SMALL> Server. It can be any version of <SMALL CLASS="allcaps">SQL</SMALL> Server supported by 
+Win32::SqlServer. Which tests that are performed depends on the <SMALL CLASS="allcaps">SQL</SMALL> Server version: 
+Generally, the higher the version, the more tests. You will not see very much 
+&quot;Skipped&quot; though, as the test scripts mainly skips even that part when a test 
+cannot be performed because of the server version.
+</P>
+<P>
+One thing is a must for running the entire test suite: you must be running with sysadmin 
+privileges. Three of the test scripts create databases and one creates a login. Many scripts also create 
+tables and executable objects in tempdb. If the script terminates normally, it 
+drops everything it creates. But if a script crashes, you may have to clean up 
+manually. Below, I detail what each script creates. It goes without saying that you should not run 
+the test scripts on a production server.
+</P>
+<H2>Running the Test Scripts</H2>
+<P>
+All test scripts looks at the environment variable <SMALL CLASS="allcaps">OLLEDBTEST.</SMALL> 
+This variable controls which 
+server(s) the test scripts should access. <SMALL CLASS="allcaps">OLLEDBTEST</SMALL> has this format:</P>
+<PRE>    Server1;User1;Pwd1;Server2;User2;Pwd2</PRE>
+<P>If you don't specify Server1, the test script uses the default instance on 
+   the local machine. If you don't specify User1, the test scripts logs in with 
+   Windows authentication. Server2 is a second server, and is needed for some 
+   tests in the script 9_loginproperties. If you don't specify Server2, or it is 
+   the same as Server1, those tests are skipped.  
+   Example: to run the test at the server <SMALL CLASS="allcaps">DEVSERVER</SMALL> with Windows authentication, 
+   and skip tests that requre a second server, simply say:</P>
+<PRE>   SET OLLEDBTEST=DEVSERVER</PRE>
+<P>To run the test on your local server and <SMALL CLASS="allcaps">DEVSERVER</SMALL> as a second server, now 
+   with <SMALL CLASS="allcaps">SQL</SMALL> authentication, you would say:</P>
+<PRE>   SET OLLEDBTEST=.;;;DEVSERVER;sa;notstrong</PRE>
+<P>The simplest way to run the scripts is to run them with <KBD>MAKE test</KBD>. 
+   You can also run them from the source directory as:</P>
+<PRE>   perl t/1_resultsets.t &gt; test.out 2&gt;&amp;1</PRE>
+<P>The search the output file for &quot;not ok&quot;. Some test scripts run a awful lot of 
+   tests (because they iterate over combinations), so you really need to catch 
+   the output in a file.</P>
+<H2>Reporting Errors from Tests</H2>
+<P>If you run a test script and one or more tests fail, please don't just tell 
+   me that test 324 in some script failed, put please send me the full output 
+   from the script. The test numbers are assigned dynamically in several of the 
+   scripts, so I will not be able to find which is test 324.</P>
+<H2>The Test Scripts</H2>
+<H3>
+<B>1_resultsets.t</B> </H3>
+<P>
+<B>Tests</B>: the various 
+<A HREF="Win32-SqlServer.html#RowResultStyles">row and result styles</A>.
+</P>
+<P>
+<B>Number of tests</B>: 160.</P>
+<P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: Temporary tables only.</P>
+<H3>
+<B>2_datatypes.t</B> 
+</H3>
+<P>
+<B>Tests:</B> that Win32::SqlServer handle all <SMALL CLASS="allcaps">SQL</SMALL> Server data types 
+correctly. As a side effect it also tests <A HREF="Win32-SqlServer.html#sql_sp">
+<NOBR>sql_sp()</NOBR></A>, <NOBR><A HREF="Win32-SqlServer.html#sql_insert">
+sql_insert()</A></NOBR> and that the <A HREF="Win32-SqlServer.html#LogHandle">log 
+file</A> is correctly constructed. 
+</P>
+<P>
+<B>Number of tests</B>: Many. From a little below 1100 on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5 to over 2700 
+on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 when you have <SMALL CLASS="allcaps">SQL</SMALL> Native Client and the <SMALL CLASS="allcaps">CLR</SMALL> enabled.</P>
+<P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: Tables and stored 
+procedures in tempdb, and on <SMALL CLASS="allcaps">SQL</SMALL> 2005 also an <SMALL CLASS="allcaps">XML</SMALL> schema colletcion and three 
+<SMALL CLASS="allcaps">CLR</SMALL> user-defined types (the latter only if <SMALL CLASS="allcaps">CLR</SMALL> is enabled).
+</P>
+<H3>
+<B>3_retvalues.t</B> </H3>
+<P>
+<B>Tests</B>: retrun values of different data types from stored 
+procedures and user-defined functions for <A HREF="Win32-SqlServer.html#sql_sp">
+<NOBR>sql_sp()</NOBR></A>.</P>
+<P>
+<B>Number of tests</B>: 7 (on <SMALL CLASS="allcaps">SQL</SMALL> 6.5 and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;7), 33-43 (<SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005).</P>
+<P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: stored procedures and 
+user-defined function in tempdb, and on <SMALL CLASS="allcaps">SQL</SMALL> 2005 also an <SMALL CLASS="allcaps">XML</SMALL> schema collection 
+and <SMALL CLASS="allcaps">CLR</SMALL> user-defined types (if the <SMALL CLASS="allcaps">CLR</SMALL> is enabled).</P>
+<H3>
+<B>4_conversion_t</B> </H3>
+<P>
+<B>Tests:</B> the charset conversion you can set up with 
+<A HREF="Win32-SqlServer.html#Conversion_Routines"><NOBR>sql_set_conversion()</NOBR></A>. If your <SMALL CLASS="allcaps">OEM</SMALL> code page is not CP850 or CP437, this script is 
+skipped entirely. </P>
+<P>
+<B>Notes</B>: the script requires Win32::Registry and will not compile if this 
+module is not available. The script assumes that the default character set of your server is Latin-1. If it is
+not, it is likely that several tests will fail. </P>
+<P>
+<B>Number of tests</B>: 23.</P>
+<P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: temporary 
+objects only.</P>
+<H3>
+<B>5_errors.t</B> </H3>
+<P>
+<B>Tests</B>: the error handling. </P>
+<P>
+<B>Number of tests</B>: 141. Some are skipped on <SMALL CLASS="allcaps">SQL</SMALL> 
+6.5.</P>
+<P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: temporary 
+objects only.</P>
+<H3>
+<B>6_paramsql.t</B> </H3>
+<P>
+<B>Tests:</B> passing parameters to <NOBR>
+<A HREF="Win32-SqlServer.html#sql">sql()</A></NOBR>.</P>
+<P>
+<B>Number of tests</B>: From 12 (on <SMALL CLASS="allcaps">SQL</SMALL> 6.5) to 47 (on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 with Native 
+Client and <SMALL CLASS="allcaps">CLR</SMALL> enabled).</P>
+<P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 and earlier, this 
+script does not create any objects. On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, it creates an <SMALL CLASS="allcaps">XML</SMALL> schema 
+collection in tempdb, as well as three <SMALL CLASS="allcaps">CLR</SMALL> user-defined types, if the <SMALL CLASS="allcaps">CLR</SMALL> is 
+enabled.</P>
+<H3>
+<B>7_objectnames.t</B> </H3>
+<P>
+<B>Tests</B>: how Win32::SqlServerlooks up the procedure and table names 
+for <NOBR><A HREF="Win32-SqlServer.html#sql_sp">sql_sp()</A></NOBR> and
+<A HREF="Win32-SqlServer.html#sql_insert"><NOBR>sql_insert()</NOBR></A>, and also 
+how it parses the &quot;typeinfo&quot; argument for the <SMALL CLASS="allcaps">UDT</SMALL> and xml data types in <SMALL CLASS="allcaps">SQL</SMALL> 
+2005. </P>
+<P>
+<B>Number of tests</B>: 52 (<SMALL CLASS="allcaps">SQL 6.5), 553 (SQL 7, SQL</SMALL>&nbsp;2000 and <SMALL CLASS="allcaps">SQL</SMALL> 2005 with 
+<SMALL CLASS="allcaps">SQLOLEDB), 917 (SQL</SMALL> 2005 with <SMALL CLASS="allcaps">SQL</SMALL> Native Client).</P>
+<P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: This script creates no less than five 
+<FONT COLOR="#FF0000"><I>databases</I></FONT> (two on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5). Four of 
+them have names starting in &quot;OlleDB&quot; or Olle$DB&quot;, and the fifth has all Greek 
+letters, &#929;&#949;&#954;&#963;&#956;&#959;&#949;&#961;&#957;&#947;&#969;&#962;. The script also creates objects in these databases and 
+adds guest as user.</P>
+<H3>
+<B>8_threads.t</B> </H3>
+<P>
+<B>Tests</B>: Win32::SqlServer with Perl threads. </P>
+<P>
+<B>Number of tests</B>: 24.</P>
+<P><B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: nothing.</P>
+<H3>
+<B>9_loginproperties.t</B> </H3>
+<P>
+<B>Tests:</B> 
+<NOBR><A HREF="Win32-SqlServer.html#setloginproperty">setloginproperty()</A></NOBR> and 
+other connection routines. </P>
+<P>
+<B>Notes</B>: to perform all tests, this script requires that you have defined a 
+second test server with the <SMALL CLASS="allcaps">OLLEDBTEST</SMALL> environment variable.</P>
+<P>
+<B>Number of tests</B>: 33, whereof three will be skipped if no second server 
+is defined. Some tests are skipped depedning on the <SMALL CLASS="allcaps">SQL</SMALL> Server and the provider. 
+Only with <SMALL CLASS="allcaps">SQL</SMALL> 2005 and <SMALL CLASS="allcaps">SQL</SMALL> Native Client and a second server all tests will be 
+performed.</P>
+<P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: Creates a <FONT COLOR="#FF0000"><I>database</I></FONT> which it detaches and 
+then reattaches with a different names. Both names start with &quot;OlleDB&quot;. On 
+<SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, if <SMALL CLASS="allcaps">SQL</SMALL> Server authenticiation is enabled, the script creates a 
+<FONT COLOR="#FF0000"><I>login</I></FONT> 
+with the name starting in &quot;Olle&quot; followed by random digits. The script creates the 
+login with <SMALL CLASS="allcaps">CHECK_POLICY = OFF</SMALL>. As all other objects the test script creates, the 
+login is dropped if the script terminates normally. No objects are created in 
+the second server.</P>
+<H3>
+<B>A_rowsetprops.t</B> </H3>
+<P>
+<B>Tests</B> the properties <B>
+<A HREF="Win32-SqlServer.html#CommandTimeout">CommandTimeout</A></B> and <B>
+<A HREF="Win32-SqlServer.html#QueryNotification">QueryNotification</A></B>. </P>
+<P>
+<B>Notes</B>: This 
+script runs for almost a minute, because of a 45-second <SMALL CLASS="allcaps">WAITFOR</SMALL> to test <B>
+<A HREF="Win32-SqlServer.html#CommandTimeout">CommandTimeout</A></B>. </P>
+<P>
+<B>Number of tests</B>: 11 (With <SMALL CLASS="allcaps">SQLOLEDB), 9 (SQL</SMALL> Native Client and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 or 
+earlier), 16 (With <SMALL CLASS="allcaps">SQL</SMALL> Native Client and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005).</P>
+<P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 
+when you have <SMALL CLASS="allcaps">SQL</SMALL> Native Client. 
+the script creates a <FONT COLOR="#FF0000"><I>database</I></FONT>, OlleQN, in which it creates a broker service 
+service and a queue. In the other test cases, no objects are created.</P>
+<H2>Subdirectories to t</H2>
+<P>
+There are two subdirectories in the t directory:
+</P>
+<P>
+<B>Helpers</B> - Here you find the source code for the three <SMALL CLASS="allcaps">CLR</SMALL> types that are 
+used in the test, and a Perl script to create them. Here is also a short program 
+in VB6 which is used to generate and interpret date in regional settings for the
+<A HREF="Win32-SqlServer.html#DATETIME_REGIONAL"><SMALL CLASS="allcaps">DATETIME_REGIONAL</SMALL></A> setting.</P>
+<P>
+<B>Output</B> - This directory holds output files from some of the test scripts. 
+Most of them comes from <B>5_errors.t</B>, but also <B>2_datatypes.t</B> and <B>8_threads.t</B> 
+generate output files.
+</P>
+<P>
+<HR />
+<I>
+Last updated <!--$$Modtime:--> 05-11-26 23:42 <!-- $-->
+</I>
+</P>
+</BODY>
+</HTML>

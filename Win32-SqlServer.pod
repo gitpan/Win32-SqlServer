@@ -1,0 +1,14 @@
+# $Header: /Perl/OlleDB/Win32-SqlServer.pod 3     05-11-26 23:47 Sommar $
+#
+
+=pod
+
+=head1 NAME
+
+Win32::SqlServer - Access SQL Server from Perl via OLE DB
+
+There is no POD documentation for this module. Please refer to
+Win32-SqlServer.html, which is in site\html\lib\Win32\SqlServer.html or
+under it's own name in the source directory for Win32::SqlServer.
+
+=cut

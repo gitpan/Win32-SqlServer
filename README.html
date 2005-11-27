@@ -1,0 +1,126 @@
+<HTML>
+<HEAD>
+<TITLE>README for Win32::SqlServer</TITLE>
+</HEAD>
+<META HTTP-EQUIV="Content-Language" CONTENT="en-gb" />
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=utf-8" />
+<STYLE TYPE="text/css">
+<!--
+.allcaps {font-size: 90%;}
+-->
+</STYLE>
+<BODY>
+<H1 ALIGN="center">Win32::SqlServer 2.001</H1>
+<UL>
+<P>
+     This is Win32::SqlServer, a module for calling Microsoft <SMALL CLASS="allcaps">SQL</SMALL> Server from Perl
+     through <SMALL CLASS="allcaps">OLE DB</SMALL>. </P>
+<P>
+     Copyright &copy; 2004-2005 Erland Sommarskog.
+     All rights reserved.<BR/></P>
+<P>
+  This program is free software; you can redistribute it and/or modify it under
+  the same terms as Perl itself.
+</P>
+</UL>
+<H3>Brief Overview</H3>
+Win32::SqlServer is a module that permits you to access <SMALL CLASS="allcaps">SQL</SMALL> Server from Perl, by
+using any of the <SMALL CLASS="allcaps">OLE DB</SMALL> providers <SMALL CLASS="allcaps">SQLOLEDB</SMALL> or <SMALL CLASS="allcaps">SQL</SMALL> Native Client. 
+Win32::SqlServer exposes
+two levels of interface, a high-level interface and a mid-level interface. The
+high-level interface is a developed version of the interface of my older module
+<SMALL CLASS="allcaps">MSSQL</SMALL>::Sqllib, and largely backwards compatible with this interface. The
+mid-level interface exposes a few more knobs at the price of somewhat more
+verbose code. A special feature of Win32::SqlServer is the fine-grained control 
+of error handling.<P>There is no support for <SMALL CLASS="allcaps">DBI</SMALL>. This module does not
+   run on Unix &#8211; or any other non-Windows OS for that matter.</P>
+<H3>What&#39;s in This Kit</H3>
+This is the source-only distribution for <SMALL CLASS="allcaps">CPAN</SMALL>, 
+and do not include any binaries for Win32::SqlServer. If you want a binary distribution 
+(for x86) please visit <A HREF="http://www.sommarskog.se/mssqlperl/index.html">
+http://www.sommarskog.se/mssqlperl/index.html</A>. 
+<H3>Prerequisites</H3>
+<P>To run Win32::SqlServer you need:</P>
+<UL>
+<LI> Perl 5.8.3 or later. (That is ActivePerl build 809 or later.)</LI>
+<LI> Windows NT4 SP6, Windows 2000, Windows XP or Windows 2003.
+</LI>
+<LI> <SMALL CLASS="allcaps">SQL</SMALL> Server 6.5 or later.</LI>
+<LI> <SMALL CLASS="allcaps">MDAC</SMALL> 2.6 or <SMALL CLASS="allcaps">SQL</SMALL> Native Client.</LI>
+</UL>
+
+<P>For details, see the <A HREF="Win32-SqlServer.html#Prerequisites">Prerequisites</A>
+   section in the Win32::SqlServer manual.</P>
+<P>Prequisits for building, see below under <A HREF="#build_src">Building from 
+   Sources</A>.</P>
+
+<H3>Manual</H3>
+<P>The manual is in <A HREF="Win32-SqlServer.html">Win32-SqlServer.html</A>.
+   activeperl-copy.pl also installs it as html/<SMALL CLASS="allcaps">site/lib/</SMALL>Win32/SqlServer.html&nbsp;
+   There is a <SMALL CLASS="allcaps">POD</SMALL> file as well, but there is no real contents in it, only a
+   pointer to the <SMALL CLASS="allcaps">HTML</SMALL> file.</P>
+<H3>Reporting Bugs or Problems</H3>
+<P>Please mail bug reports and suggestions to <A HREF="mailto:esquel@sommarskog.se">
+esquel@sommarskog.se</A>. Try to make your reports as specific as possible.
+Particularly do not forget to include which versions of Perl, Windows, <SMALL CLASS="allcaps">SQL</SMALL> Server
+etc you are using.</P>
+<P>
+I usually try to respond within 24-48 hours, but if I am on holiday I am.</P>
+<H2><A NAME="build_src">Building from Sources</A></H2>
+<H3>Prerequisites</H3>
+<P>To build Win32::SqlServer you need:</P>
+<UL>
+<LI> The Platform <SMALL CLASS="allcaps">SDK</SMALL> for Windows, more
+   precisely, the Core <SMALL CLASS="allcaps">SDK</SMALL> and the <SMALL CLASS="allcaps">MDAC SDK</SMALL>.
+   The Platform <SMALL CLASS="allcaps">SDK</SMALL> comes with Visual Studio. You can
+   also download it from
+   <A HREF="http://www.microsoft.com/downloads/search.aspx">
+   http://www.microsoft.com/downloads/search.aspx</A>. (Specify Platform <SMALL CLASS="allcaps">SDK</SMALL>
+   as Product/Technology.) </LI>
+<LI> The header file for <SMALL CLASS="allcaps">SQL</SMALL> Native Client <B>sqlncli.h</B>. This file comes
+   with the <SMALL CLASS="allcaps">SDK</SMALL> for <SMALL CLASS="allcaps">SQL</SMALL> Server 2005. I don&#39;t
+   think it is available as a
+   separate download, but you can always download the free <SMALL CLASS="allcaps">SQL</SMALL> Express edition. When you install <SMALL CLASS="allcaps">SQL</SMALL> Express, you must uncheck<I>
+   Hide advanced configuration options</I>, as the <SMALL CLASS="allcaps">SDK</SMALL> is not installed by
+   default.</LI>
+<LI> Perl 5.8.3 or later.</LI>
+<LI>
+   <P ALIGN="left"> <SMALL CLASS="allcaps">A C</SMALL>++ compiler, preferrably Visual C++ 7.0 or later. (The C++ compiler that
+   comes with Visual Studio&nbsp;6 will <B>not</B> work.) If you don&#39;t have
+      Visual Studio, you can download the .Net Framework SDK (link as above),
+      there is a C++ compiler included. I have no idea whether Win32::SqlServer compiles
+      with other C++ compilers than Microsoft&#39;s. </LI>
+<LI> A make facility. You can get Microsofts <SMALL CLASS="allcaps">NMAKE</SMALL> (for x86) on:
+     <A HREF="ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe">ftp://ftp.microsoft.com/Softlib/<SMALL CLASS="allcaps">MSLFILES</SMALL>/nmake15.exe</A></LI>
+</UL>
+
+<H3>How to Build and Install</H3>
+<P>Text in <KBD>this type face</KBD> indicates command you run from the command
+prompt.</P>
+<OL TYPE=1>
+<LI>Extract the zip file anywhere you like.</LI>
+<LI>Edit <B>makefile.pl</B> so that <CODE>$SQLDIR</CODE> points to where <B>sqlncli.h</B> is
+   located.</LI>
+<LI><B>makefile.pl</B> also includes a <I>dynamic_lib</I> option, which I don&#39;t
+   know whether it will work with other compilers than Visual C++. For better
+   startup performance, you are encouraged to find the corresponding
+   command-line option for your compiler. However, you can remove it if you
+   don&#39;t care.</LI>
+<LI>Open a Command Prompt, and change directory to where you extracted the
+   files.</LI>
+<LI><KBD>Perl makefile.pl</KBD>. </LI>
+<LI><KBD>MAKE</KBD><BR/>Or <KBD>NMAKE</KBD>, <KBD>DMAKE</KBD> or whatever your
+   <SMALL CLASS="allcaps">MAKE</SMALL> utility you use.</LI>
+<LI><KBD>MAKE test</KBD><BR/>
+    Before you run the tests, please read <B><A HREF="tests.html">tests.html</A></B>
+   so that you understand what impact the test scripts have on your server. This
+   document also describes how to set the environment variable <SMALL CLASS="allcaps">OLLEDBTEST</SMALL>, from
+   which the test scripts get information how to log into <SMALL CLASS="allcaps">SQL</SMALL> Server.</LI>
+<LI><KBD>MAKE install</KBD></LI>
+</OL>
+<HR />
+<I>
+Last updated <!--$$Modtime:--> 05-11-26 23:42 <!-- $-->
+</I>
+</BODY>
+</HTML>
