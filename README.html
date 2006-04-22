@@ -10,13 +10,13 @@
 -->
 </STYLE>
 <BODY>
-<H1 ALIGN="center">Win32::SqlServer 2.001</H1>
+<H1 ALIGN="center">Win32::SqlServer 2.002</H1>
 <UL>
 <P>
      This is Win32::SqlServer, a module for calling Microsoft <SMALL CLASS="allcaps">SQL</SMALL> Server from Perl
      through <SMALL CLASS="allcaps">OLE DB</SMALL>. </P>
 <P>
-     Copyright &copy; 2004-2005 Erland Sommarskog.
+     Copyright &copy; 2004-2006 Erland Sommarskog.
      All rights reserved.<BR/></P>
 <P>
   This program is free software; you can redistribute it and/or modify it under
@@ -25,20 +25,20 @@
 </UL>
 <H3>Brief Overview</H3>
 Win32::SqlServer is a module that permits you to access <SMALL CLASS="allcaps">SQL</SMALL> Server from Perl, by
-using any of the <SMALL CLASS="allcaps">OLE DB</SMALL> providers <SMALL CLASS="allcaps">SQLOLEDB</SMALL> or <SMALL CLASS="allcaps">SQL</SMALL> Native Client. 
+using any of the <SMALL CLASS="allcaps">OLE DB</SMALL> providers <SMALL CLASS="allcaps">SQLOLEDB</SMALL> or <SMALL CLASS="allcaps">SQL</SMALL> Native Client.
 Win32::SqlServer exposes
 two levels of interface, a high-level interface and a mid-level interface. The
 high-level interface is a developed version of the interface of my older module
 <SMALL CLASS="allcaps">MSSQL</SMALL>::Sqllib, and largely backwards compatible with this interface. The
 mid-level interface exposes a few more knobs at the price of somewhat more
-verbose code. A special feature of Win32::SqlServer is the fine-grained control 
+verbose code. A special feature of Win32::SqlServer is the fine-grained control
 of error handling.<P>There is no support for <SMALL CLASS="allcaps">DBI</SMALL>. This module does not
    run on Unix &#8211; or any other non-Windows OS for that matter.</P>
 <H3>What&#39;s in This Kit</H3>
-This is the source-only distribution for <SMALL CLASS="allcaps">CPAN</SMALL>, 
-and do not include any binaries for Win32::SqlServer. If you want a binary distribution 
+This is the source-only distribution for <SMALL CLASS="allcaps">CPAN</SMALL>,
+and do not include any binaries for Win32::SqlServer. If you want a binary distribution
 (for x86) please visit <A HREF="http://www.sommarskog.se/mssqlperl/index.html">
-http://www.sommarskog.se/mssqlperl/index.html</A>. 
+http://www.sommarskog.se/mssqlperl/index.html</A>.
 <H3>Prerequisites</H3>
 <P>To run Win32::SqlServer you need:</P>
 <UL>
@@ -51,7 +51,7 @@ http://www.sommarskog.se/mssqlperl/index.html</A>.
 
 <P>For details, see the <A HREF="Win32-SqlServer.html#Prerequisites">Prerequisites</A>
    section in the Win32::SqlServer manual.</P>
-<P>Prequisits for building, see below under <A HREF="#build_src">Building from 
+<P>Prequisits for building, see below under <A HREF="#build_src">Building from
    Sources</A>.</P>
 
 <H3>Manual</H3>
@@ -106,21 +106,26 @@ prompt.</P>
    startup performance, you are encouraged to find the corresponding
    command-line option for your compiler. However, you can remove it if you
    don&#39;t care.</LI>
+<LI>Note that <B>makefile.pl</B> explicitly lists which libraries to link with,
+   and specifies the MT flag for the C compiler. This is to force use of the
+   static C run-time library for Visual C++, which is what I want for the binary
+   distribution. Change this if you like.</LI>
 <LI>Open a Command Prompt, and change directory to where you extracted the
    files.</LI>
 <LI><KBD>Perl makefile.pl</KBD>. </LI>
 <LI><KBD>MAKE</KBD><BR/>Or <KBD>NMAKE</KBD>, <KBD>DMAKE</KBD> or whatever your
    <SMALL CLASS="allcaps">MAKE</SMALL> utility you use.</LI>
-<LI><KBD>MAKE test</KBD><BR/>
-    Before you run the tests, please read <B><A HREF="tests.html">tests.html</A></B>
+<LI><KBD>MAKE test</KBD><BR/>Before you run the tests, please read <B>
+   <A HREF="Tests.html">tests.html</A></B>
    so that you understand what impact the test scripts have on your server. This
-   document also describes how to set the environment variable <SMALL CLASS="allcaps">OLLEDBTEST</SMALL>, from
+   document also describes how to set the environment variable
+   <SMALL CLASS="allcaps">OLLEDBTEST</SMALL>, from
    which the test scripts get information how to log into <SMALL CLASS="allcaps">SQL</SMALL> Server.</LI>
 <LI><KBD>MAKE install</KBD></LI>
 </OL>
 <HR />
 <I>
-Last updated <!--$$Modtime:--> 05-11-26 23:42 <!-- $-->
+Last updated <!--$$Modtime:--> 06-04-22 19:55 <!-- $-->
 </I>
 </BODY>
 </HTML>

@@ -7,6 +7,16 @@
 <CENTER>
 <H1>History Win32::SqlServer</H1>
 </CENTER>
+<H3>2006-04-17 &#8211; 2.002</H3>
+<P>Fixed two problems which prevented Win32::SqlServer to run under ASP:</P>
+<UL>
+   <LI>In the binary distribution, the C run-time is now statically linked with 
+      the SqlServer.dll, as under ASP, because it did not pick up MSVCR70.DLL 
+      when it was only in the same directory as SqlServer.dll. (Workaround was 
+      to put MSVCR70 in System32.)</LI>
+   <LI>Fixed a problem caused an ASP page with Win32::SqlServer to fail on 
+      second and succeeding invocations.</LI>
+</UL>
 <H3>2005-11-27 &#8211; 2.001</H3>
 <P>Renamed the module to Win32::SqlServer from the original name MSSQL::OlleDB 
  to comply with requirements from the maintainers of the Perl module list (and 
@@ -21,6 +31,6 @@
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 05-11-26 23:42 <!-- $-->
+Last updated <!--$$Modtime:--> 06-04-17 21:28 <!-- $-->
 </I>
 <BODY>

@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/SqlServer.pm 41    05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/SqlServer.pm 42    06-04-17 21:48 Sommar $
 #
-# Copyright (c) 2004-2005 Erland Sommarskog
+# Copyright (c) 2004-2006 Erland Sommarskog
 #
 #
 # $History: SqlServer.pm $
 # 
+# *****************  Version 42  *****************
+# User: Sommar       Date: 06-04-17   Time: 21:48
+# Updated in $/Perl/OlleDB
+# Advancrd version to 2.002. No other changes.
+#
 # *****************  Version 41  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB
@@ -34,7 +39,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS
             %BINARYTYPES %DECIMALTYPES %MAXTYPES %TYPEINFOTYPES $VERSION);
 
 
-$VERSION = '2.001';
+$VERSION = '2.002';
 
 @ISA = qw(Exporter DynaLoader Tie::StdHash);
 

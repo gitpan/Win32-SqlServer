@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/makefile.pl 9     05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/makefile.pl 10    06-04-17 21:52 Sommar $
 #
 # Makefile.pl for MSSQL::OlleDB. Note that you may need to specify where
 # you ave the include files for OLE DB.
 #
 # $History: makefile.pl $
 # 
+# *****************  Version 10  *****************
+# User: Sommar       Date: 06-04-17   Time: 21:52
+# Updated in $/Perl/OlleDB
+# Now forcgin the C run-time to be staically linked.
+#
 # *****************  Version 9  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB
@@ -89,8 +94,9 @@ if ($SQLDIR !~ /^[C-Z]:/) {
 WriteMakefile(
     'INC'          => ($SQLDIR ? qq!-I"$SQLDIR\\INCLUDE"! : ""),
     'NAME'         => 'Win32::SqlServer',
-#    'CCFLAGS'      => '/P',
+    'CCFLAGS'     => '/MT',
     'OPTIMIZE'     => '/O2',
+    'LIBS'         => [":nosearch :nodefault kernel32.lib user32.lib ole32.lib oleaut32.lib uuid.lib libcmt.lib"],
     'VERSION_FROM' => 'SqlServer.pm',
     'XS'           => { 'SqlServer.xs' => 'SqlServer.cpp' },
     'dist'         => {ZIP => '"E:\Program Files\Winzip\wzzip"',

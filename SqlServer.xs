@@ -1,10 +1,19 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/SqlServer.xs 60    05-11-26 23:47 Sommar $
+ $Header: /Perl/OlleDB/SqlServer.xs 61    06-04-17 21:52 Sommar $
 
-  Copyright (c) 2004-2005   Erland Sommarskog
+  Copyright (c) 2004-2006   Erland Sommarskog
 
   $History: SqlServer.xs $
  * 
+ * *****************  Version 61  *****************
+ * User: Sommar       Date: 06-04-17   Time: 21:52
+ * Updated in $/Perl/OlleDB
+ * We are now at version 2.002. Changed how the CLSIDs for the provider
+ * are saved. Now saving them static directly, and not saving pointers, as
+ * the pointers would point somewhere else when an ASP page ran a second
+ * time. Also moved CoInitializeEx so it's only called if there is no
+ * data_init_ptr.
+ *
  * *****************  Version 60  *****************
  * User: Sommar       Date: 05-11-26   Time: 23:47
  * Updated in $/Perl/OlleDB
@@ -56,7 +65,7 @@ extern "C" {
 FILE *dbgfile = NULL;
 #endif
 
-#define XS_VERSION "2.001"
+#define XS_VERSION "2.002"
 
 
 // This is stuff for init properties. When the module starts up, we set up a
@@ -263,8 +272,8 @@ static IDataConvert    * data_convert_ptr = NULL;
 static IMalloc*   OLE_malloc_ptr = NULL;
 
 // Global variables for class ids for the two possible providers.
-static CLSID  * clsid_sqloledb = NULL;
-static CLSID  * clsid_sqlncli = NULL;
+static CLSID  clsid_sqloledb = CLSID_NULL;
+static CLSID  clsid_sqlncli = CLSID_NULL;
 
 //---------------------------------------------------------------------
 // General convenience routines.
@@ -887,7 +896,6 @@ void initialize ()
    SV *sv;
    DWORD       err;
    HRESULT     ret = S_OK;
-   CLSID       clsid;
    char        obj[200];
 
    // In the critical section we create our starting point, the pointer to
@@ -895,20 +903,18 @@ void initialize ()
    // Thess pointer will never be released.
    EnterCriticalSection(&CS);
 
-   CoInitializeEx(NULL, COINIT_MULTITHREADED);
-
    // Get classIDs for the two possible providers.
-   if (clsid_sqloledb == NULL && clsid_sqlncli == NULL) {
-      ret = CLSIDFromProgID(L"SQLOLEDB", &clsid);
-      if (SUCCEEDED(ret)) {
-         New(902, clsid_sqloledb, 1, CLSID);
-         *clsid_sqloledb = clsid;
+   if (IsEqualCLSID(clsid_sqloledb, CLSID_NULL) &&
+       IsEqualCLSID(clsid_sqlncli, CLSID_NULL)) {
+
+      ret = CLSIDFromProgID(L"SQLOLEDB", &clsid_sqloledb);
+      if (FAILED(ret)) {
+         clsid_sqloledb = CLSID_NULL;
       }
 
-      ret = CLSIDFromProgID(L"SQLNCLI", &clsid);
-      if (SUCCEEDED(ret)) {
-         New(902, clsid_sqlncli, 1, CLSID);
-         *clsid_sqlncli = clsid;
+      ret = CLSIDFromProgID(L"SQLNCLI", &clsid_sqlncli);
+      if (FAILED(ret)) {
+         clsid_sqlncli = CLSID_NULL;
       }
    }
 
@@ -916,6 +922,8 @@ void initialize ()
       CoGetMalloc(1, &OLE_malloc_ptr);
 
    if (data_init_ptr == NULL) {
+      CoInitializeEx(NULL, COINIT_MULTITHREADED);
+
       ret = CoCreateInstance(CLSID_MSDAINITIALIZE, NULL, CLSCTX_INPROC_SERVER,
                              IID_IDataInitialize,
                              reinterpret_cast<LPVOID *>(&data_init_ptr));
@@ -1123,8 +1131,8 @@ static int setupinternaldata()
     // all pointers to NULL.
     New(902, mydata, 1, internaldata);
     mydata->isautoconnected   = FALSE;
-    mydata->provider          = (clsid_sqlncli != NULL ? provider_sqlncli :
-                                                      provider_sqloledb);
+    mydata->provider          = (IsEqualCLSID(clsid_sqlncli, CLSID_NULL) ?
+                                 provider_sqloledb : provider_sqlncli);
     mydata->init_ptr          = NULL;
     mydata->pending_cmd       = NULL;
     mydata->paramfirst        = NULL;
@@ -1912,12 +1920,12 @@ BOOL do_connect (SV    * olle_ptr,
     switch (mydata->provider) {
        // At this point provider_default should never appear.
        case provider_sqlncli :
-         clsid = clsid_sqlncli;
+         clsid = &clsid_sqlncli;
          sprintf(provider_name, "SQLNCLI");
          break;
 
        case provider_sqloledb :
-         clsid = clsid_sqloledb;
+         clsid = &clsid_sqloledb;
          sprintf(provider_name, "SQLOLEDB");
          break;
 
@@ -5407,8 +5415,8 @@ CODE:
        mydata->provider = (provider_enum) provider;
        if (mydata->provider == provider_default) {
           // If unknown, take SQLNCLI if it's available.
-          mydata->provider = (clsid_sqlncli != NULL ? provider_sqlncli :
-                                                      provider_sqloledb);
+          mydata->provider = (IsEqualCLSID(clsid_sqlncli, CLSID_NULL) ?
+                               provider_sqloledb : provider_sqlncli);
        }
        RETVAL = mydata->provider;
     }
