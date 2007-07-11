@@ -1,10 +1,15 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/6_paramsql.t 7     05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/t/6_paramsql.t 8     07-06-10 21:50 Sommar $
 #
 # This test suite concerns sql with parameterised SQL statements.
 #
 # $History: 6_paramsql.t $
 # 
+# *****************  Version 8  *****************
+# User: Sommar       Date: 07-06-10   Time: 21:50
+# Updated in $/Perl/OlleDB/t
+# Corrected for a new error message on Katmai in one case.
+#
 # *****************  Version 7  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB/t
@@ -370,7 +375,12 @@ $result = $X->sql_one("SELECT a = ?,  c = ???",
 push (@testres, compare($expect, $result));
 
 blurb("Expanding of '???' only");
-$expect = qr/Incorrect syntax near '\@P1\@P2(\@P3)?'/;
+if ($sqlver >= 10) {
+   $expect = qr/Must declare the scalar variable ['"]\@P1\@P2(\@P3)?['"]/;
+}
+else {
+   $expect = qr/Incorrect syntax near ['"]\@P1\@P2(\@P3)?["']/;
+}
 delete $X->{ErrInfo}{Messages};
 $X->sql("???", {'@P1@P2@P3' => ['int', 12]});
 push(@testres, ($X->{ErrInfo}{Messages}[0]{'text'} =~ $expect ? 1 : 0));

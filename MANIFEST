@@ -1,29 +1,30 @@
-makefile.pl                            Makefile.pl for Win32::SqlServer.
-MANIFEST                               This file.
-README.html                            README file.
-Win32-SqlServer.pod                    Rudimentary POD for Win32::SqlServer.
-Win32-SqlServer.html                   The Win32::SqlServer manual.
-History.html                           History file for Win32::SqlServer.
-Tests.html                             Information on the Win32::SqlServer test suite.
-SqlServer.xs                           The XS part part of Win32::SqlServer
-SqlServer.pm                           The Perl part of Win32::SqlServer.
-t/1_resultsets.t                       Test of result styles and row styles
-t/2_datatypes.t                        Test of SQL Server data types.
-t/3_retvalues.t                        Test of return values from SPs and UDFs.
-t/4_conversion.t                       Test of sql_set_conversion.
-t/5_errors.t                           Test of error handling.
-t/6_paramsql.t                         Test of parameterised SQL statements.
-t/7_objectnames.t                      Testing resolution of object names.
-t/8_threads.t                          Test with Perl threads.
-t/9_loginproperties.t                  Test of login properties.
-t/A_rowsetprops.t                      Test of CommandTimeout and Query Notification.
-t/testsqllogin.pl                      Common login module for the test scripts.
-t/Helpers/Datetesthelper.exe           Help program to test DATETIME_REGIONAL.
-t/Helpers/Datehelp.bas                 Source code for datetesthelper.
-t/Helpers/Datetesthelper.vbp           Visual Basic project for datetesthelper.
-t/Helpers/assemblies.pl                Loads assemblies for CLR UDTs from binary strings.
-t/Helpers/udt_create.sql               SQL script to create the assemblies from DLLs.
-t/Helpers/complexinteger.cs            Source code for CLR UDT.
-t/Helpers/point.vb                     Source code for CLR UDT.
-t/Helpers/Utf8String.cs                Source code for CLR UDT.
+makefile.pl                      Makefile.pl for Win32::SqlServer.
+MANIFEST                         This file.
+README.html                      README file.
+Win32-SqlServer.pod              Rudimentary POD for Win32::SqlServer.
+Win32-SqlServer.html             The Win32::SqlServer manual.
+History.html                     History file for Win32::SqlServer.
+Tests.html                       Information on the Win32::SqlServer test suite.
+SqlServer.xs                     The XS part part of Win32::SqlServer
+SqlServer.pm                     The Perl part of Win32::SqlServer.
+t/1_resultsets.t                 Test of result styles and row styles
+t/2_datatypes.t                  Test of SQL Server data types.
+t/3_retvalues.t                  Test of return values from SPs and UDFs.
+t/4_conversion.t                 Test of sql_set_conversion.
+t/5_errors.t                     Test of error handling.
+t/6_paramsql.t                   Test of parameterised SQL statements.
+t/7_objectnames.t                Testing resolution of object names.
+t/8_columninfo.t                 Testing data-type information from getcolumninfo.
+t/9_loginproperties.t            Test of login properties.
+t/A_rowsetprops.t                Test of CommandTimeout and Query Notification.
+t/B_threads.t                    Test with Perl threads.
+t/testsqllogin.pl                Common login module for the test scripts.
+t/Helpers/Datetesthelper.exe     Help program to test DATETIME_REGIONAL.
+t/Helpers/Datehelp.bas           Source code for datetesthelper.
+t/Helpers/Datetesthelper.vbp     Visual Basic project for datetesthelper.
+t/Helpers/assemblies.pl          Loads assemblies for CLR UDTs from binary strings.
+t/Helpers/udt_create.sql         SQL script to create the assemblies from DLLs.
+t/Helpers/complexinteger.cs      Source code for CLR UDT.
+t/Helpers/point.vb               Source code for CLR UDT.
+t/Helpers/Utf8String.cs          Source code for CLR UDT.
 META.yml                                 Module meta-data (added by MakeMaker)

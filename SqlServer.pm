@@ -1,11 +1,36 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/SqlServer.pm 42    06-04-17 21:48 Sommar $
+# $Header: /Perl/OlleDB/SqlServer.pm 47    07-07-10 21:59 Sommar $
 #
 # Copyright (c) 2004-2006 Erland Sommarskog
 #
 #
 # $History: SqlServer.pm $
 # 
+# *****************  Version 47  *****************
+# User: Sommar       Date: 07-07-10   Time: 21:59
+# Updated in $/Perl/OlleDB
+# Win32::SqlServer 2.003.
+#
+# *****************  Version 46  *****************
+# User: Sommar       Date: 07-07-07   Time: 21:37
+# Updated in $/Perl/OlleDB
+# Added row style MULTISET_RC.
+#
+# *****************  Version 45  *****************
+# User: Sommar       Date: 07-07-07   Time: 16:44
+# Updated in $/Perl/OlleDB
+# Added 5th parameter to sql_init: $provider.
+#
+# *****************  Version 44  *****************
+# User: Sommar       Date: 07-06-25   Time: 0:31
+# Updated in $/Perl/OlleDB
+# Added handling of COLINFO styles.
+#
+# *****************  Version 43  *****************
+# User: Sommar       Date: 07-06-17   Time: 19:06
+# Updated in $/Perl/OlleDB
+# Completely new implementation of sql_set_conversion.
+#
 # *****************  Version 42  *****************
 # User: Sommar       Date: 06-04-17   Time: 21:48
 # Updated in $/Perl/OlleDB
@@ -39,7 +64,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS
             %BINARYTYPES %DECIMALTYPES %MAXTYPES %TYPEINFOTYPES $VERSION);
 
 
-$VERSION = '2.002';
+$VERSION = '2.003';
 
 @ISA = qw(Exporter DynaLoader Tie::StdHash);
 
@@ -50,8 +75,9 @@ bootstrap Win32::SqlServer;
 @EXPORT_OK = qw(sql_set_conversion sql_unset_conversion sql_one sql sql_sp
                 sql_insert sql_has_errors sql_get_command_text
                 sql_begin_trans sql_commit sql_rollback
-                NORESULT SINGLEROW SINGLESET MULTISET KEYED
+                NORESULT SINGLEROW SINGLESET MULTISET MULTISET_RC KEYED
                 SCALAR LIST HASH
+                COLINFO_NONE COLINFO_POS COLINFO_NAMES COLINFO_FULL
                 $SQLSEP
                 TO_SERVER_ONLY TO_CLIENT_ONLY TO_SERVER_CLIENT
                 RETURN_NEXTROW RETURN_NEXTQUERY RETURN_CANCEL RETURN_ERROR
@@ -67,8 +93,11 @@ bootstrap Win32::SqlServer;
                                     sql_has_errors sql_get_command_text
                                     sql_string
                                     sql_begin_trans sql_commit sql_rollback)],
-                resultstyles => [qw(NORESULT SINGLEROW SINGLESET MULTISET KEYED)],
+                resultstyles => [qw(NORESULT SINGLEROW SINGLESET MULTISET
+                                    MULTISET_RC KEYED)],
                 rowstyles    => [qw(SCALAR LIST HASH)],
+                colinfostyles=> [qw(COLINFO_NONE COLINFO_POS COLINFO_NAMES
+                                    COLINFO_FULL)],
                 directions   => [qw(TO_SERVER_ONLY TO_CLIENT_ONLY TO_SERVER_CLIENT)],
                 returns      => [qw(RETURN_NEXTROW RETURN_NEXTQUERY RETURN_CANCEL
                                     RETURN_ERROR RETURN_ABORT)],
@@ -81,24 +110,35 @@ bootstrap Win32::SqlServer;
 push(@{$EXPORT_TAGS{'consts'}}, @{$EXPORT_TAGS{'routines'}},
                                 @{$EXPORT_TAGS{'resultstyles'}},
                                 @{$EXPORT_TAGS{'rowstyles'}},
+                                @{$EXPORT_TAGS{'colinfostyles'}},
                                 @{$EXPORT_TAGS{'directions'}},
                                 @{$EXPORT_TAGS{'returns'}},
                                 @{$EXPORT_TAGS{'providers'}},
                                 @{$EXPORT_TAGS{'datetime'}});
 
 # Result-style constants.
-use constant NORESULT  => 821;
-use constant SINGLEROW => 741;
-use constant SINGLESET => 643;
-use constant MULTISET  => 139;
-use constant KEYED     => 124;
-use constant RESULTSTYLES => (NORESULT, SINGLEROW, SINGLESET, MULTISET, KEYED);
+use constant NORESULT    => 821;
+use constant SINGLEROW   => 741;
+use constant SINGLESET   => 643;
+use constant MULTISET    => 139;
+use constant MULTISET_RC => 564;
+use constant KEYED       => 124;
+use constant RESULTSTYLES => (NORESULT, SINGLEROW, SINGLESET, MULTISET,
+                              MULTISET_RC, KEYED);
 
 # Row-style constants.
 use constant SCALAR    => 17;
 use constant LIST      => 89;
 use constant HASH      => 93;
 use constant ROWSTYLES => (SCALAR, LIST, HASH);
+
+# Column-info constants
+use constant COLINFO_NONE  => 1233;
+use constant COLINFO_NAMES => 7234;
+use constant COLINFO_POS   => 6707;
+use constant COLINFO_FULL  => 3591;
+use constant COLINFOSTYLES => (COLINFO_NONE, COLINFO_NAMES, COLINFO_POS,
+                               COLINFO_FULL);
 
 # Separator when rows returned in one string, reconfigurarable.
 $SQLSEP = "\022";
@@ -336,9 +376,11 @@ sub DESTROY {
 sub sql_init {
 # Logs into SQL Server and returns an object to use for further communication
 # with the module.
-    my ($server, $user, $pw, $db) = @_;
+    my ($server, $user, $pw, $db, $provider) = @_;
 
     my $X = new(PACKAGENAME);
+
+    $X->{Provider} = $provider if defined $provider;
 
     # Set login properties if provided.
     $X->setloginproperty('Server', $server) if $server;
@@ -384,17 +426,14 @@ sub sql_set_conversion
 
     # Normalize parameters and get defaults. The client charset.
     if (not $client_cs or $client_cs =~ /^OEM/i) {
-       # No value or OEM, read actual OEM codepage from registry.
-       $client_cs = get_codepage_from_reg('OEMCP');
+       # No value or OEM, use CP_OEM = 1
+       $client_cs = 1
     }
     elsif ($client_cs =~ /^ANSI$/i) {
-       # Read ANSI code page.
-       $client_cs = get_codepage_from_reg('ACP');
+       # CP_ACP = 0
+       $client_cs = 0;
     }
     $client_cs =~ s/^cp_?//i;             # Strip CP[_]
-    if ($client_cs =~ /^\d{3,3}$/) {
-       $client_cs = "0$client_cs";       # Add leading zero.
-    }
 
     # Now the server charset. If no charset given, query the server.
     if (not $server_cs) {
@@ -419,76 +458,52 @@ SQLEND
        }
     }
     if ($server_cs =~ /^iso_1$/i) {    # iso_1 is how SQL6&7 reports Latin-1.
-       $server_cs = "1252";            # CP1252 is the Latin-1 code page.
+       $server_cs = 1252;              # CP1252 is the Latin-1 code page.
     }
     $server_cs =~ s/^cp_?//i;
-    if ($server_cs =~ /^\d{3,3}$/) {
-       $server_cs = "0$server_cs";
-    }
 
     # If client and server charset are the same, we should only remove any
     # current conversion, and then quit.
-    if ("\U$client_cs\E" eq "\U$server_cs\E") {
+    if ($client_cs == $server_cs) {
        $X->sql_unset_conversion($direction);
        return;
     }
 
-    # Now we try to find a file in System32.
-    my($server_first) = 1;
-    my($server_first_name) = "$ENV{'SYSTEMROOT'}\\System32\\$server_cs$client_cs.cpx";
-    my($client_first_name) = "$ENV{'SYSTEMROOT'}\\System32\\$client_cs$server_cs.cpx";
-    if (not open(F, $server_first_name)) {
-       open(F, $client_first_name) or
-          $X->olle_croak("Can't open neither '$server_first_name' nor '$client_first_name'");
-       $server_first = 0;
-    }
+    # Test that the conversion works. That is, if the caller has specified
+    # non-existing code-pages, this is where it all ends.
+    $X->codepage_convert("test", $client_cs, $server_cs);
 
-    # First read translations from the first charset. But the chars into
-    # a string. When used the strings will be fed to tr.
-    my($server_repl, $server_with) = ("", "");
-    my($line);
-    #while (($line = $F->getline) !~ m!^/!) {
-    while (($line = <F>) !~ m!^/!) {
-       chop $line;
-       next if $line !~ /:/;
-       my($a, $b) = split(/:/, $line);
-       $server_repl .= chr($a);
-       $server_with .= chr($b);
-    }
+    # Construct subs to perform the conversion. These subs are then called
+    # in do_conversion.
+    my $evaltext = <<'EVALEND';
+    sub { my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+          foreach (@_) {
+             next if ref or not $_;
+             $X->codepage_convert($_, FROM_CP, TO_CP);
+          }
+          return @_;
+        }
+EVALEND
 
-    # The other half.
-    my($client_repl, $client_with) = ("", "");
-    #while ($line = $F->getline) {
-    while (defined ($line = <F>)) {
-       chop $line;
-       next if $line !~ /:/;
-       my($a, $b) = split(/:/, $line);
-       $client_repl .= chr($a);
-       $client_with .= chr($b);
-    }
-
-    close F;
-
-    # Swap the strings if client's charset was first in the file.
-    if (! $server_first) {
-       ($client_repl, $server_repl) = ($server_repl, $client_repl);
-       ($client_with, $server_with) = ($server_with, $client_with);
-    }
-
-    # Store the charset converstions into the handle. We store these as
-    # subroutines ready to use. We need to use eval, as tr is static.
+    # And save the conversion subs.
     if ($direction == TO_SERVER_ONLY or $direction == TO_SERVER_CLIENT) {
-       $X->{'to_server'} = eval("sub { foreach (\@_) {next if ref;
-                                  tr/\Q$client_repl\E/\Q$client_with\E/ if \$_}
-                                 return \@_}") or
-           $X->olle_croak("eval of client-to-server conversion failed: $@");
+       my $sub = $evaltext;
+       $sub =~ s/FROM_CP/$client_cs/;
+       $sub =~ s/TO_CP/$server_cs/;
+       my $evalstat = $X->{'to_server'} = eval($sub);
+       if (not $evalstat) {
+           $X->olle_croak("eval of client-to-server conversion failed: $@\n");
+       }
     }
+
     if ($direction == TO_CLIENT_ONLY or $direction == TO_SERVER_CLIENT) {
-    # For server-to-client we need a return value for hashes.
-       $X->{'to_client'} = eval("sub { foreach (\@_) { next if ref;
-                                  tr/\Q$server_repl\E/\Q$server_with\E/ if \$_}
-                                 return \@_}") or
+       my $sub = $evaltext;
+       $sub =~ s/FROM_CP/$server_cs/;
+       $sub =~ s/TO_CP/$client_cs/;
+       my $evalstat = $X->{'to_client'} = eval($sub);
+       if (not $evalstat) {
            $X->olle_croak("eval of server-to-client conversion failed: $@");
+       }
     }
 }
 
@@ -532,13 +547,18 @@ sub sql_one
     }
 
     # Get rowstyle.
-    my ($rowstyle) = @_;
+    my ($rowstyle) = shift @_;
 
-    my ($dataref, $saveref, $exec_ok);
 
     # Make sure $rowstyle has a legal value.
     $rowstyle = $rowstyle || (wantarray ? HASH : SCALAR);
-    check_style_params($rowstyle);
+    if (not grep($rowstyle == $_, ROWSTYLES)) {
+       croak PACKAGENAME . ": Illegal rowstyle value: $_[1]";
+    }
+
+    if (@_) {
+       croak PACKAGENAME . ": extraneous parameters to sql_one: @_";
+    }
 
     # Apply conversion.
     $X->do_conversion('to_server', $sql);
@@ -556,6 +576,8 @@ sub sql_one
        $X->cancelbatch;
        return (wantarray ? () : undef);
     }
+
+    my ($dataref, $saveref, $exec_ok);
 
     # Run the command.
     $exec_ok = $X->executebatch;
@@ -617,8 +639,7 @@ sub sql
 
     # Style parameters. Get them from @_ and then check that values are
     # legal and supply defaults as needed.
-    my($rowstyle, $resultstyle, $keys) = @_;
-    check_style_params($rowstyle, $resultstyle, $keys);
+    my($rowstyle, $resultstyle, $colinfostyle, $keys) = check_style_params(@_);
 
     # Apply conversion.
     $X->do_conversion('to_server', $sql);
@@ -643,7 +664,8 @@ sub sql
     }
 
     # And get the resultsets.
-    return $X->do_result_sets($exec_ok, $rowstyle, $resultstyle, $keys);
+    return $X->do_result_sets($exec_ok, $rowstyle, $resultstyle, $colinfostyle,
+                              $keys);
 }
 
 #-------------------------- sql_sp ------------------------------------
@@ -653,7 +675,7 @@ sub sql_sp {
     # In this one we're not taking all parameters at once, but one by one,
     # as the parameter list is quite variable.
     my ($SP, $retvalueref, $unnamed, $named, $rowstyle,
-        $resultstyle, $keys, $dummy);
+        $resultstyle, $colinfostyle, $keys, $dummy);
 
     # The name of the SP, mandatory.
     $SP = shift @_;
@@ -678,8 +700,7 @@ sub sql_sp {
     }
 
     # The usual row- and result-style parameters.
-    ($rowstyle, $resultstyle, $keys) = @_;
-    check_style_params($rowstyle, $resultstyle, $keys);
+    ($rowstyle, $resultstyle, $colinfostyle, $keys) = check_style_params(@_);
 
     # Reference to hash that holds the parameter definitions.
     my ($paramdefs);
@@ -1014,10 +1035,12 @@ SQLEND
 
     # Retrieve the result sets.
     if (wantarray) {
-       @results = $X->do_result_sets($exec_ok, $rowstyle, $resultstyle, $keys);
+       @results = $X->do_result_sets($exec_ok, $rowstyle, $resultstyle,
+                                     $colinfostyle, $keys);
     }
     else {
-       $resultref = $X->do_result_sets($exec_ok, $rowstyle, $resultstyle, $keys);
+       $resultref = $X->do_result_sets($exec_ok, $rowstyle, $resultstyle,
+                                       $colinfostyle, $keys);
     }
 
     # Retrieve output parameters. They are not available if command was
@@ -1194,9 +1217,9 @@ SQLEND
 
 #----------------------- get_result_sets ------------------------------
 sub get_result_sets {
-   my ($X, $rowstyle, $resultstyle, $keys) = @_;
-   check_style_params($rowstyle, $resultstyle, $keys);
-   do_result_sets($X, 1, $rowstyle, $resultstyle, $keys);
+   my ($X) = shift @_;
+   my($rowstyle, $resultstyle, $colinfostyle, $keys) = check_style_params(@_);
+   do_result_sets($X, 1, $rowstyle, $resultstyle, $colinfostyle, $keys);
 }
 
 #------------------------- sql_has_errors ----------------------------
@@ -1421,8 +1444,7 @@ sub internal_sql
 
     # Style parameters. Get them from @_ and then check that values are
     # legal and supply defaults as needed.
-    my($rowstyle, $resultstyle, $keys) = @_;
-    check_style_params($rowstyle, $resultstyle, $keys);
+    my($rowstyle, $resultstyle, $colinfostyle, $keys) = check_style_params(@_);
 
     # Apply conversion.
     $X->do_conversion('to_server', $sql);
@@ -1433,7 +1455,8 @@ sub internal_sql
     my $exec_ok = $X->executebatch;
 
     # And get the resultsets.
-    return $X->do_result_sets($exec_ok, $rowstyle, $resultstyle, $keys);
+    return $X->do_result_sets($exec_ok, $rowstyle, $resultstyle,
+                              $colinfostyle, $keys);
 }
 
 #----------------------- olle_croak, internal -----------------------
@@ -1526,29 +1549,6 @@ sub new_err_info {
     \%ErrInfo;
 }
 
-#----------------------- get_codepage_from_reg, internal -------------
-sub get_codepage_from_reg {
-    my($cp_value) = shift @_;
-    # Reads the code page for OEM or ANSI. This is one specific key in
-    # in the registry.
-
-    my($REGKEY) = 'SYSTEM\CurrentControlSet\Control\Nls\CodePage';
-    my($regref, $dummy, $result);
-
-    # We need this module to read the registry, but as this is the only
-    # place we need it in, we don't C<use> it.
-    require 'Win32\Registry.pm';
-
-    $dummy = $main::HKEY_LOCAL_MACHINE;  # Resolve "possible typo" with AS Perl.
-    $main::HKEY_LOCAL_MACHINE->Open($REGKEY, $regref) or
-         die "Could not open registry key: '$REGKEY'\n";
-
-    $regref->QueryValueEx($cp_value, $dummy, $result);
-    $regref->Close or warn "Could not close registry key.\n";
-
-    $result;
-}
-
 #-------------------- do_conversion, internal ----------------
 sub do_conversion{
     my ($X) = shift @_;
@@ -1583,94 +1583,77 @@ sub do_logging {
 
 #--------------------- check_style_params, internal -------------------
 sub check_style_params {
-# Checks that row- and resultstyle parameters are correct, and provides
-# defaults.
+# Checks that row-, result- and colinfostyle parameters including keys
+# array. Also checks for extraneous parameters.
 
-    # This is how the parameters eventually will be arranged on return.
-    my($rowstyleref)    = \$_[0];
-    my($resultstyleref) = \$_[1];
-    my($keysref)        = \$_[2];
+    my ($rowstyle, $resultstyle, $colinfostyle, $keys);
 
-    my ($rowstyle, $resultstyle, $keys);
+    # Get the parameters.
+    my $parno = 0;
+    foreach my $par (@_) {
+       $parno++;
 
-    my $rowdefault    = HASH;
-    my $resultdefault = SINGLESET;
-
-    # The simple case, just the defaults.
-    if (not defined $_[0] and not defined $_[1]) {
-       $rowstyle    = $rowdefault;
-       $resultstyle = $resultdefault;
-    }
-    elsif (defined $_[0] and grep ($_ == $_[0], ROWSTYLES)) {
-    # First parameter is row style. Next must be result style or be undefined.
-       $rowstyle = $_[0];
-       $resultstyle = $_[1] || $resultdefault;
-
-       unless (grep ($_ == $resultstyle, RESULTSTYLES) or
-               ref $resultstyle eq "CODE") {
-          croak PACKAGENAME . ": Illegal resultstyle value: $resultstyle";
+       # Check for too many parameters. Keep in mind that $keys is always last.
+       if ($parno > 4 or $keys) {
+           croak PACKAGENAME . ": Extraneous parameter(s) specified";
        }
-    }
-    elsif (defined $_[1] and grep ($_ == $_[1], ROWSTYLES)) {
-    # Second parameter is row style. First must be result style or be undefined.
-       # The default.
-       $rowstyle = $_[1];
-       $resultstyle = $_[0] || $resultdefault;
 
-       unless (grep ($_ == $resultstyle, RESULTSTYLES) or
-               ref $resultstyle eq "CODE") {
-          croak PACKAGENAME . ": Illegal resultstyle value: $resultstyle";
-       }
-    }
-    elsif (defined $_[0] and
-           (grep ($_ == $_[0], RESULTSTYLES) or ref $_[0] eq "CODE")) {
-    # First parameter is result style and second is not row style, but may be
-    # keys.
-       $resultstyle = $_[0];
+       # Just skip undef.
+       next if not defined $par;
 
-       # Move keys if there are any set row style to default.
-       if (defined $_[1] and ref $_[1] eq 'ARRAY') {
-          $keys = $_[1];
-          $rowstyle = $rowdefault;
+       # Check for the various styles. First weed out all cases where the
+       # parameter is not numeric to avoid warnings about this.
+
+       # An array reference only make sense if we have KEYED.
+       if (ref $par eq 'ARRAY' and $resultstyle == KEYED) {
+          $keys = $par;
        }
-       elsif (not defined $_[1]) {
-          $rowstyle = $rowdefault;
+       # A code reference is a result style.
+       elsif (ref $par eq 'CODE') {
+          croak PACKAGENAME . ": Multiple result styles specified" if $resultstyle;
+          $resultstyle = $par;
+       }
+       elsif (ref $par or $par =~ /\D/) {
+          croak PACKAGENAME . ": Illegal style parameter '$par'";
+       }
+       # Here follows test for numeric styles.
+       elsif (grep($_ == $par, ROWSTYLES)) {
+          croak PACKAGENAME . ": Multiple row styles specified" if $rowstyle;
+          $rowstyle = $par;
+       }
+       elsif (grep($_ == $par, RESULTSTYLES)) {
+          croak PACKAGENAME . ": Multiple result styles specified" if $resultstyle;
+          $resultstyle = $par;
+       }
+       elsif (grep($_ == $par, COLINFOSTYLES)) {
+          croak PACKAGENAME . ": Multiple colinfo styles specified"
+              if $colinfostyle;
+          $colinfostyle = $par;
        }
        else {
-          croak PACKAGENAME . ": Illegal rowstyle value: $_[1]";
+          croak PACKAGENAME . ": Illegal style parameter $par";
        }
-    }
-    elsif (defined $_[1] and
-           (grep ($_ == $_[1], RESULTSTYLES) or ref $_[1] eq "CODE")) {
-    # Second parameter is result style and second is not row style.
-       $resultstyle = $_[1];
-
-       # First parameter must be undef.
-       if (not defined $_[0]) {
-          $rowstyle = $rowdefault;
-       }
-       else {
-          croak PACKAGENAME . ": Illegal rowstyle value: $_[0]";
-       }
-    }
-    else {
-       $_[0] = '' if not defined $_[0];
-       $_[1] = '' if not defined $_[1];
-       croak PACKAGENAME . ": Illegal rowstyle and/or resultstyle values: $_[0], $_[1]";
     }
 
-    # Final check that style parameters are legal
-    unless (grep ($_ == $rowstyle, ROWSTYLES)) {
-       croak PACKAGENAME . ": Illegal rowstyle value: $rowstyle";
+    # Set defaults for those we did not get anything for.
+    $rowstyle     = HASH         if not $rowstyle;
+    $resultstyle  = SINGLESET    if not $resultstyle;
+    $colinfostyle = COLINFO_NONE if not $colinfostyle;
+
+    # Check that we have legal combinations. Some result styles cannot be
+    # combined with column information.
+    if ($colinfostyle != COLINFO_NONE and
+        grep($_ == $resultstyle, (NORESULT, SINGLEROW, KEYED))) {
+        croak PACKAGENAME . ": For result styles NORESULT, SINGLEROW and KEYED, you cannot request column information with \$colinfostyle";
     }
-    unless (grep ($_ == $resultstyle, RESULTSTYLES) or
-            ref $resultstyle eq "CODE") {
-       croak PACKAGENAME . ": Illegal resultstyle value: $resultstyle";
+
+    # And full column info requires ARRAY or LIST.
+    if ($colinfostyle == COLINFO_FULL and $rowstyle == SCALAR) {
+        croak PACKAGENAME . ": Column style COLINFO_FULL cannot be combined with row style SCALAR"
     }
 
     # If result style is KEYED, check that we have a sensible keys.
     if ($resultstyle == KEYED) {
-       $keys = $_[2] unless $keys;
        croak PACKAGENAME . ": No keys given for result style KEYED"
              unless $keys;
        croak PACKAGENAME . ": \$keys is not a list reference"
@@ -1683,10 +1666,8 @@ sub check_style_params {
        }
     }
 
-    # And set the in/out parameters
-    $$rowstyleref    = $rowstyle;
-    $$resultstyleref = $resultstyle;
-    $$keysref        = $keys;
+    # Return parameters.
+    return($rowstyle, $resultstyle, $colinfostyle, $keys);
 }
 
 #------------------- setup_sqlcmd, internal --------------------------
@@ -2072,24 +2053,80 @@ sub get_object_id {
 
 #---------------------- do_result_sets, internal ---------------------------------
 sub do_result_sets {
-    my($X, $exec_ok, $rowstyle, $resultstyle, $keys) = @_;
+    my($X, $exec_ok, $rowstyle, $resultstyle, $colinfostyle, $keys) = @_;
 
-    my ($morerows, $userstat, $is_callback, $isregular, $ix, $ressetno, $dataref,
-        $resref, $keyed_res, $iscancelled, $caller);
+    my ($userstat, $is_callback, $isregular, $ismultiset, $wantcolinfo, $ix,
+        $ressetno, $rowcount, $colinforef, $dataref, $resref, $keyed_res,
+        $iscancelled, $caller);
 
     $is_callback = ref $resultstyle eq "CODE";
-    $isregular   = grep ($_ == $resultstyle, (MULTISET, SINGLESET, SINGLEROW));
+    $isregular   = grep ($_ == $resultstyle,
+                         (MULTISET, MULTISET_RC, SINGLESET, SINGLEROW));
+    $ismultiset = grep ($_ == $resultstyle, (MULTISET, MULTISET_RC));
+    $wantcolinfo = $colinfostyle != COLINFO_NONE;
     $iscancelled = not $exec_ok;
 
     $ix = $ressetno = 0;
     $userstat = RETURN_NEXTROW;
-    while (not $iscancelled and $X->isconnected() and $X->nextresultset) {
+    while (not $iscancelled and $X->isconnected() and
+           $X->nextresultset($rowcount)) {
        $ressetno++;
 
        # He said NORESULT? Cancel the query, and proceed to next.
        if ($resultstyle == NORESULT) {
           $X->cancelresultset;
           next;
+       }
+
+       # Get column information if requested. We also need it for
+       # MULTISET_RC to be able to discern an empty result from a pure
+       # rowcount.
+       if ($wantcolinfo or $resultstyle == MULTISET_RC) {
+          $X->getcolumninfo(($rowstyle == HASH) ? $colinforef : undef,
+                            ($rowstyle == HASH) ? undef : $colinforef);
+
+          # Repack, if full colinfo is not requested.
+          if (defined $colinforef) {
+             # There are columns, thus we should clear the rowcount and
+             # not add it to the output.
+             undef $rowcount;
+
+             # If colinfo style is NONE, just forget about it.
+             if ($colinfostyle == COLINFO_NONE) {
+                undef $colinforef;
+             }
+             # For NAMES and POS we need to repack.
+             elsif ($colinfostyle == COLINFO_NAMES) {
+                if ($rowstyle == HASH) {
+                   foreach my $key (keys %$colinforef) {
+                      $$colinforef{$key} = $$colinforef{$key}{Name};
+                   }
+                }
+                else {
+                   foreach my $colinfo (@$colinforef) {
+                      $colinfo = $$colinfo{Name};
+                   }
+                }
+             }
+             elsif ($colinfostyle == COLINFO_POS) {
+                if ($rowstyle == HASH) {
+                   foreach my $key (keys %$colinforef) {
+                      $$colinforef{$key} = $$colinforef{$key}{Colno};
+                   }
+                }
+                else {
+                   foreach my $colinfo (@$colinforef) {
+                      $colinfo = $$colinfo{Colno};
+                   }
+                }
+              }
+              # For FULL ne need to do nothing here.
+          }
+
+          # For SINGLESET we should only return column information once.
+          if ($resultstyle == SINGLESET) {
+             $wantcolinfo = 0;
+          }
        }
 
        # For the regular result styles create an empty array, if there is none at
@@ -2102,53 +2139,75 @@ sub do_result_sets {
           $keyed_res = {} unless $keyed_res;
        }
 
-       do {
-          $morerows = $X->nextrow(($rowstyle == HASH) ? $dataref : undef,
-                                  ($rowstyle == HASH) ? undef : $dataref);
+       while (1) {
+          my $morerows;
 
-          if ($morerows) {
-             # Convert to client charset before anything else.
-             $X->do_conversion('to_client', $dataref);
+          if (defined $colinforef) {
+          # If we have column information, do this first, unless we have a
+          # callback.
+             $dataref = $colinforef;
+             undef $colinforef;
+             $morerows = 1;
+          }
+          else {
+             # Get a row with data.
+             $morerows = $X->nextrow(($rowstyle == HASH) ? $dataref : undef,
+                                     ($rowstyle == HASH) ? undef : $dataref);
+          }
 
-             # For SCALAR convert to joined string. (But for KEYED, this is deferred.)
-             if ($rowstyle == SCALAR and $resultstyle != KEYED) {
-                $dataref = list_to_scalar($dataref);
+          # Are we past the last row?
+          if (not $morerows) {
+             # For MULTISET_RC save the row count, if the result set was
+             # empty and we have a row count.
+             if ($resultstyle == MULTISET_RC and defined $rowcount and
+                 scalar(@{$$resref[$ix]}) == 0) {
+                 $$resref[$ix] = $rowcount;
              }
+             # The get out of this loop.
+             last if not $morerows;
+          }
 
-             # Save the row if we have a regular resultstyle.
-             if ($isregular) {
-                push(@{$$resref[$ix]}, $dataref);
-             }
-             elsif ($resultstyle == KEYED) {
-                # This is keyed access.
-                store_keyed_result($X, $rowstyle, $keys, $dataref, $keyed_res);
-             }
-             elsif ($is_callback) {
-                $userstat = &$resultstyle($dataref, $ressetno);
+          # Convert to client charset before anything else.
+          $X->do_conversion('to_client', $dataref);
 
-                if ($userstat == RETURN_NEXTQUERY) {
-                   # He wants next result set, so leave this one.
-                   $X->cancelresultset;
-                   $morerows = 0;
+          # For SCALAR convert to joined string. (But for KEYED, this is deferred.)
+          if ($rowstyle == SCALAR and $resultstyle != KEYED) {
+             $dataref = list_to_scalar($dataref);
+          }
+
+          # Save the row if we have a regular resultstyle.
+          if ($isregular) {
+             push(@{$$resref[$ix]}, $dataref);
+          }
+          elsif ($resultstyle == KEYED) {
+             # This is keyed access.
+             store_keyed_result($X, $rowstyle, $keys, $dataref, $keyed_res);
+          }
+          elsif ($is_callback) {
+             $userstat = &$resultstyle($dataref, $ressetno);
+
+             if ($userstat == RETURN_NEXTQUERY) {
+                # He wants next result set, so leave this one.
+                $X->cancelresultset;
+                last;
+             }
+             elsif ($userstat != RETURN_NEXTROW) {
+             # Whatever, cancel the entire batch.
+                $iscancelled = 1;
+                $X->cancelbatch;
+                if ($userstat == RETURN_ABORT) {
+                   $X->olle_croak("User-supplied callback returned RETURN_ABORT");
                 }
-                elsif ($userstat != RETURN_NEXTROW) {
-                # Whatever, cancel the entire batch.
-                   $morerows = 0;
-                   $iscancelled = 1;
-                   $X->cancelbatch;
-                   if ($userstat == RETURN_ABORT) {
-                      $X->olle_croak("User-supplied callback returned RETURN_ABORT");
-                   }
-                   elsif ($userstat != RETURN_CANCEL and $userstat != RETURN_ERROR) {
-                      $X->olle_croak("User-supplied callback returned unknown return code");
-                   }
+                elsif ($userstat != RETURN_CANCEL and $userstat != RETURN_ERROR) {
+                   $X->olle_croak("User-supplied callback returned unknown return code");
                 }
+                last;
              }
           }
-       }  until not $morerows;
+       }
 
        # If multiset requested advance index
-       $ix++ if $resultstyle == MULTISET;
+       $ix++ if $ismultiset
     }
 
     if ($is_callback) {
@@ -2164,7 +2223,7 @@ sub do_result_sets {
           }
        }
        elsif (defined $resref) {
-          if    ($resultstyle == MULTISET)  {return @$resref }
+          if    ($ismultiset)  {return @$resref }
           elsif ($resultstyle == SINGLESET) {return @{$$resref[0]} }
           elsif ($resultstyle == SINGLEROW) {
               if    ($rowstyle == HASH)
@@ -2181,7 +2240,7 @@ sub do_result_sets {
        }
     }
     else {
-       if    ($resultstyle == MULTISET)  {return $resref }
+       if    ($ismultiset)  {return $resref }
        elsif ($resultstyle == SINGLESET) {return $$resref[0] }
        elsif ($resultstyle == SINGLEROW) {return $$resref[0][0] }
        elsif ($resultstyle == KEYED)     {return $keyed_res }

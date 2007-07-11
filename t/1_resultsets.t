@@ -1,8 +1,19 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/1_resultsets.t 7     05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/t/1_resultsets.t 9     07-07-07 21:37 Sommar $
 #
 # $History: 1_resultsets.t $
 # 
+# *****************  Version 9  *****************
+# User: Sommar       Date: 07-07-07   Time: 21:37
+# Updated in $/Perl/OlleDB/t
+# Added checks for MULTISET_RC and also more checks for batches with at
+# most row counts only.
+#
+# *****************  Version 8  *****************
+# User: Sommar       Date: 07-06-25   Time: 0:30
+# Updated in $/Perl/OlleDB/t
+# Added checks for colinfo styles.
+#
 # *****************  Version 7  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB/t
@@ -55,12 +66,13 @@ $^W = 1;
 
 $| = 1;
 
-my($X, $sql, $sql1, $sql_empty, $sql_error, $sql_null, $sql_key1, $sql_key_many);
+my($X, $sql, $sql1, $sql_empty, $sql_error, $sql_null, $sql_key1,
+   $sql_print, $sql_counts, $sql_nocount, $sql_key_many, $no_of_tests);
 
 $X = testsqllogin();
 
 # Accept all errors, and be silent about them.
-$X->{errInfo}{maxSeverity}   = 25;
+$X->{errInfo}{maxSeverity}= 25;
 $X->{errInfo}{printLines} = 25;
 $X->{errInfo}{printMsg}   = 25;
 $X->{errInfo}{printText}  = 25;
@@ -70,7 +82,7 @@ $SQLSEP = '@!@';
 
 # First set up tables and data.
 sql(<<SQLEND);
-CREATE TABLE #a(a char(1), b char(1), i int)
+CREATE TABLE #a(a char(1) NOT NULL, b char(1) NOT NULL, i int NOT NULL)
 CREATE TABLE #b(x char(3) NULL)
 CREATE TABLE #c(key1  char(5)     NOT NULL,
                 key2  char(1)     NOT NULL,
@@ -84,9 +96,6 @@ INSERT #a VALUES('A', 'D', 24)
 INSERT #a VALUES('A', 'H', 1)
 INSERT #a VALUES('C', 'B', 12)
 
-INSERT #b VALUES('xyz')
-INSERT #b VALUES(NULL)
-
 INSERT #c VALUES('apple', 'X', 1, NULL, NULL,      'T')
 INSERT #c VALUES('apple', 'X', 2, -15,  NULL,      'T')
 INSERT #c VALUES('apple', 'X', 3, NULL, NULL,      'T')
@@ -97,15 +106,23 @@ INSERT #c VALUES('peach', 'X', 8, 4711, 'Monday',  'T')
 INSERT #c VALUES('melon', 'Y', 1, 118,  'Lastkey', 'T')
 SQLEND
 
-# This is our test batch: three result sets whereof one empty.
+# This is our test batch: three result sets whereof one empty. There are
+# also two row counts
 $sql = <<SQLEND;
+SET NOCOUNT OFF
+
 SELECT *
 FROM   #a
 ORDER  BY a, b
 COMPUTE SUM(i) BY a
 COMPUTE SUM(i)
 
+INSERT #b VALUES('xyz')
+INSERT #b VALUES(NULL)
+
 SELECT * FROM #b
+
+DELETE #b
 
 -- Note: if this SELECT comes directly after the first SELECT, SQLOLEDB
 -- gets an AV. Not our fault. :-)
@@ -126,6 +143,21 @@ SELECT * FROM #a WHERE i = 456
 SELECT * FROM #a WHERE a = 'z'
 SQLEND
 
+$sql_print = "PRINT 'Tjolahopp!'";
+
+$sql_counts = <<SQLEND;
+SET NOCOUNT OFF
+INSERT #b VALUES ('ABC')
+DELETE #b
+SQLEND
+
+$sql_nocount = <<SQLEND;
+SET NOCOUNT ON
+INSERT #b VALUES ('ABC')
+DELETE #b
+SET NOCOUNT OFF
+SQLEND
+
 # Test code with incorrect SQL which will not produce even a resultset,
 $sql_error = 'SELECT FROM';
 
@@ -133,11 +165,13 @@ $sql_error = 'SELECT FROM';
 $sql_key1     = "SELECT * FROM #a";
 sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
 
-#-------------------- MULTISET ----------------------------
+#==================================================================
+#========================= MULTISET ===============================
+#==================================================================
 {
    my (@result, $result, @expect);
-
-   &blurb("HASH, MULTISET, wantarray");
+   #----------------------- HASH ---------------------------
+   &blurb("HASH, MULTISET, COLINFO_NONE, wantarray");
    @expect = ([{a => 'A', b => 'A', i => 12},
                {a => 'A', b => 'D', i => 24},
                {a => 'A', b => 'H', i => 1}],
@@ -145,19 +179,112 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
               [{a => 'C', b => 'B', i => 12}],
               [{sum => 12}],
               [{sum => 49}],
+              [], [],
               [{x => 'xyz'},
-               {x => undef}],
+               {x => undef}], [],
               [],
               [{'Col 1' => 4711}]);
-   @result = sql($sql, HASH, MULTISET);
+   @result = sql($sql, MULTISET);
    push(@testres, compare(\@expect, \@result));
 
-   &blurb("HASH, MULTISET, wantscalar");
+   &blurb("HASH, MULTISET, COLINFO_NONE, wantscalar");
    $result = sql($sql, HASH, MULTISET);
    push(@testres, compare(\@expect, $result));
 
+   &blurb("HASH, MULTISET, COLINFO_POS, wantarray");
+   @expect = ([{a => 1, b => 2, i => 3},
+               {a => 'A', b => 'A', i => 12},
+               {a => 'A', b => 'D', i => 24},
+               {a => 'A', b => 'H', i => 1}],
+              [{sum => 1},
+               {sum => 37}],
+              [{a => 1, b => 2, i => 3},
+               {a => 'C', b => 'B', i => 12}],
+              [{sum => 1},
+               {sum => 12}],
+              [{sum => 1},
+               {sum => 49}],
+              [], [],
+              [{x => 1},
+               {x => 'xyz'},
+               {x => undef}],
+              [],
+              [{a => 1, b => 2, i => 3}],
+              [{'Col 1' => 1},
+               {'Col 1' => 4711}]);
+   @result = sql($sql, HASH, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
 
-   &blurb("LIST, MULTISET, wantarray");
+   &blurb("HASH, MULTISET, COLINFO_POS, wantscalar");
+   $result = sql($sql, COLINFO_POS, HASH, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("HASH, MULTISET, COLINFO_NAMES, wantarray");
+   @expect = ([{a => 'a', b => 'b', i => 'i'},
+               {a => 'A', b => 'A', i => 12},
+               {a => 'A', b => 'D', i => 24},
+               {a => 'A', b => 'H', i => 1}],
+              [{sum => 'sum'},
+               {sum => 37}],
+              [{a => 'a', b => 'b', i => 'i'},
+               {a => 'C', b => 'B', i => 12}],
+              [{sum => 'sum'},
+               {sum => 12}],
+              [{sum => 'sum'},
+               {sum => 49}],
+              [], [],
+              [{x => 'x'},
+               {x => 'xyz'},
+               {x => undef}],
+              [],
+              [{a => 'a',  b=> 'b', i => 'i'}],
+              [{'Col 1' => ''},
+               {'Col 1' => 4711}]);
+   @result = sql($sql, MULTISET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET, COLINFO_NAMES, wantscalar");
+   $result = sql($sql, COLINFO_NAMES, MULTISET, HASH);
+   push(@testres, compare(\@expect, $result));
+
+
+   &blurb("HASH, MULTISET, COLINFO_FULL, wantarray");
+   my $abc = {a => {Name => 'a', Colno => 1, Type => 'char'},
+              b => {Name => 'b', Colno => 2, Type => 'char'},
+              i => {Name => 'i', Colno => 3, Type => 'int'}};
+   my $suminfo = {sum => {Name => 'sum', Colno => 1, Type => 'int'}};
+   @expect = ([$abc,
+               {a => 'A', b => 'A', i => 12},
+               {a => 'A', b => 'D', i => 24},
+               {a => 'A', b => 'H', i => 1}],
+              [$suminfo,
+               {sum => 37}],
+              [$abc,
+               {a => 'C', b => 'B', i => 12}],
+              [$suminfo,
+               {sum => 12}],
+              [$suminfo,
+               {sum => 49}],
+              [], [],
+              [{x => {Name => 'x', Colno => 1, Type => 'char'}},
+               {x => 'xyz'},
+               {x => undef}],
+              [],
+              [$abc],
+              [{'Col 1' => {Name => '', Colno => 1, Type => 'int'}},
+               {'Col 1' => 4711}]);
+   @result = sql($sql, HASH, MULTISET, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET, COLINFO_FULL, wantscalar");
+   $result = sql($sql, COLINFO_FULL, HASH, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 8;
+
+   #----------------------- LIST -----------------------------------
+
+   &blurb("LIST, MULTISET, COLINFO_NONE, wantarray");
    @expect = ([['A', 'A', 12],
                ['A', 'D', 24],
                ['A', 'H', 1]],
@@ -165,18 +292,112 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
               [['C', 'B', 12]],
               [[12]],
               [[49]],
+              [], [],
               [['xyz'],
                [undef]],
+              [],
               [],
               [[4711]]);
    @result = sql($sql, LIST, MULTISET);
    push(@testres, compare(\@expect, \@result));
 
-   &blurb("LIST, MULTISET, wantscalar");
+   &blurb("LIST, MULTISET, COLINFO_NONE, wantscalar");
    $result = sql($sql, LIST, MULTISET);
    push(@testres, compare(\@expect, $result));
 
-   &blurb("SCALAR, MULTISET, wantarray");
+   &blurb("LIST, MULTISET, COLINFO_POS, wantarray");
+   @expect = ([[1, 2, 3],
+               ['A', 'A', 12],
+               ['A', 'D', 24],
+               ['A', 'H', 1]],
+              [[1],
+               [37]],
+              [[1, 2, 3],
+               ['C', 'B', 12]],
+              [[1],
+               [12]],
+              [[1],
+               [49]],
+              [], [],
+              [[1],
+               ['xyz'],
+               [undef]],
+              [],
+              [[1, 2, 3]],
+              [[1],
+               [4711]]);
+   @result = sql($sql, LIST, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET, COLINFO_POS, wantscalar");
+   $result = sql($sql, LIST, COLINFO_POS, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET, COLINFO_NAMES, wantarray");
+   @expect = ([['a', 'b', 'i'],
+               ['A', 'A', 12],
+               ['A', 'D', 24],
+               ['A', 'H', 1]],
+              [['sum'],
+               [37]],
+              [['a', 'b', 'i'],
+               ['C', 'B', 12]],
+              [['sum'],
+               [12]],
+              [['sum'],
+               [49]],
+              [], [],
+              [['x'],
+               ['xyz'],
+               [undef]],
+              [],
+              [['a', 'b', 'i']],
+              [[''],
+               [4711]]);
+   @result = sql($sql, MULTISET, COLINFO_NAMES, LIST);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET, COLINFO_NAMES, wantscalar");
+   $result = sql($sql, LIST, COLINFO_NAMES, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+
+   &blurb("LIST, MULTISET, COLINFO_FULL, wantarray");
+   $abc = [{Name => 'a', Colno => 1, Type => 'char'},
+           {Name => 'b', Colno => 2, Type => 'char'},
+           {Name => 'i', Colno => 3, Type => 'int'}];
+   $suminfo = [{Name => 'sum', Colno => 1, Type => 'int'}];
+   @expect = ([$abc,
+               ['A', 'A', 12],
+               ['A', 'D', 24],
+               ['A', 'H', 1]],
+              [$suminfo,
+               [37]],
+              [$abc,
+               ['C', 'B', 12]],
+              [$suminfo,
+               [12]],
+              [$suminfo,
+               [49]],
+              [], [],
+              [[{Name => 'x', Colno => 1, Type => 'char'}],
+               ['xyz'],
+               [undef]],
+              [],
+              [$abc],
+              [[{Name => '', Colno => 1, Type => 'int'}],
+               [4711]]);
+   @result = sql($sql, MULTISET, COLINFO_FULL, LIST);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET, COLINFO_FULL, wantscalar");
+   $result = sql($sql, COLINFO_FULL, LIST, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 8;
+   #-------------------------- SCALAR -------------------------------
+
+   &blurb("SCALAR, MULTISET, COLINFO_NONE, wantarray");
    @expect = (['A@!@A@!@12',
                'A@!@D@!@24',
                'A@!@H@!@1'],
@@ -184,21 +405,88 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
               ['C@!@B@!@12'],
               ['12'],
               ['49'],
+              [], [],
               ['xyz',
                undef],
               [],
+              [],
               ['4711']);
-   @result = sql($sql, MULTISET, SCALAR);
+   @result = sql($sql, MULTISET, SCALAR, COLINFO_NONE);
    push(@testres, compare(\@expect, \@result));
 
-   &blurb("SCALAR, MULTISET, wantscalar");
+   &blurb("SCALAR, MULTISET, COLINFO_NONE, wantscalar");
    $result = sql($sql, SCALAR, MULTISET);
    push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET, COLINFO_POS, wantarray");
+   @expect = (['1@!@2@!@3',
+               'A@!@A@!@12',
+               'A@!@D@!@24',
+               'A@!@H@!@1'],
+              ['1',
+               '37'],
+              ['1@!@2@!@3',
+               'C@!@B@!@12'],
+              ['1',
+               '12'],
+              ['1',
+               '49'],
+              [], [],
+              ['1',
+               'xyz',
+               undef],
+              [],
+              ['1@!@2@!@3',],
+              ['1',
+               '4711']);
+   @result = sql($sql, MULTISET, SCALAR, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET, COLINFO_POS, wantscalar");
+   $result = sql($sql, COLINFO_POS, SCALAR, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+
+   &blurb("SCALAR, MULTISET, COLINFO_NAMES, wantarray");
+   @expect = (['a@!@b@!@i',
+               'A@!@A@!@12',
+               'A@!@D@!@24',
+               'A@!@H@!@1'],
+              ['sum',
+               '37'],
+              ['a@!@b@!@i',
+               'C@!@B@!@12'],
+              ['sum',
+               '12'],
+              ['sum',
+               '49'],
+              [], [],
+              ['x',
+               'xyz',
+               undef],
+              [],
+              ['a@!@b@!@i',],
+              ['',
+               '4711']);
+   @result = sql($sql, MULTISET, SCALAR, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET, COLINFO_NAMES, wantscalar");
+   $result = sql($sql, COLINFO_NAMES, SCALAR, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET, COLINFO_FULL");
+   eval('sql($sql, COLINFO_FULL, SCALAR, MULTISET)');
+   push(@testres, $@ =~ /COLINFO_FULL cannot be combined.*SCALAR at/ ? 1 : 0);
+
+   $no_of_tests += 7;
 }
 
 #--------------------- MULTISET empty, empty ------------------------
 {
    my (@result, $result, @expect);
+
+   #------------------ COLINFO_NONE --------------------------
 
    @expect = ([], []);
    &blurb("HASH, MULTISET empty, wantarray");
@@ -224,6 +512,99 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    &blurb("SCALAR, MULTISET empty, wantscalar");
    $result = sql($sql_empty, SCALAR, MULTISET);
    push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+
+   #---------------------- COLINFO_POS -----------------------
+   &blurb("HASH, MULTISET, COLINFO_POS empty, wantarray");
+   @expect = ([{a => 1, b => 2, i => 3}], [{a => 1, b => 2, i => 3}]);
+   @result = sql($sql_empty, HASH, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET, COLINFO_POS empty, wantscalar");
+   $result = sql($sql_empty, HASH, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET, COLINFO_POS empty, wantarray");
+   @expect = ([[1, 2, 3]], [[1, 2, 3]]);
+   @result = sql($sql_empty, LIST, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET, COLINFO_POS empty, wantscalar");
+   $result = sql($sql_empty, LIST, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET, COLINFO_POS empty, wantarray");
+   @expect = (['1@!@2@!@3'], ['1@!@2@!@3']);
+   @result = sql($sql_empty, SCALAR, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET, COLINFO_POS empty, wantscalar");
+   $result = sql($sql_empty, SCALAR, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+
+   #---------------------- COLINFO_NAMES -----------------------
+   &blurb("HASH, MULTISET, COLINFO_NAMES empty, wantarray");
+   @expect = ([{a => 'a', b => 'b', i => 'i'}], [{a => 'a', b => 'b', i => 'i'}]);
+   @result = sql($sql_empty, HASH, MULTISET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET, COLINFO_NAMES empty, wantscalar");
+   $result = sql($sql_empty, HASH, MULTISET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET, COLINFO_NAMES empty, wantarray");
+   @expect = ([['a', 'b', 'i']], [['a', 'b', 'i']]);
+   @result = sql($sql_empty, LIST, MULTISET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET, COLINFO_NAMES empty, wantscalar");
+   $result = sql($sql_empty, LIST, MULTISET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET, COLINFO_NAMES empty, wantarray");
+   @expect = (['a@!@b@!@i'], ['a@!@b@!@i']);
+   @result = sql($sql_empty, SCALAR, MULTISET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET, COLINFO_NAMES empty, wantscalar");
+   $result = sql($sql_empty, SCALAR, MULTISET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+
+   #---------------------- COLINFO_FULL -----------------------
+   &blurb("HASH, MULTISET, COLINFO_FULL empty, wantarray");
+   @expect = ([{a => {Name => 'a', Colno => 1, Type => 'char'},
+                b => {Name => 'b', Colno => 2, Type => 'char'},
+                i => {Name => 'i', Colno => 3, Type => 'int'}}],
+              [{a => {Name => 'a', Colno => 1, Type => 'char'},
+                b => {Name => 'b', Colno => 2, Type => 'char'},
+                i => {Name => 'i', Colno => 3, Type => 'int'}}]);
+   @result = sql($sql_empty, HASH, MULTISET, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET, COLINFO_FULL empty, wantscalar");
+   $result = sql($sql_empty, HASH, MULTISET, COLINFO_FULL);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET, COLINFO_FULL empty, wantarray");
+   @expect = ([[{Name => 'a', Colno => 1, Type => 'char'},
+                {Name => 'b', Colno => 2, Type => 'char'},
+                {Name => 'i', Colno => 3, Type => 'int'}]],
+              [[{Name => 'a', Colno => 1, Type => 'char'},
+                {Name => 'b', Colno => 2, Type => 'char'},
+                {Name => 'i', Colno => 3, Type => 'int'}]]);
+   @result = sql($sql_empty, LIST, MULTISET, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET, COLINFO_FULL empty, wantscalar");
+   $result = sql($sql_empty, LIST, MULTISET, COLINFO_FULL);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 4;
 }
 
 #--------------------- MULTISET error   ------------------------
@@ -236,11 +617,11 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    push(@testres, compare(\@expect, \@result));
 
    &blurb("HASH, MULTISET error, wantscalar");
-   $result = sql($sql_error, HASH, MULTISET);
+   $result = sql($sql_error, HASH, MULTISET, COLINFO_POS);
    push(@testres, compare(\@expect, $result));
 
    &blurb("LIST, MULTISET error, wantarray");
-   @result = sql($sql_error, LIST, MULTISET);
+   @result = sql($sql_error, LIST, MULTISET, COLINFO_FULL);
    push(@testres, compare(\@expect, \@result));
 
    &blurb("LIST, MULTISET error, wantscalar");
@@ -248,12 +629,110 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    push(@testres, compare(\@expect, $result));
 
    &blurb("SCALAR, MULTISET error, wantarray");
-   @result = sql($sql_error, SCALAR, MULTISET);
+   @result = sql($sql_error, SCALAR, MULTISET, COLINFO_NAMES);
    push(@testres, compare(\@expect, \@result));
 
    &blurb("SCALAR, MULTISET error, wantscalar");
    $result = sql($sql_error, SCALAR, MULTISET);
    push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- MULTISET print   ------------------------
+{
+   my (@result, $result, @expect);
+
+   @expect = ([]);
+   &blurb("HASH, MULTISET print, wantarray");
+   @result = sql($sql_print, HASH, MULTISET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET print, wantscalar");
+   $result = sql($sql_print, HASH, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET print, wantarray");
+   @result = sql($sql_print, LIST, MULTISET, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET print, wantscalar");
+   $result = sql($sql_print, LIST, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET print, wantarray");
+   @result = sql($sql_print, SCALAR, MULTISET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET print, wantscalar");
+   $result = sql($sql_print, SCALAR, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- MULTISET counts   ------------------------
+{
+   my (@result, $result, @expect);
+
+   @expect = ([], []);
+   &blurb("HASH, MULTISET counts, wantarray");
+   @result = sql($sql_counts, HASH, MULTISET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET counts, wantscalar");
+   $result = sql($sql_counts, HASH, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET counts, wantarray");
+   @result = sql($sql_counts, LIST, MULTISET, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET counts, wantscalar");
+   $result = sql($sql_counts, LIST, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET counts, wantarray");
+   @result = sql($sql_counts, SCALAR, MULTISET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET counts, wantscalar");
+   $result = sql($sql_counts, SCALAR, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- MULTISET nocount   ------------------------
+{
+   my (@result, $result, @expect);
+
+   @expect = ([]);
+   &blurb("HASH, MULTISET nocount, wantarray");
+   @result = sql($sql_nocount, HASH, MULTISET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET nocount, wantscalar");
+   $result = sql($sql_nocount, HASH, MULTISET, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET nocount, wantarray");
+   @result = sql($sql_nocount, LIST, MULTISET, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET nocount, wantscalar");
+   $result = sql($sql_nocount, LIST, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET nocount, wantarray");
+   @result = sql($sql_nocount, SCALAR, MULTISET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET nocount, wantscalar");
+   $result = sql($sql_nocount, SCALAR, MULTISET);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
 }
 
 #--------------------- MULTISET noexec   ------------------------
@@ -267,11 +746,11 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    push(@testres, compare(\@expect, \@result));
 
    &blurb("HASH, MULTISET NoExec, wantscalar");
-   $result = sql($sql, HASH, MULTISET);
+   $result = sql($sql, HASH, MULTISET, COLINFO_POS);
    push(@testres, compare(undef, $result));
 
    &blurb("LIST, MULTISET NoExec, wantarray");
-   @result = sql($sql, LIST, MULTISET);
+   @result = sql($sql, COLINFO_FULL, LIST, MULTISET);
    push(@testres, compare(\@expect, \@result));
 
    &blurb("LIST, MULTISET NoExec, wantscalar");
@@ -279,20 +758,634 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    push(@testres, compare(undef, $result));
 
    &blurb("SCALAR, MULTISET NoExec, wantarray");
-   @result = sql($sql, SCALAR, MULTISET);
+   @result = sql($sql, SCALAR, COLINFO_NAMES, MULTISET);
    push(@testres, compare(\@expect, \@result));
 
    &blurb("SCALAR, MULTISET NoExec, wantscalar");
    $result = sql($sql, SCALAR, MULTISET);
    push(@testres, compare(undef, $result));
    $X->{NoExec} = 0;
+
+   $no_of_tests += 6;
 }
 
-#-------------------- SINGLESET ----------------------------
+
+#==================================================================
+#========================= MULTISET_RC ============================
+#==================================================================
+{
+   my (@result, $result, @expect);
+   #----------------------- HASH ---------------------------
+   &blurb("HASH, MULTISET_RC, COLINFO_NONE, wantarray");
+   @expect = ([{a => 'A', b => 'A', i => 12},
+               {a => 'A', b => 'D', i => 24},
+               {a => 'A', b => 'H', i => 1}],
+              [{sum => 37}],
+              [{a => 'C', b => 'B', i => 12}],
+              [{sum => 12}],
+              [{sum => 49}],
+              1, 1,
+              [{x => 'xyz'},
+               {x => undef}],
+              2,
+              [],
+              [{'Col 1' => 4711}]);
+   @result = sql($sql, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC, COLINFO_NONE, wantscalar");
+   $result = sql($sql, HASH, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("HASH, MULTISET_RC, COLINFO_POS, wantarray");
+   @expect = ([{a => 1, b => 2, i => 3},
+               {a => 'A', b => 'A', i => 12},
+               {a => 'A', b => 'D', i => 24},
+               {a => 'A', b => 'H', i => 1}],
+              [{sum => 1},
+               {sum => 37}],
+              [{a => 1, b => 2, i => 3},
+               {a => 'C', b => 'B', i => 12}],
+              [{sum => 1},
+               {sum => 12}],
+              [{sum => 1},
+               {sum => 49}],
+              1, 1,
+              [{x => 1},
+               {x => 'xyz'},
+               {x => undef}],
+              2,
+              [{a => 1, b => 2, i => 3}],
+              [{'Col 1' => 1},
+               {'Col 1' => 4711}]);
+   @result = sql($sql, HASH, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC, COLINFO_POS, wantscalar");
+   $result = sql($sql, COLINFO_POS, HASH, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("HASH, MULTISET_RC, COLINFO_NAMES, wantarray");
+   @expect = ([{a => 'a', b => 'b', i => 'i'},
+               {a => 'A', b => 'A', i => 12},
+               {a => 'A', b => 'D', i => 24},
+               {a => 'A', b => 'H', i => 1}],
+              [{sum => 'sum'},
+               {sum => 37}],
+              [{a => 'a', b => 'b', i => 'i'},
+               {a => 'C', b => 'B', i => 12}],
+              [{sum => 'sum'},
+               {sum => 12}],
+              [{sum => 'sum'},
+               {sum => 49}],
+              1, 1,
+              [{x => 'x'},
+               {x => 'xyz'},
+               {x => undef}],
+              2,
+              [{a => 'a',  b=> 'b', i => 'i'}],
+              [{'Col 1' => ''},
+               {'Col 1' => 4711}]);
+   @result = sql($sql, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC, COLINFO_NAMES, wantscalar");
+   $result = sql($sql, COLINFO_NAMES, MULTISET_RC, HASH);
+   push(@testres, compare(\@expect, $result));
+
+
+   &blurb("HASH, MULTISET_RC, COLINFO_FULL, wantarray");
+   my $abc = {a => {Name => 'a', Colno => 1, Type => 'char'},
+              b => {Name => 'b', Colno => 2, Type => 'char'},
+              i => {Name => 'i', Colno => 3, Type => 'int'}};
+   my $suminfo = {sum => {Name => 'sum', Colno => 1, Type => 'int'}};
+   @expect = ([$abc,
+               {a => 'A', b => 'A', i => 12},
+               {a => 'A', b => 'D', i => 24},
+               {a => 'A', b => 'H', i => 1}],
+              [$suminfo,
+               {sum => 37}],
+              [$abc,
+               {a => 'C', b => 'B', i => 12}],
+              [$suminfo,
+               {sum => 12}],
+              [$suminfo,
+               {sum => 49}],
+              1, 1,
+              [{x => {Name => 'x', Colno => 1, Type => 'char'}},
+               {x => 'xyz'},
+               {x => undef}],
+              2,
+              [$abc],
+              [{'Col 1' => {Name => '', Colno => 1, Type => 'int'}},
+               {'Col 1' => 4711}]);
+   @result = sql($sql, HASH, MULTISET_RC, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC, COLINFO_FULL, wantscalar");
+   $result = sql($sql, COLINFO_FULL, HASH, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 8;
+
+   #----------------------- LIST -----------------------------------
+
+   &blurb("LIST, MULTISET_RC, COLINFO_NONE, wantarray");
+   @expect = ([['A', 'A', 12],
+               ['A', 'D', 24],
+               ['A', 'H', 1]],
+              [[37]],
+              [['C', 'B', 12]],
+              [[12]],
+              [[49]],
+              1, 1,
+              [['xyz'],
+               [undef]],
+              2,
+              [],
+              [[4711]]);
+   @result = sql($sql, LIST, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_NONE, wantscalar");
+   $result = sql($sql, LIST, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_POS, wantarray");
+   @expect = ([[1, 2, 3],
+               ['A', 'A', 12],
+               ['A', 'D', 24],
+               ['A', 'H', 1]],
+              [[1],
+               [37]],
+              [[1, 2, 3],
+               ['C', 'B', 12]],
+              [[1],
+               [12]],
+              [[1],
+               [49]],
+              1, 1,
+              [[1],
+               ['xyz'],
+               [undef]],
+              2,
+              [[1, 2, 3]],
+              [[1],
+               [4711]]);
+   @result = sql($sql, LIST, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_POS, wantscalar");
+   $result = sql($sql, LIST, COLINFO_POS, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_NAMES, wantarray");
+   @expect = ([['a', 'b', 'i'],
+               ['A', 'A', 12],
+               ['A', 'D', 24],
+               ['A', 'H', 1]],
+              [['sum'],
+               [37]],
+              [['a', 'b', 'i'],
+               ['C', 'B', 12]],
+              [['sum'],
+               [12]],
+              [['sum'],
+               [49]],
+              1, 1,
+              [['x'],
+               ['xyz'],
+               [undef]],
+              2,
+              [['a', 'b', 'i']],
+              [[''],
+               [4711]]);
+   @result = sql($sql, MULTISET_RC, COLINFO_NAMES, LIST);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_NAMES, wantscalar");
+   $result = sql($sql, LIST, COLINFO_NAMES, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+
+   &blurb("LIST, MULTISET_RC, COLINFO_FULL, wantarray");
+   $abc = [{Name => 'a', Colno => 1, Type => 'char'},
+           {Name => 'b', Colno => 2, Type => 'char'},
+           {Name => 'i', Colno => 3, Type => 'int'}];
+   $suminfo = [{Name => 'sum', Colno => 1, Type => 'int'}];
+   @expect = ([$abc,
+               ['A', 'A', 12],
+               ['A', 'D', 24],
+               ['A', 'H', 1]],
+              [$suminfo,
+               [37]],
+              [$abc,
+               ['C', 'B', 12]],
+              [$suminfo,
+               [12]],
+              [$suminfo,
+               [49]],
+              1, 1,
+              [[{Name => 'x', Colno => 1, Type => 'char'}],
+               ['xyz'],
+               [undef]],
+              2,
+              [$abc],
+              [[{Name => '', Colno => 1, Type => 'int'}],
+               [4711]]);
+   @result = sql($sql, MULTISET_RC, COLINFO_FULL, LIST);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_FULL, wantscalar");
+   $result = sql($sql, COLINFO_FULL, LIST, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 8;
+   #-------------------------- SCALAR -------------------------------
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_NONE, wantarray");
+   @expect = (['A@!@A@!@12',
+               'A@!@D@!@24',
+               'A@!@H@!@1'],
+              ['37'],
+              ['C@!@B@!@12'],
+              ['12'],
+              ['49'],
+              1, 1,
+              ['xyz',
+               undef],
+              2,
+              [],
+              ['4711']);
+   @result = sql($sql, MULTISET_RC, SCALAR, COLINFO_NONE);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_NONE, wantscalar");
+   $result = sql($sql, SCALAR, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_POS, wantarray");
+   @expect = (['1@!@2@!@3',
+               'A@!@A@!@12',
+               'A@!@D@!@24',
+               'A@!@H@!@1'],
+              ['1',
+               '37'],
+              ['1@!@2@!@3',
+               'C@!@B@!@12'],
+              ['1',
+               '12'],
+              ['1',
+               '49'],
+              1, 1,
+              ['1',
+               'xyz',
+               undef],
+              2,
+              ['1@!@2@!@3',],
+              ['1',
+               '4711']);
+   @result = sql($sql, MULTISET_RC, SCALAR, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_POS, wantscalar");
+   $result = sql($sql, COLINFO_POS, SCALAR, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_NAMES, wantarray");
+   @expect = (['a@!@b@!@i',
+               'A@!@A@!@12',
+               'A@!@D@!@24',
+               'A@!@H@!@1'],
+              ['sum',
+               '37'],
+              ['a@!@b@!@i',
+               'C@!@B@!@12'],
+              ['sum',
+               '12'],
+              ['sum',
+               '49'],
+              1, 1,
+              ['x',
+               'xyz',
+               undef],
+              2,
+              ['a@!@b@!@i',],
+              ['',
+               '4711']);
+   @result = sql($sql, MULTISET_RC, SCALAR, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_NAMES, wantscalar");
+   $result = sql($sql, COLINFO_NAMES, SCALAR, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_FULL");
+   eval('sql($sql, COLINFO_FULL, SCALAR, MULTISET_RC)');
+   push(@testres, $@ =~ /COLINFO_FULL cannot be combined.*SCALAR at/ ? 1 : 0);
+
+   $no_of_tests += 7;
+
+}
+
+#--------------------- MULTISET_RC empty, empty ------------------------
 {
    my (@result, $result, @expect);
 
-   &blurb("HASH, SINGLESET, wantarray");
+   #------------------ COLINFO_NONE --------------------------
+
+   @expect = ([], []);
+   &blurb("HASH, MULTISET_RC empty, wantarray");
+   @result = sql($sql_empty, HASH, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC empty, wantscalar");
+   $result = sql($sql_empty, HASH, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET_RC empty, wantarray");
+   @result = sql($sql_empty, LIST, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC empty, wantscalar");
+   $result = sql($sql_empty, LIST, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET_RC empty, wantarray");
+   @result = sql($sql_empty, SCALAR, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC empty, wantscalar");
+   $result = sql($sql_empty, SCALAR, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+
+   #---------------------- COLINFO_POS -----------------------
+   &blurb("HASH, MULTISET_RC, COLINFO_POS empty, wantarray");
+   @expect = ([{a => 1, b => 2, i => 3}], [{a => 1, b => 2, i => 3}]);
+   @result = sql($sql_empty, HASH, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC, COLINFO_POS empty, wantscalar");
+   $result = sql($sql_empty, HASH, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_POS empty, wantarray");
+   @expect = ([[1, 2, 3]], [[1, 2, 3]]);
+   @result = sql($sql_empty, LIST, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_POS empty, wantscalar");
+   $result = sql($sql_empty, LIST, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_POS empty, wantarray");
+   @expect = (['1@!@2@!@3'], ['1@!@2@!@3']);
+   @result = sql($sql_empty, SCALAR, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_POS empty, wantscalar");
+   $result = sql($sql_empty, SCALAR, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+
+   #---------------------- COLINFO_NAMES -----------------------
+   &blurb("HASH, MULTISET_RC, COLINFO_NAMES empty, wantarray");
+   @expect = ([{a => 'a', b => 'b', i => 'i'}], [{a => 'a', b => 'b', i => 'i'}]);
+   @result = sql($sql_empty, HASH, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC, COLINFO_NAMES empty, wantscalar");
+   $result = sql($sql_empty, HASH, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_NAMES empty, wantarray");
+   @expect = ([['a', 'b', 'i']], [['a', 'b', 'i']]);
+   @result = sql($sql_empty, LIST, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_NAMES empty, wantscalar");
+   $result = sql($sql_empty, LIST, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_NAMES empty, wantarray");
+   @expect = (['a@!@b@!@i'], ['a@!@b@!@i']);
+   @result = sql($sql_empty, SCALAR, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC, COLINFO_NAMES empty, wantscalar");
+   $result = sql($sql_empty, SCALAR, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+
+
+   #---------------------- COLINFO_FULL -----------------------
+   &blurb("HASH, MULTISET_RC, COLINFO_FULL empty, wantarray");
+   @expect = ([{a => {Name => 'a', Colno => 1, Type => 'char'},
+                b => {Name => 'b', Colno => 2, Type => 'char'},
+                i => {Name => 'i', Colno => 3, Type => 'int'}}],
+              [{a => {Name => 'a', Colno => 1, Type => 'char'},
+                b => {Name => 'b', Colno => 2, Type => 'char'},
+                i => {Name => 'i', Colno => 3, Type => 'int'}}]);
+   @result = sql($sql_empty, HASH, MULTISET_RC, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC, COLINFO_FULL empty, wantscalar");
+   $result = sql($sql_empty, HASH, MULTISET_RC, COLINFO_FULL);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_FULL empty, wantarray");
+   @expect = ([[{Name => 'a', Colno => 1, Type => 'char'},
+                {Name => 'b', Colno => 2, Type => 'char'},
+                {Name => 'i', Colno => 3, Type => 'int'}]],
+              [[{Name => 'a', Colno => 1, Type => 'char'},
+                {Name => 'b', Colno => 2, Type => 'char'},
+                {Name => 'i', Colno => 3, Type => 'int'}]]);
+   @result = sql($sql_empty, LIST, MULTISET_RC, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC, COLINFO_FULL empty, wantscalar");
+   $result = sql($sql_empty, LIST, MULTISET_RC, COLINFO_FULL);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 4;
+}
+
+#--------------------- MULTISET_RC error   ------------------------
+{
+   my (@result, $result, @expect);
+
+   @expect = (-1);
+   &blurb("HASH, MULTISET_RC error, wantarray");
+   @result = sql($sql_error, HASH, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC error, wantscalar");
+   $result = sql($sql_error, HASH, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET_RC error, wantarray");
+   @result = sql($sql_error, LIST, MULTISET_RC, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC error, wantscalar");
+   $result = sql($sql_error, LIST, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET_RC error, wantarray");
+   @result = sql($sql_error, SCALAR, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC error, wantscalar");
+   $result = sql($sql_error, SCALAR, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- MULTISET_RC print   ------------------------
+{
+   my (@result, $result, @expect);
+
+   @expect = (-1);
+   &blurb("HASH, MULTISET_RC print, wantarray");
+   @result = sql($sql_print, HASH, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC print, wantscalar");
+   $result = sql($sql_print, HASH, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET_RC print, wantarray");
+   @result = sql($sql_print, LIST, MULTISET_RC, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC print, wantscalar");
+   $result = sql($sql_print, LIST, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET_RC print, wantarray");
+   @result = sql($sql_print, SCALAR, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC print, wantscalar");
+   $result = sql($sql_print, SCALAR, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- MULTISET_RC counts   ------------------------
+{
+   my (@result, $result, @expect);
+
+   @expect = (1, 1);
+   &blurb("HASH, MULTISET_RC counts, wantarray");
+   @result = sql($sql_counts, HASH, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC counts, wantscalar");
+   $result = sql($sql_counts, HASH, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET_RC counts, wantarray");
+   @result = sql($sql_counts, LIST, MULTISET_RC, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC counts, wantscalar");
+   $result = sql($sql_counts, LIST, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET_RC counts, wantarray");
+   @result = sql($sql_counts, SCALAR, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC counts, wantscalar");
+   $result = sql($sql_counts, SCALAR, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- MULTISET_RC nocount   ------------------------
+{
+   my (@result, $result, @expect);
+
+   @expect = (-1);
+   &blurb("HASH, MULTISET_RC nocount, wantarray");
+   @result = sql($sql_nocount, HASH, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC nocount, wantscalar");
+   $result = sql($sql_nocount, HASH, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, MULTISET_RC nocount, wantarray");
+   @result = sql($sql_nocount, LIST, MULTISET_RC, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC nocount, wantscalar");
+   $result = sql($sql_nocount, LIST, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, MULTISET_RC nocount, wantarray");
+   @result = sql($sql_nocount, SCALAR, MULTISET_RC, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC nocount, wantscalar");
+   $result = sql($sql_nocount, SCALAR, MULTISET_RC);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- MULTISET_RC noexec   ------------------------
+{
+   my (@result, $result, @expect);
+
+   $X->{NoExec} = 1;
+   @expect = ();
+   &blurb("HASH, MULTISET_RC NoExec, wantarray");
+   @result = sql($sql, HASH, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, MULTISET_RC NoExec, wantscalar");
+   $result = sql($sql, HASH, MULTISET_RC, COLINFO_POS);
+   push(@testres, compare(undef, $result));
+
+   &blurb("LIST, MULTISET_RC NoExec, wantarray");
+   @result = sql($sql, COLINFO_FULL, LIST, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, MULTISET_RC NoExec, wantscalar");
+   $result = sql($sql, LIST, MULTISET_RC);
+   push(@testres, compare(undef, $result));
+
+   &blurb("SCALAR, MULTISET_RC NoExec, wantarray");
+   @result = sql($sql, SCALAR, COLINFO_NAMES, MULTISET_RC);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, MULTISET_RC NoExec, wantscalar");
+   $result = sql($sql, SCALAR, MULTISET_RC);
+   push(@testres, compare(undef, $result));
+   $X->{NoExec} = 0;
+
+   $no_of_tests += 6;
+}
+
+
+#==================================================================
+#========================= SINGLESET ==============================
+#==================================================================
+{
+   my (@result, $result, @expect);
+
+   #----------------------- HASH ------------------------------
+   &blurb("HASH, SINGLESET, COLINFO_NONE, wantarray");
    @expect = ({a => 'A', b => 'A', i => 12},
               {a => 'A', b => 'D', i => 24},
               {a => 'A', b => 'H', i => 1},
@@ -307,10 +1400,72 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    push(@testres, compare(\@expect, \@result));
 
    &blurb("HASH, SINGLESET, wantscalar");
-   $result = sql($sql);
+   $result = sql($sql, COLINFO_NONE);
    push(@testres, compare(\@expect, $result));
 
-   &blurb("LIST, SINGLESET, wantarray");
+   &blurb("HASH, SINGLESET, COLINFO_POS, wantarray");
+   @expect = ({a => 1, b => 2, i => 3},
+              {a => 'A', b => 'A', i => 12},
+              {a => 'A', b => 'D', i => 24},
+              {a => 'A', b => 'H', i => 1},
+              {sum => 37},
+              {a => 'C', b => 'B', i => 12},
+              {sum => 12},
+              {sum => 49},
+              {'x' => 'xyz'},
+              {'x' => undef},
+              {'Col 1' => 4711});
+   @result = sql($sql, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, SINGLESET, COLINFO_POS, wantscalar");
+   $result = sql($sql, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("HASH, SINGLESET, COLINFO_NAMES, wantarray");
+   @expect = ({a => 'a', b => 'b', i => 'i'},
+              {a => 'A', b => 'A', i => 12},
+              {a => 'A', b => 'D', i => 24},
+              {a => 'A', b => 'H', i => 1},
+              {sum => 37},
+              {a => 'C', b => 'B', i => 12},
+              {sum => 12},
+              {sum => 49},
+              {'x' => 'xyz'},
+              {'x' => undef},
+              {'Col 1' => 4711});
+   @result = sql($sql, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, SINGLESET, COLINFO_NAMES, wantscalar");
+   $result = sql($sql, COLINFO_NAMES);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("HASH, SINGLESET, COLINFO_FULL, wantarray");
+   @expect = ({a => {Name => 'a', Colno => 1, Type => 'char'},
+               b => {Name => 'b', Colno => 2, Type => 'char'},
+               i => {Name => 'i', Colno => 3, Type => 'int'}},
+              {a => 'A', b => 'A', i => 12},
+              {a => 'A', b => 'D', i => 24},
+              {a => 'A', b => 'H', i => 1},
+              {sum => 37},
+              {a => 'C', b => 'B', i => 12},
+              {sum => 12},
+              {sum => 49},
+              {'x' => 'xyz'},
+              {'x' => undef},
+              {'Col 1' => 4711});
+   @result = sql($sql, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, SINGLESET, COLINFO_FULL, wantscalar");
+   $result = sql($sql, COLINFO_FULL);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 8;
+
+   #-------------------------- LIST -----------------------------
+   &blurb("LIST, SINGLESET, COLINFO_NONE, wantarray");
    @expect = (['A', 'A', 12],
               ['A', 'D', 24],
               ['A', 'H', 1],
@@ -321,14 +1476,77 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
               ['xyz'],
               [undef],
               [4711]);
-   @result = sql($sql, LIST);
+   @result = sql($sql, LIST, COLINFO_NONE);
    push(@testres, compare(\@expect, \@result));
 
    &blurb("LIST, SINGLESET, wantscalar");
    $result = sql($sql, undef, LIST);
    push(@testres, compare(\@expect, $result));
 
-   &blurb("SCALAR, SINGLESET, wantarray");
+   &blurb("LIST, SINGLESET, COLINFO_POS, wantarray");
+   @expect = ([1, 2, 3],
+              ['A', 'A', 12],
+              ['A', 'D', 24],
+              ['A', 'H', 1],
+              [37],
+              ['C', 'B', 12],
+              [12],
+              [49],
+              ['xyz'],
+              [undef],
+              [4711]);
+   @result = sql($sql, LIST, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLESET, wantscalar");
+   $result = sql($sql, COLINFO_POS, undef, LIST);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, SINGLESET, COLINFO_NAMES, wantarray");
+   @expect = (['a', 'b', 'i'],
+              ['A', 'A', 12],
+              ['A', 'D', 24],
+              ['A', 'H', 1],
+              [37],
+              ['C', 'B', 12],
+              [12],
+              [49],
+              ['xyz'],
+              [undef],
+              [4711]);
+   @result = sql($sql, LIST, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLESET, wantscalar");
+   $result = sql($sql, COLINFO_NAMES, undef, LIST);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, SINGLESET, COLINFO_FULL, wantarray");
+   @expect = ([{Name => 'a', Colno => 1, Type => 'char'},
+               {Name => 'b', Colno => 2, Type => 'char'},
+               {Name => 'i', Colno => 3, Type => 'int'}],
+              ['A', 'A', 12],
+              ['A', 'D', 24],
+              ['A', 'H', 1],
+              [37],
+              ['C', 'B', 12],
+              [12],
+              [49],
+              ['xyz'],
+              [undef],
+              [4711]);
+   @result = sql($sql, LIST, COLINFO_FULL);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLESET, wantscalar");
+   $result = sql($sql, COLINFO_FULL, undef, LIST);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 8;
+
+   #--------------------- SCALAR -------------------------------
+
+   &blurb("SCALAR, SINGLESET, COLINFO_NONE, wantarray");
    @expect = ('A@!@A@!@12',
               'A@!@D@!@24',
               'A@!@H@!@1',
@@ -342,14 +1560,60 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    @result = sql($sql, SCALAR);
    push(@testres, compare(\@expect, \@result));
 
-   &blurb("SCALAR, SINGLESET, wantscalar");
+   &blurb("SCALAR, SINGLESET, COLINFO_NONE, wantscalar");
    $result = sql($sql, SCALAR);
    push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, SINGLESET, COLINFO_POS, wantarray");
+   @expect = ('1@!@2@!@3',
+              'A@!@A@!@12',
+              'A@!@D@!@24',
+              'A@!@H@!@1',
+              '37',
+              'C@!@B@!@12',
+              '12',
+              '49',
+              'xyz',
+              undef,
+              '4711');
+   @result = sql($sql, COLINFO_POS, undef, SCALAR);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, SINGLESET, COLINFO_POS, wantscalar");
+   $result = sql($sql, SCALAR, undef, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, SINGLESET, COLINFO_NAMES, wantarray");
+   @expect = ('a@!@b@!@i',
+              'A@!@A@!@12',
+              'A@!@D@!@24',
+              'A@!@H@!@1',
+              '37',
+              'C@!@B@!@12',
+              '12',
+              '49',
+              'xyz',
+              undef,
+              '4711');
+   @result = sql($sql, COLINFO_NAMES, undef, SCALAR);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, SINGLESET, COLINFO_NAMES, wantscalar");
+   $result = sql($sql, SCALAR, undef, COLINFO_NAMES);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, SINGLESET, COLINFO_FULL");
+   eval('sql($sql, SCALAR, COLINFO_FULL, SINGLESET)');
+   push(@testres, $@ =~ /COLINFO_FULL cannot be combined.*SCALAR at/ ? 1 : 0);
+
+   $no_of_tests += 7;
 }
 
 #--------------------- SINGLESET, empty ------------------------
 {
    my (@result, $result, @expect);
+
+   #--------------------- COLINFO_NONE -------------------------
 
    @expect = ();
    &blurb("HASH, SINGLESET empty, wantarray");
@@ -375,6 +1639,94 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    &blurb("SCALAR, SINGLESET empty, wantscalar");
    $result = sql($sql_empty, SCALAR, SINGLESET);
    push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+
+
+   #--------------------- COLINFO_POS -------------------------
+   @expect = ({a => 1, b => 2, i => 3});
+   &blurb("HASH, SINGLESET, COLINFO_POS empty, wantarray");
+   @result = sql($sql_empty, HASH, COLINFO_POS, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, SINGLESET, COLINFO_POS empty, wantscalar");
+   $result = sql($sql_empty, COLINFO_POS, HASH, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   @expect = ([1, 2, 3]);
+   &blurb("LIST, SINGLESET, COLINFO_POS empty, wantarray");
+   @result = sql($sql_empty, COLINFO_POS, LIST, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLESET, COLINFO_POS empty, wantscalar");
+   $result = sql($sql_empty, LIST, COLINFO_POS, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   @expect = ('1@!@2@!@3');
+   &blurb("SCALAR, SINGLESET, COLINFO_POS empty, wantarray");
+   @result = sql($sql_empty, SCALAR, SINGLESET, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, SINGLESET, COLINFO_POS empty, wantscalar");
+   $result = sql($sql_empty, SCALAR, SINGLESET, COLINFO_POS);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+
+   #--------------------- COLINFO_NAMES -------------------------
+   @expect = ({a => 'a', b => 'b', i => 'i'});
+   &blurb("HASH, SINGLESET, COLINFO_NAMES empty, wantarray");
+   @result = sql($sql_empty, HASH, COLINFO_NAMES, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, SINGLESET, COLINFO_NAMES empty, wantscalar");
+   $result = sql($sql_empty, COLINFO_NAMES, HASH, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   @expect = (['a', 'b', 'i']);
+   &blurb("LIST, SINGLESET, COLINFO_NAMES empty, wantarray");
+   @result = sql($sql_empty, COLINFO_NAMES, LIST, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLESET, COLINFO_NAMES empty, wantscalar");
+   $result = sql($sql_empty, LIST, COLINFO_NAMES, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   @expect = ('a@!@b@!@i');
+   &blurb("SCALAR, SINGLESET, COLINFO_NAMES empty, wantarray");
+   @result = sql($sql_empty, SCALAR, SINGLESET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, SINGLESET, COLINFO_NAMES empty, wantscalar");
+   $result = sql($sql_empty, SCALAR, SINGLESET, COLINFO_NAMES);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+
+   #--------------------- COLINFO_FULL -------------------------
+   @expect = ({a => {Name => 'a', Colno => 1, Type => 'char'},
+               b => {Name => 'b', Colno => 2, Type => 'char'},
+               i => {Name => 'i', Colno => 3, Type => 'int'}});
+   &blurb("HASH, SINGLESET, COLINFO_FULL empty, wantarray");
+   @result = sql($sql_empty, HASH, COLINFO_FULL, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, SINGLESET, COLINFO_FULL empty, wantscalar");
+   $result = sql($sql_empty, COLINFO_FULL, HASH, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   @expect = ([{Name => 'a', Colno => 1, Type => 'char'},
+               {Name => 'b', Colno => 2, Type => 'char'},
+               {Name => 'i', Colno => 3, Type => 'int'}]);
+   &blurb("LIST, SINGLESET, COLINFO_FULL empty, wantarray");
+   @result = sql($sql_empty, COLINFO_FULL, LIST, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLESET, COLINFO_FULL empty, wantscalar");
+   $result = sql($sql_empty, LIST, COLINFO_FULL, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 4;
 }
 
 #-------------------- SINGLESET, error ----------------------
@@ -387,11 +1739,11 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    push(@testres, compare(\@expect, \@result));
 
    &blurb("HASH, SINGLESET error, wantscalar");
-   $result = sql($sql_error, HASH, SINGLESET);
+   $result = sql($sql_error, COLINFO_FULL);
    push(@testres, compare(\@expect, $result));
 
    &blurb("LIST, SINGLESET error, wantarray");
-   @result = sql($sql_error, LIST, SINGLESET);
+   @result = sql($sql_error, LIST, SINGLESET, COLINFO_POS);
    push(@testres, compare(\@expect, \@result));
 
    &blurb("LIST, SINGLESET error, wantscalar");
@@ -403,9 +1755,109 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    push(@testres, compare(\@expect, \@result));
 
    &blurb("SCALAR, SINGLESET error, wantscalar");
-   $result = sql($sql_error, SCALAR, SINGLESET);
+   $result = sql($sql_error, COLINFO_NAMES, SCALAR, SINGLESET);
    push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
 }
+
+#-------------------- SINGLESET, print ----------------------
+{
+   my (@result, $result, @expect);
+
+   @expect = ();
+   &blurb("HASH, SINGLESET print, wantarray");
+   @result = sql($sql_print, HASH, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, SINGLESET print, wantscalar");
+   $result = sql($sql_print, COLINFO_FULL);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, SINGLESET print, wantarray");
+   @result = sql($sql_print, LIST, SINGLESET, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLESET print, wantscalar");
+   $result = sql($sql_print, LIST, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, SINGLESET print, wantarray");
+   @result = sql($sql_print, SCALAR, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, SINGLESET print, wantscalar");
+   $result = sql($sql_print, COLINFO_NAMES, SCALAR, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+}
+
+
+#-------------------- SINGLESET, counts ----------------------
+{
+   my (@result, $result, @expect);
+
+   @expect = ();
+   &blurb("HASH, SINGLESET counts, wantarray");
+   @result = sql($sql_counts, HASH, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, SINGLESET counts, wantscalar");
+   $result = sql($sql_counts, COLINFO_FULL);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, SINGLESET counts, wantarray");
+   @result = sql($sql_counts, LIST, SINGLESET, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLESET counts, wantscalar");
+   $result = sql($sql_counts, LIST, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, SINGLESET counts, wantarray");
+   @result = sql($sql_counts, SCALAR, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, SINGLESET counts, wantscalar");
+   $result = sql($sql_counts, COLINFO_NAMES, SCALAR, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#-------------------- SINGLESET, nocount ----------------------
+{
+   my (@result, $result, @expect);
+
+   @expect = ();
+   &blurb("HASH, SINGLESET nocount, wantarray");
+   @result = sql($sql_nocount, HASH, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("HASH, SINGLESET nocount, wantscalar");
+   $result = sql($sql_nocount, COLINFO_FULL);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("LIST, SINGLESET nocount, wantarray");
+   @result = sql($sql_nocount, LIST, SINGLESET, COLINFO_POS);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLESET nocount, wantscalar");
+   $result = sql($sql_nocount, LIST, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("SCALAR, SINGLESET nocount, wantarray");
+   @result = sql($sql_nocount, SCALAR, SINGLESET);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, SINGLESET nocount, wantscalar");
+   $result = sql($sql_nocount, COLINFO_NAMES, SCALAR, SINGLESET);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 6;
+}
+
 
 #-------------------- SINGLESET, NoExec ----------------------
 {
@@ -414,7 +1866,7 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    $X->{NoExec} = 1;
    @expect = ();
    &blurb("HASH, SINGLESET NoExec, wantarray");
-   @result = sql($sql, HASH, SINGLESET);
+   @result = sql($sql, HASH, COLINFO_POS, SINGLESET);
    push(@testres, compare(\@expect, \@result));
 
    &blurb("HASH, SINGLESET NoExec, wantscalar");
@@ -422,7 +1874,7 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    push(@testres, compare(undef, $result));
 
    &blurb("LIST, SINGLESET NoExec, wantarray");
-   @result = sql($sql, LIST, SINGLESET);
+   @result = sql($sql, LIST, COLINFO_NAMES, SINGLESET);
    push(@testres, compare(\@expect, \@result));
 
    &blurb("LIST, SINGLESET NoExec, wantscalar");
@@ -437,11 +1889,17 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    $result = sql($sql, SCALAR, SINGLESET);
    push(@testres, compare(undef, $result));
    $X->{NoExec} = 0;
+
+   $no_of_tests += 6;
 }
 
-#-------------------- SINGLEROW ----------------------------
+#==================================================================
+#========================= SINGLEROW ==============================
+#==================================================================
 {
    my (@result, %result, $result, @expect, %expect, $expect);
+
+   #--------------------------- COLINFO_NONE -------------------
 
    &blurb("HASH, SINGLEROW, wantarray");
    %expect = (a => 'A', b => 'D', i => 24);
@@ -470,6 +1928,23 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    $expect = 'A@!@D@!@24';
    $result = sql($sql1, SCALAR, SINGLEROW);
    push(@testres, compare($expect, $result));
+
+   $no_of_tests += 6;
+
+   #--------------------- Other COLINFO ----------------------------
+   &blurb("HASH, SINGLEROW, COLINFO_POS");
+   eval('sql($sql, COLINFO_POS, HASH, SINGLEROW)');
+   push(@testres, $@ =~ /SINGLEROW.*cannot request.*\$colinfostyle at/ ? 1 : 0);
+
+   &blurb("LIST, SINGLEROW, COLINFO_FULL");
+   eval('sql($sql, COLINFO_FULL, LIST, SINGLEROW)');
+   push(@testres, $@ =~ /SINGLEROW.*cannot request.*\$colinfostyle at/ ? 1 : 0);
+
+   &blurb("SCALAR, SINGLEROW, COLINFO_NAMES");
+   eval('sql($sql, COLINFO_NAMES, SCALAR, SINGLEROW)');
+   push(@testres, $@ =~ /SINGLEROW.*cannot request.*\$colinfostyle at/ ? 1 : 0);
+
+   $no_of_tests += 3;
 }
 
 #-------------------- SINGLEROW, SELECT NULL---------------------------
@@ -503,6 +1978,8 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    $expect = undef;
    $result = sql($sql_null, SCALAR, SINGLEROW);
    push(@testres, compare($expect, $result));
+
+   $no_of_tests += 6;
 }
 
 #--------------- SINGLEROW, first result empty ----------------------------
@@ -536,6 +2013,8 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    $expect = 'A@!@D@!@24';
    $result = sql("$sql_empty $sql1", SCALAR, SINGLEROW);
    push(@testres, compare($expect, $result));
+
+   $no_of_tests += 6;
 }
 
 #--------------------- SINGLEROW, empty ------------------------
@@ -566,6 +2045,8 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    &blurb("SCALAR, SINGLEROW empty, wantscalar");
    $result = sql($sql_empty, SCALAR, SINGLEROW);
    push(@testres, compare(undef, $result));
+
+   $no_of_tests += 6;
 }
 
 #--------------------- SINGLEROW, error -------------------
@@ -597,6 +2078,107 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    &blurb("SCALAR, SINGLEROW error, wantscalar");
    $result = sql($sql_error, SCALAR, SINGLEROW);
    push(@testres, compare(undef, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- SINGLEROW, print -------------------
+{
+   my (@result, %result, $result, @expect, %expect);
+
+   @expect = %expect = ();
+
+   &blurb("HASH, SINGLEROW print, wantarray");
+   %result = sql($sql_print, HASH, SINGLEROW);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("HASH, SINGLEROW print, wantscalar");
+   $result = sql($sql_print, HASH, SINGLEROW);
+   push(@testres, compare(undef, $result));
+
+   &blurb("LIST, SINGLEROW print, wantarray");
+   @result = sql($sql_print, LIST, SINGLEROW);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLEROW print, wantscalar");
+   $result = sql($sql_print, LIST, SINGLEROW);
+   push(@testres, compare(undef, $result));
+
+   &blurb("SCALAR, SINGLEROW print, wantarray");
+   @result = sql($sql_print, SCALAR, SINGLEROW);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, SINGLEROW print, wantscalar");
+   $result = sql($sql_print, SCALAR, SINGLEROW);
+   push(@testres, compare(undef, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- SINGLEROW, counts -------------------
+{
+   my (@result, %result, $result, @expect, %expect);
+
+   @expect = %expect = ();
+
+   &blurb("HASH, SINGLEROW counts, wantarray");
+   %result = sql($sql_counts, HASH, SINGLEROW);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("HASH, SINGLEROW counts, wantscalar");
+   $result = sql($sql_counts, HASH, SINGLEROW);
+   push(@testres, compare(undef, $result));
+
+   &blurb("LIST, SINGLEROW counts, wantarray");
+   @result = sql($sql_counts, LIST, SINGLEROW);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLEROW counts, wantscalar");
+   $result = sql($sql_counts, LIST, SINGLEROW);
+   push(@testres, compare(undef, $result));
+
+   &blurb("SCALAR, SINGLEROW counts, wantarray");
+   @result = sql($sql_counts, SCALAR, SINGLEROW);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, SINGLEROW counts, wantscalar");
+   $result = sql($sql_counts, SCALAR, SINGLEROW);
+   push(@testres, compare(undef, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- SINGLEROW, nocount -------------------
+{
+   my (@result, %result, $result, @expect, %expect);
+
+   @expect = %expect = ();
+
+   &blurb("HASH, SINGLEROW nocount, wantarray");
+   %result = sql($sql_nocount, HASH, SINGLEROW);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("HASH, SINGLEROW nocount, wantscalar");
+   $result = sql($sql_nocount, HASH, SINGLEROW);
+   push(@testres, compare(undef, $result));
+
+   &blurb("LIST, SINGLEROW nocount, wantarray");
+   @result = sql($sql_nocount, LIST, SINGLEROW);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("LIST, SINGLEROW nocount, wantscalar");
+   $result = sql($sql_nocount, LIST, SINGLEROW);
+   push(@testres, compare(undef, $result));
+
+   &blurb("SCALAR, SINGLEROW nocount, wantarray");
+   @result = sql($sql_nocount, SCALAR, SINGLEROW);
+   push(@testres, compare(\@expect, \@result));
+
+   &blurb("SCALAR, SINGLEROW nocount, wantscalar");
+   $result = sql($sql_nocount, SCALAR, SINGLEROW);
+   push(@testres, compare(undef, $result));
+
+   $no_of_tests += 6;
 }
 
 #--------------------- SINGLEROW, NoExec -------------------
@@ -629,9 +2211,13 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    $result = sql($sql, SCALAR, SINGLEROW);
    push(@testres, compare(undef, $result));
    $X->{NoExec} = 0;
+
+   $no_of_tests += 6;
 }
 
-#-------------------- sql_one ----------------------------
+#==================================================================
+#========================== sql_one ===============================
+#==================================================================
 {
    my (@result, %result, $result, @expect, %expect, $expect);
 
@@ -691,9 +2277,11 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    &blurb("sql_one, fail: type error => no rwows.");
    eval("sql_one('SELECT * FROM #a WHERE i = ?', [['notype', 2]])");
    push(@testres, ($@ =~ /returned no/ ? 1 : 0));
+
+   $no_of_tests += 13;
 }
 
-#-------------------- sql_one NoExec, noexec ----------------------------
+#-------------------- sql_one, NoExec ----------------------------
 {
    my (@result, %result, $result, @expect, %expect, $expect);
    $X->{NoExec} = 1;
@@ -744,9 +2332,13 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    $result = sql_one('SELECT * FROM #a WHERE i = ?', [['notype', 2]]);
    push(@testres, compare($expect, $result));
    $X->{NoExec} = 0;
+
+   $no_of_tests += 11;
 }
 
-#-------------------- NORESULT ----------------------------
+#==================================================================
+#========================= NORESULT ===============================
+#==================================================================
 {
    my (@result, %result, $result, @expect, %expect, $expect);
 
@@ -775,8 +2367,28 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    &blurb("SCALAR, NORESULT, wantscalar");
    $result = sql($sql, SCALAR, NORESULT);
    push(@testres, compare($expect, $result));
+
+   $no_of_tests += 6;
+
+   #--------------------- Other COLINFO ----------------------------
+   &blurb("HASH, NORESULT, COLINFO_POS");
+   eval('sql($sql, COLINFO_POS, HASH, NORESULT)');
+   push(@testres, $@ =~ /NORESULT.*cannot request.*\$colinfostyle at/ ? 1 : 0);
+
+   &blurb("LIST, NORESULT, COLINFO_FULL");
+   eval('sql($sql, COLINFO_FULL, LIST, NORESULT)');
+   push(@testres, $@ =~ /NORESULT.*cannot request.*\$colinfostyle at/ ? 1 : 0);
+
+   &blurb("SCALAR, NORESULT, COLINFO_NAMES");
+   eval('sql($sql, COLINFO_NAMES, SCALAR, NORESULT)');
+   push(@testres, $@ =~ /NORESULT.*cannot request.*\$colinfostyle at/ ? 1 : 0);
+
+   $no_of_tests += 3;
 }
 
+#==================================================================
+#=========================== KEYED ================================
+#==================================================================
 #---------------------- KEYED, single key -------------------
 {
    my (%result, $result, %expect);
@@ -816,6 +2428,23 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    &blurb("SCALAR, KEYED, single key, wantref");
    $result = sql($sql_key1, SCALAR, KEYED, [2]);
    push(@testres, compare(\%expect, $result));
+
+   $no_of_tests += 6;
+
+   #--------------------- Other COLINFO ----------------------------
+   &blurb("HASH, KEYED, COLINFO_POS");
+   eval('sql($sql_key1, COLINFO_POS, HASH, KEYED)');
+   push(@testres, $@ =~ /KEYED.*cannot request.*\$colinfostyle at/ ? 1 : 0);
+
+   &blurb("LIST, KEYED, COLINFO_FULL");
+   eval('sql($sql_key1, COLINFO_FULL, LIST, KEYED)');
+   push(@testres, $@ =~ /KEYED.*cannot request.*\$colinfostyle at/ ? 1 : 0);
+
+   &blurb("SCALAR, KEYED, COLINFO_NAMES");
+   eval('sql($sql_key1, COLINFO_NAMES, SCALAR, KEYED)');
+   push(@testres, $@ =~ /KEYED.*cannot request.*\$colinfostyle at/ ? 1 : 0);
+
+   $no_of_tests += 3;
 }
 
 #---------------------- KEYED, multiple key -------------------
@@ -893,6 +2522,8 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    &blurb("SCALAR, KEYED, multiple key, wantref");
    $result = sql_sp('#sql_key_many', SCALAR, KEYED, [1, 2, 3]);
    push(@testres, compare(\%expect, $result));
+
+   $no_of_tests += 6;
 }
 
 #-------------------- KEYED, empty ----------------------
@@ -923,6 +2554,8 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    &blurb("SCALAR, KEYED empty, wantscalar");
    $result = sql($sql_empty, SCALAR, KEYED, [1]);
    push(@testres, compare(\%expect, $result));
+
+   $no_of_tests += 6;
 }
 
 #--------------------- KEYED, sql_error  -------------------
@@ -953,6 +2586,104 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    &blurb("SCALAR, KEYED error, wantscalar");
    $result = sql($sql_error, SCALAR, KEYED, [1]);
    push(@testres, compare(\%expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- KEYED, print  -------------------
+{
+   my (%result, $result, %expect);
+
+   %expect = ();
+   &blurb("HASH, KEYED error, wantarray");
+   %result = sql($sql_print, HASH, KEYED, ['a']);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("HASH, KEYED error, wantscalar");
+   $result = sql($sql_print, HASH, KEYED, ['a']);
+   push(@testres, compare(\%expect, $result));
+
+   &blurb("LIST, KEYED error, wantarray");
+   %result = sql($sql_print, LIST, KEYED, [1]);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("LIST, KEYED error, wantscalar");
+   $result = sql($sql_print, LIST, KEYED, [1]);
+   push(@testres, compare(\%expect, $result));
+
+   &blurb("SCALAR, KEYED error, wantarray");
+   %result = sql($sql_print, SCALAR, KEYED, [1]);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("SCALAR, KEYED error, wantscalar");
+   $result = sql($sql_print, SCALAR, KEYED, [1]);
+   push(@testres, compare(\%expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- KEYED, counts  -------------------
+{
+   my (%result, $result, %expect);
+
+   %expect = ();
+   &blurb("HASH, KEYED error, wantarray");
+   %result = sql($sql_counts, HASH, KEYED, ['a']);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("HASH, KEYED error, wantscalar");
+   $result = sql($sql_counts, HASH, KEYED, ['a']);
+   push(@testres, compare(\%expect, $result));
+
+   &blurb("LIST, KEYED error, wantarray");
+   %result = sql($sql_counts, LIST, KEYED, [1]);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("LIST, KEYED error, wantscalar");
+   $result = sql($sql_counts, LIST, KEYED, [1]);
+   push(@testres, compare(\%expect, $result));
+
+   &blurb("SCALAR, KEYED error, wantarray");
+   %result = sql($sql_counts, SCALAR, KEYED, [1]);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("SCALAR, KEYED error, wantscalar");
+   $result = sql($sql_counts, SCALAR, KEYED, [1]);
+   push(@testres, compare(\%expect, $result));
+
+   $no_of_tests += 6;
+}
+
+#--------------------- KEYED, nocount  -------------------
+{
+   my (%result, $result, %expect);
+
+   %expect = ();
+   &blurb("HASH, KEYED error, wantarray");
+   %result = sql($sql_nocount, HASH, KEYED, ['a']);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("HASH, KEYED error, wantscalar");
+   $result = sql($sql_nocount, HASH, KEYED, ['a']);
+   push(@testres, compare(\%expect, $result));
+
+   &blurb("LIST, KEYED error, wantarray");
+   %result = sql($sql_nocount, LIST, KEYED, [1]);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("LIST, KEYED error, wantscalar");
+   $result = sql($sql_nocount, LIST, KEYED, [1]);
+   push(@testres, compare(\%expect, $result));
+
+   &blurb("SCALAR, KEYED error, wantarray");
+   %result = sql($sql_nocount, SCALAR, KEYED, [1]);
+   push(@testres, compare(\%expect, \%result));
+
+   &blurb("SCALAR, KEYED error, wantscalar");
+   $result = sql($sql_nocount, SCALAR, KEYED, [1]);
+   push(@testres, compare(\%expect, $result));
+
+   $no_of_tests += 6;
 }
 
 #--------------------- KEYED, NoExec -------------------
@@ -966,7 +2697,7 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    push(@testres, compare(\%expect, \%result));
 
    &blurb("HASH, KEYED NoExec, wantscalar");
-   $result = sql($sql_key1, HASH, KEYED, ['a']);
+   $result = sql($sql_key1, HASH, KEYED, COLINFO_NONE, ['a']);
    push(@testres, compare(undef, $result));
 
    &blurb("LIST, KEYED NoExec, wantarray");
@@ -985,6 +2716,8 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    $result = sql($sql_key1, SCALAR, KEYED, [1]);
    push(@testres, compare(undef, $result));
    $X->{NoExec} = 0;
+
+   $no_of_tests += 6;
 }
 
 #------------------- KEYED, call errors -----------------
@@ -995,7 +2728,7 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
 
    &blurb("KEYED, illegal type \$keys");
    eval('sql("SELECT * FROM #a", KEYED, undef, "a")');
-   push(@testres, $@ =~ /not a .*reference/i ? 1 : 0);
+   push(@testres, $@ =~ /Illegal style parameter/i ? 1 : 0);
 
    &blurb("KEYED, empty keys list");
    eval('sql("SELECT * FROM #a", HASH, KEYED, [])');
@@ -1006,7 +2739,7 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
    push(@testres, $@ =~ /no key\b.*in result/i ? 1 : 0);
 
    &blurb("KEYED, key out of range");
-   eval('sql("SELECT * FROM #a", LIST, KEYED, [47])');
+   eval('sql("SELECT * FROM #a", LIST, KEYED, COLINFO_NONE, [47])');
    push(@testres, $@ =~ /number .*not valid/i ? 1 : 0);
 
    &blurb("KEYED, not unique");
@@ -1015,9 +2748,13 @@ sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
        sql("SELECT * FROM #a", LIST, KEYED, [1]);
 EVALEND
    push(@testres, $@ =~ /not unique/i ? 1 : 0);
+
+   $no_of_tests += 6;
 }
 
-#-------------------- &callback ----------------------------
+#==================================================================
+#========================= &callback ==============================
+#==================================================================
 {
    my (@expect);
    my ($ix, $ok, $cancel_ix, $error_ix);
@@ -1026,7 +2763,8 @@ EVALEND
    sub callback {
       my ($row, $ressetno) = @_;
       if ($expect[$ix][0] != $ressetno or
-          not compare($row, $expect[$ix++][1])) {
+          not compare($expect[$ix++][1], $row)) {
+         warn "Not ok at index $ix, result set $ressetno.";
          $ok = 0;
          return RETURN_CANCEL;
       }
@@ -1039,7 +2777,8 @@ EVALEND
       RETURN_NEXTROW;
    }
 
-   &blurb("HASH, &callback");
+   #------------------------- COLINFO_NONE ------------------------------
+   &blurb("HASH, COLINFO_NON, &callback");
    @expect = ([1, {a => 'A', b => 'A', i => 12}],
               [1, {a => 'A', b => 'D', i => 24}],
               [1, {a => 'A', b => 'H', i => 1}],
@@ -1047,9 +2786,9 @@ EVALEND
               [3, {a => 'C', b => 'B', i => 12}],
               [4, {sum => 12}],
               [5, {sum => 49}],
-              [6, {'x' => 'xyz'}],
-              [6, {'x' => undef}],
-              [8, {'Col 1' => 4711}]);
+              [8, {'x' => 'xyz'}],
+              [8, {'x' => undef}],
+              [11, {'Col 1' => 4711}]);
    $ix = 0;
    $cancel_ix = 0;
    $error_ix = 0;
@@ -1062,21 +2801,21 @@ EVALEND
       push(@testres, 0);
    }
 
-   &blurb("LIST, &callback");
+   &blurb("LIST, COLINFO_NONE, &callback");
    @expect = ([1, ['A', 'A', 12]],
               [1, ['A', 'D', 24]],
               [2, [37]],
               [3, ['C', 'B', 12]],
               [4, [12]],
               [5, [49]],
-              [6, ['xyz']],
-              [6, [undef]],
-              [8, [4711]]);
+              [8, ['xyz']],
+              [8, [undef]],
+              [11, [4711]]);
    $ix = 0;
    $cancel_ix = 2;
    $error_ix = 0;
    $ok = 1;
-   $retstat = sql($sql, LIST, \&callback);
+   $retstat = sql($sql, COLINFO_NONE, LIST, \&callback);
    if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_NEXTROW) {
       push(@testres, 1);
    }
@@ -1088,7 +2827,7 @@ EVALEND
    $cancel_ix = 0;
    $error_ix = 3;
    $ok = 1;
-   &blurb("SCALAR, &callback");
+   &blurb("SCALAR, COLINFO_NONE, &callback");
    @expect = ([1, 'A@!@A@!@12'],
               [1, 'A@!@D@!@24'],
               [1, 'A@!@H@!@1']);
@@ -1114,43 +2853,360 @@ EVALEND
    else {
       push(@testres, 0);
    }
+
+   $no_of_tests += 4;
+
+   #------------------------- COLINFO_POS ------------------------------
+   &blurb("HASH, COLINFO_POS, &callback");
+   @expect = ([1, {a => 1, b => 2, i => 3}],
+              [1, {a => 'A', b => 'A', i => 12}],
+              [1, {a => 'A', b => 'D', i => 24}],
+              [1, {a => 'A', b => 'H', i => 1}],
+              [2, {sum => 1}],
+              [2, {sum => 37}],
+              [3, {a => 1, b => 2, i => 3}],
+              [3, {a => 'C', b => 'B', i => 12}],
+              [4, {sum => 1}],
+              [4, {sum => 12}],
+              [5, {sum => 1}],
+              [5, {sum => 49}],
+              [8, {'x' => 1}],
+              [8, {'x' => 'xyz'}],
+              [8, {'x' => undef}],
+              [10, {a => 1, b => 2, i => 3}],
+              [11, {'Col 1' => 1}],
+              [11, {'Col 1' => 4711}]);
+   $ix = 0;
+   $cancel_ix = 0;
+   $error_ix = 0;
+   $ok = 1;
+   $retstat = sql($sql, COLINFO_POS, \&callback);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_NEXTROW) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   &blurb("LIST, COLINFO_POS, &callback");
+   @expect = ([1, [1, 2, 3]],
+              [1, ['A', 'A', 12]],
+              [1, ['A', 'D', 24]],
+              [2, [1]],
+              [2, [37]],
+              [3, [1, 2, 3]],
+              [3, ['C', 'B', 12]],
+              [4, [1]],
+              [4, [12]],
+              [5, [1]],
+              [5, [49]],
+              [8, [1]],
+              [8, ['xyz']],
+              [8, [undef]],
+              [10, [1, 2, 3]],
+              [11, [1]],
+              [11, [4711]]);
+   $ix = 0;
+   $cancel_ix = 3;
+   $error_ix = 0;
+   $ok = 1;
+   $retstat = sql($sql, LIST, \&callback, COLINFO_POS);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_NEXTROW) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   $ix = 0;
+   $cancel_ix = 0;
+   $error_ix = 4;
+   $ok = 1;
+   &blurb("SCALAR, COLINFO_POS, &callback");
+   @expect = ([1, '1@!@2@!@3'],
+              [1, 'A@!@A@!@12'],
+              [1, 'A@!@D@!@24'],
+              [1, 'A@!@H@!@1']);
+   $retstat = sql($sql, \&callback, SCALAR, COLINFO_POS);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_ERROR) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   $ix = 0;
+   $cancel_ix = 0;
+   $error_ix = 3;
+   $ok = 1;
+   blurb("sql_sp, COLINFO_POS, callback");
+   @expect = ([1, '1@!@2@!@3@!@4@!@5@!@6'],
+              [1, 'apple@!@X@!@1@!@@!@@!@T'],
+              [1, 'apple@!@X@!@2@!@-15@!@@!@T']);
+   $retstat = sql_sp('#sql_key_many', \&callback, COLINFO_POS, SCALAR);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_ERROR) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   $no_of_tests += 4;
+
+   #------------------------- COLINFO_NAMES ------------------------------
+   &blurb("HASH, COLINFO_NAMES, &callback");
+   @expect = ([1, {a => 'a', b => 'b', i => 'i'}],
+              [1, {a => 'A', b => 'A', i => 12}],
+              [1, {a => 'A', b => 'D', i => 24}],
+              [1, {a => 'A', b => 'H', i => 1}],
+              [2, {sum => 'sum'}],
+              [2, {sum => 37}],
+              [3, {a => 'a', b => 'b', i => 'i'}],
+              [3, {a => 'C', b => 'B', i => 12}],
+              [4, {sum => 'sum'}],
+              [4, {sum => 12}],
+              [5, {sum => 'sum'}],
+              [5, {sum => 49}],
+              [8, {'x' => 'x'}],
+              [8, {'x' => 'xyz'}],
+              [8, {'x' => undef}],
+              [10, {a => 'a', b => 'b', i => 'i'}],
+              [11, {'Col 1' => ''}],
+              [11, {'Col 1' => 4711}]);
+   $ix = 0;
+   $cancel_ix = 0;
+   $error_ix = 0;
+   $ok = 1;
+   $retstat = sql($sql, COLINFO_NAMES, \&callback);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_NEXTROW) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   &blurb("LIST, COLINFO_NAMES, &callback");
+   @expect = ([1, ['a', 'b', 'i']],
+              [1, ['A', 'A', 12]],
+              [1, ['A', 'D', 24]],
+              [2, ['sum']],
+              [2, [37]],
+              [3, ['a', 'b', 'i']],
+              [3, ['C', 'B', 12]],
+              [4, ['sum']],
+              [4, [12]],
+              [5, ['sum']],
+              [5, [49]],
+              [8, ['x']],
+              [8, ['xyz']],
+              [8, [undef]],
+              [10, ['a', 'b', 'i']],
+              [11, ['']],
+              [11, [4711]]);
+   $ix = 0;
+   $cancel_ix = 3;
+   $error_ix = 0;
+   $ok = 1;
+   $retstat = sql($sql, LIST, \&callback, COLINFO_NAMES);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_NEXTROW) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   $ix = 0;
+   $cancel_ix = 0;
+   $error_ix = 7;
+   $ok = 1;
+   &blurb("SCALAR, COLINFO_NAMES, &callback");
+   @expect = ([1, 'a@!@b@!@i'],
+              [1, 'A@!@A@!@12'],
+              [1, 'A@!@D@!@24'],
+              [1, 'A@!@H@!@1'],
+              [2, 'sum'],
+              [2, '37'],
+              [3, 'a@!@b@!@i']);
+   $retstat = sql($sql, \&callback, SCALAR, COLINFO_NAMES);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_ERROR) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   $ix = 0;
+   $cancel_ix = 0;
+   $error_ix = 3;
+   $ok = 1;
+   blurb("sql_sp, COLINFO_NAMES, callback");
+   @expect = ([1, 'key1@!@key2@!@key3@!@data1@!@data2@!@data3'],
+              [1, 'apple@!@X@!@1@!@@!@@!@T'],
+              [1, 'apple@!@X@!@2@!@-15@!@@!@T']);
+   $retstat = sql_sp('#sql_key_many', \&callback, COLINFO_NAMES, SCALAR);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_ERROR) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   $no_of_tests += 4;
+
+   #------------------------- COLINFO_FULL ------------------------------
+   &blurb("HASH, COLINFO_FULL, &callback");
+   @expect = ([1, {a => {Name => 'a', Colno => 1, Type => 'char'},
+                   b => {Name => 'b', Colno => 2, Type => 'char'},
+                   i => {Name => 'i', Colno => 3, Type => 'int'}}],
+              [1, {a => 'A', b => 'A', i => 12}],
+              [1, {a => 'A', b => 'D', i => 24}],
+              [1, {a => 'A', b => 'H', i => 1}],
+              [2, {sum => {Name => 'sum', Colno => 1, Type => 'int'}}],
+              [2, {sum => 37}],
+              [3, {a => {Name => 'a', Colno => 1, Type => 'char'},
+                   b => {Name => 'b', Colno => 2, Type => 'char'},
+                   i => {Name => 'i', Colno => 3, Type => 'int'}}],
+              [3, {a => 'C', b => 'B', i => 12}],
+              [4, {sum => {Name => 'sum', Colno => 1, Type => 'int'}}],
+              [4, {sum => 12}],
+              [5, {sum => {Name => 'sum', Colno => 1, Type => 'int'}}],
+              [5, {sum => 49}],
+              [8, {x => {Name => 'x', Colno => 1, Type => 'char'}}],
+              [8, {'x' => 'xyz'}],
+              [8, {'x' => undef}],
+              [10, {a => {Name => 'a', Colno => 1, Type => 'char'},
+                    b => {Name => 'b', Colno => 2, Type => 'char'},
+                    i => {Name => 'i', Colno => 3, Type => 'int'}}],
+              [11, {'Col 1' => {Name => '', Colno => 1, Type => 'int'}}],
+              [11, {'Col 1' => 4711}]);
+   $ix = 0;
+   $cancel_ix = 0;
+   $error_ix = 0;
+   $ok = 1;
+   $retstat = sql($sql, COLINFO_FULL, \&callback);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_NEXTROW) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   &blurb("LIST, COLINFO_FULL, &callback");
+   @expect = ([1, [{Name => 'a', Colno => 1, Type => 'char'},
+                   {Name => 'b', Colno => 2, Type => 'char'},
+                   {Name => 'i', Colno => 3, Type => 'int'}]],
+              [1, ['A', 'A', 12]],
+              [1, ['A', 'D', 24]],
+              [2, [{Name => 'sum', Colno => 1, Type => 'int'}]],
+              [2, [37]],
+              [3, [{Name => 'a', Colno => 1, Type => 'char'},
+                   {Name => 'b', Colno => 2, Type => 'char'},
+                   {Name => 'i', Colno => 3, Type => 'int'}]],
+              [3, ['C', 'B', 12]],
+              [4, [{Name => 'sum', Colno => 1, Type => 'int'}]],
+              [4, [12]],
+              [5, [{Name => 'sum', Colno => 1, Type => 'int'}]],
+              [5, [49]],
+              [8, [{Name => 'x', Colno => 1, Type => 'char'}]],
+              [8, ['xyz']],
+              [8, [undef]],
+              [10, [{Name => 'a', Colno => 1, Type => 'char'},
+                    {Name => 'b', Colno => 2, Type => 'char'},
+                    {Name => 'i', Colno => 3, Type => 'int'}]],
+              [11, [{Name => '', Colno => 1, Type => 'int'}]],
+              [11, [4711]]);
+   $ix = 0;
+   $cancel_ix = 3;
+   $error_ix = 0;
+   $ok = 1;
+   $retstat = sql($sql, LIST, \&callback, COLINFO_FULL);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_NEXTROW) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   $ix = 0;
+   $cancel_ix = 0;
+   $error_ix = 7;
+   $ok = 1;
+   &blurb("SCALAR, COLINFO_FULL, &callback");
+   eval('sql($sql, \&callback, SCALAR, COLINFO_FULL)');
+   push(@testres, $@ =~ /COLINFO_FULL cannot be combined.*SCALAR at/ ? 1 : 0);
+
+   $ix = 0;
+   $cancel_ix = 0;
+   $error_ix = 3;
+   $ok = 1;
+   blurb("sql_sp, COLINFO_FULL, callback");
+   @expect = ([1, [{Name => 'key1', Colno => 1, Type => 'char'},
+                   {Name => 'key2', Colno => 2, Type => 'char'},
+                   {Name => 'key3', Colno => 3, Type => 'int'},
+                   {Name => 'data1', Colno => 4, Type => 'smallint'},
+                   {Name => 'data2', Colno => 5, Type => 'varchar'},
+                   {Name => 'data3', Colno => 6, Type => 'char'}]],
+              [1, ['apple', 'X', '1', undef, undef, 'T']],
+              [1, ['apple', 'X', '2', '-15', undef, 'T']]);
+   $retstat = sql_sp('#sql_key_many', LIST, \&callback, COLINFO_FULL);
+   if ($ok == 1 and $ix == $#expect + 1 and $retstat == RETURN_ERROR) {
+      push(@testres, 1);
+   }
+   else {
+      push(@testres, 0);
+   }
+
+   $no_of_tests += 4;
 }
 
 
-
-#------------------------ Various style-parameter erros.
+#==================================================================
+#========================= Style errors ===========================
+#==================================================================
 {
    &blurb("Bogus row style 1");
-   eval('sql("SELECT * FROM #a", -23, KEYED)');
-   push(@testres, $@ =~ /Illegal row.* -23 at/i ? 1 : 0);
+   eval('sql("SELECT * FROM #a", 23, KEYED)');
+   push(@testres, $@ =~ /Illegal style.* 23 at/i ? 1 : 0);
 
    &blurb("Bogus row style 2");
-   eval('sql("SELECT * FROM #a", undef, -23)');
-   push(@testres, $@ =~ /Illegal row.* -23 at/i ? 1 : 0);
+   eval('sql("SELECT * FROM #a", undef, 23)');
+   push(@testres, $@ =~ /Illegal style.* 23 at/i ? 1 : 0);
 
    &blurb("Bogus row style 3");
-   eval('sql("SELECT * FROM #a", SINGLESET, -23)');
-   push(@testres, $@ =~ /Illegal row.* -23 at/i ? 1 : 0);
+   eval('sql("SELECT * FROM #a", SINGLESET, 23)');
+   push(@testres, $@ =~ /Illegal style.* 23 at/i ? 1 : 0);
 
    &blurb("Bogus result style");
-   eval('sql("SELECT * FROM #a", LIST, -23)');
-   push(@testres, $@ =~ /Illegal result.* -23 at/i ? 1 : 0);
+   eval('sql("SELECT * FROM #a", LIST, 23)');
+   push(@testres, $@ =~ /Illegal style.* 23 at/i ? 1 : 0);
+
+   &blurb("Bogus result style 2");
+   eval('sql("SELECT * FROM #a", COLINFO_POS, LIST, 84)');
+   push(@testres, $@ =~ /Illegal style.* 84 at/i ? 1 : 0);
 
    &blurb("Two row styles");
    eval('sql("SELECT * FROM #a", LIST, HASH)');
-   push(@testres, $@ =~ /Illegal result.* 93 at/i ? 1 : 0);
+   push(@testres, $@ =~ /Multiple row styles .* at/i ? 1 : 0);
 
    &blurb("Two result styles");
    eval('sql("SELECT * FROM #a", SINGLESET, MULTISET)');
-   push(@testres, $@ =~ /Illegal row.* 139 at/i ? 1 : 0);
+   push(@testres, $@ =~ /Multiple result styles .* at/i ? 1 : 0);
+
+   &blurb("Two colinfo style styles");
+   eval('sql("SELECT * FROM #a", COLINFO_NONE, COLINFO_NONE)');
+   push(@testres, $@ =~ /Multiple colinfo styles .* at/i ? 1 : 0);
+
+   &blurb("Parameters after keys");
+   eval('sql("SELECT * FROM #a", KEYED, [1], COLINFO_NONE)');
+   push(@testres, $@ =~ /Extraneous parameter.* at/i ? 1 : 0);
+
+   &blurb("Too many parameters");
+   eval('sql("SELECT * FROM #a", KEYED, COLINFO_NONE, undef, undef, LIST)');
+   push(@testres, $@ =~ /Extraneous parameter.* at/i ? 1 : 0);
+
+   $no_of_tests += 10;
 }
 
-my $no_of_tests = 4 * 6 * 4 +  # Three resultstyles with result, empty, error and Noexec.
-                  2 *6 +       # Two extra for SINGLEROW
-                  6 + 6 +      # Extra test for KEYED (mulitple, errors, NoEexec)
-                  13 + 11 +    # sql_one, seven regular + six error, Exec/NoExec
-                  6 + 4 +      # 6 NORESULT  + 3 callback.
-                  6;           # Style errors.
 print "1..$no_of_tests\n";
 
 my $ix = 1;
@@ -1185,19 +3241,25 @@ sub compare {
          return ($x eq $y);
       }
       else {
-         return (not defined $x and not defined $y);
+         my $ret = (not defined $x and not defined $y);
+         warn "undef ne <$y>" if not $ret and not defined $x;
+         warn "<$x> ne undef" if not $ret and not defined $y;
+         return $ret;
       }
    }
    elsif ($refx ne $refy) {
+      warn "<$x> ne <$y>";
       return 0;
    }
    elsif ($refx eq "ARRAY") {
       if ($#$x != $#$y) {
+         warn "Different array lengths: $#$x and $#$y";
          return 0;
       }
       elsif ($#$x >= 0) {
          foreach $ix (0..$#$x) {
             $result = compare($$x[$ix], $$y[$ix]);
+            warn "Diff at index $ix" if not $result;
             last if not $result;
          }
          return $result;
@@ -1207,17 +3269,25 @@ sub compare {
       }
    }
    elsif ($refx eq "HASH") {
-      my $nokeys_x = scalar(keys %$x);
-      my $nokeys_y = scalar(keys %$y);
+      # Filter some colinfo properties that are not relevant for this test.
+      my @keysx = keys %$x;
+      my @keysy = grep($_ !~ /^(Maybenull|Maxlength|Scale|Precision|Readonly)$/,
+                       keys %$y);
+
+      my $nokeys_x = scalar(@keysx);
+      my $nokeys_y = scalar(@keysy);
       if ($nokeys_x != $nokeys_y) {
+         warn "$nokeys_x keys != $nokeys_y keys";
          return 0;
       }
       elsif ($nokeys_x > 0) {
-         foreach $key (keys %$x) {
+         foreach $key (@keysx) {
             if (not exists $$y{$key}) {
+                warn "Key <$key> only on left side";
                 return 0;
             }
             $result = compare($$x{$key}, $$y{$key});
+            warn "Diff at key '$key'" if not $result;
             last if not $result;
          }
          return $result;
@@ -1230,6 +3300,7 @@ sub compare {
       return compare($$x, $$y);
    }
    else {
+      warn "<$x> ne <$y>" if $x ne $y;
       return ($x eq $y);
    }
 }

@@ -1,11 +1,17 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/7_objectnames.t 4     05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/t/7_objectnames.t 5     07-06-10 21:32 Sommar $
 #
 # This test suite tests that we interpret object names passed to sql_sp
 # and sql_insert correctly.
 #
 # $History: 7_objectnames.t $
 # 
+# *****************  Version 5  *****************
+# User: Sommar       Date: 07-06-10   Time: 21:32
+# Updated in $/Perl/OlleDB/t
+# Don't use sp_addgroup to create a schema on SQL 2005 or higher, since
+# there is CREATE SCHEMA - and in Katmai there is no sp_addgroup.
+#
 # *****************  Version 4  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB/t
@@ -100,7 +106,16 @@ foreach my $db (@dbs) {
 
    # And create the schemas as groups (so logins are not required).
    foreach my $sch (@schemas) {
-      $X->sql("EXEC sp_addgroup $sch") unless $sch =~ /^(dbo|guest)$/;
+      unless ($sch =~ /^(dbo|guest)$/) {
+         if ($sqlver >= 9) {
+            $X->sql("CREATE SCHEMA $sch");
+         }
+         else {
+            # No direct CREATE SCHEMA in previous version, but creating a
+            # group will do.
+            $X->sql("EXEC sp_addgroup $sch");
+         }
+      }
 
       # And so the procedures. Each procedure has a unique signature with
       # the parameter name, and we save this in %procmap.

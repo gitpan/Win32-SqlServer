@@ -1,10 +1,21 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/9_loginproperties.t 14    05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/t/9_loginproperties.t 16    07-07-07 16:43 Sommar $
 #
 # This test suite tests that setloginproperty, Autoclose and CommandTimeout.
 #
 # $History: 9_loginproperties.t $
 # 
+# *****************  Version 16  *****************
+# User: Sommar       Date: 07-07-07   Time: 16:43
+# Updated in $/Perl/OlleDB/t
+# Added support for specifying different providers.
+#
+# *****************  Version 15  *****************
+# User: Sommar       Date: 07-06-10   Time: 21:45
+# Updated in $/Perl/OlleDB/t
+# When testing that pooling is off, permit errors for monitor, since the
+# error level is 16 on Katmai.
+#
 # *****************  Version 14  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB/t
@@ -78,8 +89,9 @@ use File::Basename qw(dirname);
 # This test script reads OLLEDBTEST directly, because it uses more fields
 # from it.
 my ($olledbtest) = $ENV{'OLLEDBTEST'};
-my ($mainserver, $mainuser, $mainpw, $secondserver, $seconduser, $secondpw);
-($mainserver, $mainuser, $mainpw, $secondserver, $seconduser, $secondpw) =
+my ($mainserver, $mainuser, $mainpw,
+    $secondserver, $seconduser, $secondpw, $provider);
+($mainserver, $mainuser, $mainpw, $secondserver, $seconduser, $secondpw, $provider) =
      split(/;/, $olledbtest) if defined $olledbtest;
 
 sub setup_testc {
@@ -87,6 +99,7 @@ sub setup_testc {
     my ($userpw) = @_;
     $userpw = 1 if not defined $userpw;
     my $testc = new Win32::SqlServer;
+    $testc->{Provider} = $provider if defined $provider;
     $testc->setloginproperty('Server', $mainserver) if $mainserver;
     if ($userpw and $mainuser) {
        $testc->setloginproperty('Username', $mainuser);
@@ -112,7 +125,7 @@ chdir dirname($0);
 print "1..33\n";
 
 # Set up a monitor connection
-my $monitor = sql_init($mainserver, $mainuser, $mainpw);
+my $monitor = sql_init($mainserver, $mainuser, $mainpw, undef, $provider);
 my ($monitorsqlver) = split(/\./, $monitor->{SQL_version});
 
 # This is the connection we use for tests.
@@ -300,6 +313,11 @@ $testc->disconnect;
 sleep(1); # Permit for the test connection to actually go away.
 $monitor->{ErrInfo}{PrintMsg} = 2;    # Suppress DBCC messages on 6.5
 $monitor->{ErrInfo}{SaveMessages} = 1;
+$monitor->{ErrInfo}{MaxSeverity} = 16;
+$monitor->{ErrInfo}{PrintMsg} = 17;
+$monitor->{ErrInfo}{PrintLines} = 17;
+$monitor->{ErrInfo}{PrintText} = 17;
+$monitor->{ErrInfo}{CarpLevel} = 17;
 delete $monitor->{ErrInfo}{Messages};
 $inputbuffer = $monitor->sql("DBCC INPUTBUFFER($spid) WITH NO_INFOMSGS",
                              SINGLEROW, HASH);
@@ -310,6 +328,12 @@ if ($monitor->{ErrInfo}{Messages} and
 else {
    print "not ok 11\n";
 }
+$monitor->{ErrInfo}{MaxSeverity} = 10;
+$monitor->{ErrInfo}{PrintMsg} = 1;
+$monitor->{ErrInfo}{PrintLines} = 11;
+$monitor->{ErrInfo}{PrintText} = 0;
+$monitor->{ErrInfo}{CarpLevel} = 11;
+
 
 # Pooling on again
 $testc->setloginproperty('Pooling', 1);
@@ -402,6 +426,7 @@ else {
 
 # Network address. This works like server - maybe.
 $testc = new Win32::SqlServer;
+$testc->{Provider} = $provider if defined $provider;
 $testc->setloginproperty('Networkaddress', $mainserver);
 if ($mainuser) {
    $testc->setloginproperty('Username', $mainuser);

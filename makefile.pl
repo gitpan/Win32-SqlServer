@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/makefile.pl 10    06-04-17 21:52 Sommar $
+# $Header: /Perl/OlleDB/makefile.pl 11    07-07-10 21:14 Sommar $
 #
 # Makefile.pl for MSSQL::OlleDB. Note that you may need to specify where
 # you ave the include files for OLE DB.
 #
 # $History: makefile.pl $
 # 
+# *****************  Version 11  *****************
+# User: Sommar       Date: 07-07-10   Time: 21:14
+# Updated in $/Perl/OlleDB
+# New machine, new location for WINZIP.
+#
 # *****************  Version 10  *****************
 # User: Sommar       Date: 06-04-17   Time: 21:52
 # Updated in $/Perl/OlleDB
@@ -99,7 +104,7 @@ WriteMakefile(
     'LIBS'         => [":nosearch :nodefault kernel32.lib user32.lib ole32.lib oleaut32.lib uuid.lib libcmt.lib"],
     'VERSION_FROM' => 'SqlServer.pm',
     'XS'           => { 'SqlServer.xs' => 'SqlServer.cpp' },
-    'dist'         => {ZIP => '"E:\Program Files\Winzip\wzzip"',
+    'dist'         => {ZIP => '"C:\Program Files (x86)\Winzip\wzzip"',
                        ZIPFLAGS => '-r -P'},
     'dynamic_lib'  => { OTHERLDFLAGS => '/base:"0x19860000"'}
     # Set base address to avoid DLL collision, makes startup speedier. Remove

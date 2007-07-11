@@ -1,10 +1,21 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/8_threads.t 4     05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/t/B_threads.t 6     07-07-07 16:43 Sommar $
 #
 # Tests that OlleDB is decently thread-safe.
 #
-# $History: 8_threads.t $
+# $History: B_threads.t $
 # 
+# *****************  Version 6  *****************
+# User: Sommar       Date: 07-07-07   Time: 16:43
+# Updated in $/Perl/OlleDB/t
+# Added support for specifying different providers.
+#
+# *****************  Version 5  *****************
+# User: Sommar       Date: 07-06-18   Time: 0:11
+# Updated in $/Perl/OlleDB/t
+# Renamed the script to be last, since script often hangs because of a
+# bug in Perl threads.
+#
 # *****************  Version 4  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB/t
@@ -39,8 +50,10 @@ my($global);
 sub setupsqlobject {
    my($X) = @_;
    my ($login) = $ENV{'OLLEDBTEST'};
-   my ($server, $user, $pw);
-   ($server, $user, $pw) = split(/;/, $login) if defined $login;
+   my ($server, $user, $pw, $dummy, $provider);
+   ($server, $user, $pw, $dummy, $dummy, $dummy, $provider) =
+       split(/;/, $login) if defined $login;
+   $X->{Provider} = $provider if defined $provider;
    $X->setloginproperty('Server', $server) if defined $server;
    if ($user) {
       $X->setloginproperty('Username', $user);
@@ -156,7 +169,7 @@ foreach my $i (0..2) {
    $testno = 8 * $i + 1;
    $expect = ["eq '1962-09-12 03:25:00.000'", "eq '2005-03-23 19:23:00.000'",
               "eq '1962-09-12 03:25:00.000'", "eq '2005-03-23 19:23:00.000'",
-              "eq '8_threads.t'",             "eq '" . $ENV{'COMPUTERNAME'} . "'"];
+              "eq 'B_threads.t'",             "eq '" . $ENV{'COMPUTERNAME'} . "'"];
    if (compare(\@dataret1, $expect)) {
       print "ok $testno\n";
    }
@@ -167,7 +180,7 @@ foreach my $i (0..2) {
    $testno = 8 * $i + 2;
    $expect = ["eq '19620912 03:25:00.000'",   "eq '20050323 19:23:00.000'",
               "eq '1962-09-12 03:25:00.000'", "eq '2005-03-23 19:23:00.000'",
-              "eq '8_threads.t'",             "eq '" . $ENV{'COMPUTERNAME'} . "'"];
+              "eq 'B_threads.t'",             "eq '" . $ENV{'COMPUTERNAME'} . "'"];
    if (compare(\@dataret2, $expect)) {
       print "ok $testno\n";
    }

@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/4_conversion.t 2     05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/t/4_conversion.t 3     07-06-17 19:07 Sommar $
 #
 # Tests that it's possible to set up a conversion based on the local
 # OEM character set and the server charset. Mainly is this is test that
@@ -7,6 +7,12 @@
 #
 # $History: 4_conversion.t $
 # 
+# *****************  Version 3  *****************
+# User: Sommar       Date: 07-06-17   Time: 19:07
+# Updated in $/Perl/OlleDB/t
+# Some new tests and general adaption to the new implementation of
+# sql_set_conversion.
+#
 # *****************  Version 2  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB/t
@@ -26,33 +32,42 @@ require &dirname($0) . '\testsqllogin.pl';
 $^W = 1;
 $| = 1;
 
-
 my($shrimp, $shrimp_850, $shrimp_twoway, $shrimp_bogus, @data, $data, %data);
 
-# Get client char-set.
-my $client_cs = get_codepage_from_reg('OEMCP');
-
-# These are the constants we use to test. It's all about shrimp sandwiches.
-$shrimp       = 'räksmörgås';  # The way it should be in Latin-1.
-if ($client_cs == 850) {
+sub set_shrimp_850 {
    $shrimp_850    = 'r„ksm”rg†s';  # It's in CP850.
    $shrimp_twoway = 'räksmörgås';  # Latin-1 -> CP850 and back.
    $shrimp_bogus  = 'rõksm÷rgÕs';  # Converted to Latin-1 as if it was CP850 but it wasn't.
 }
-elsif ($client_cs == 437) {
+
+sub set_shrimp_437 {
    $shrimp_850    = 'r„ksm”rg†s';  # It's in CP437.
-   $shrimp_twoway = 'r_ksmörg_s';  # Latin-1 -> Cp437 and back. Not round-trip.
-   $shrimp_bogus  = 'r_ksm÷rg_s';  # Converted to Latin-1 as if it was CP437 but it wasn't.
+   $shrimp_twoway = 'rSksmörgss';  # Latin-1 -> Cp437 and back. Not round-trip.
+   $shrimp_bogus  = 'rSksm÷rgss';  # Converted to Latin-1 as if it was CP437 but it wasn't.
+}
+
+# Get the OEM char-set.
+my $client_cs = get_codepage_from_reg('OEMCP');
+my $unknown_oem;
+
+# These are the constants we use to test. It's all about shrimp sandwiches.
+$shrimp       = 'räksmörgås';  # The way it should be in Latin-1.
+if ($client_cs == 850) {
+   set_shrimp_850;
+}
+elsif ($client_cs == 437) {
+   set_shrimp_437;
 }
 else {
-   print "Skipping this test; no test defined for code-page $client_cs\n";
-   print "1..0\n";
-   exit;
+   # Some other OEM charset, with different distortions unknown to us. So
+   # we will skip the test for the default OEM page.
+   $unknown_oem = $client_cs;
 }
 
-print "1..23\n";
+print "1..25\n";
 
 my $X = testsqllogin();
+my ($sqlver) = split(/\./, $X->{SQL_version});
 
 # First create a table to two procedures to read and write to a table.
 sql(<<SQLEND);
@@ -81,7 +96,7 @@ sql_insert("#nisse", {i => 2, 'shrimp' => 'räksmörgås'});
 sql_sp("#nisse_ins_sp", [3, 'räksmörgås']);
 
 # Now set up default, bilateral conversion.
-sql_set_conversion;
+sql_set_conversion();
 print "ok 1\n";   # We wouldn't come back if it's not ok...
 
 # Add a second set of data, now conversion is in effect.
@@ -92,40 +107,62 @@ sql_sp("#nisse_ins_sp", [13, 'räksmörgås']);
 
 # Now retrieve data and see what we get. The first should give the shrimp in CP850.
 @data = sql("SELECT shrimp FROM #nisse WHERE i BETWEEN 0 AND 3", SCALAR);
-if (compare(\@data, [$shrimp_850, $shrimp_850, $shrimp_850, $shrimp_850])) {
-   print "ok 2\n";
+unless ($unknown_oem) {
+   if (compare(\@data, [$shrimp_850, $shrimp_850, $shrimp_850, $shrimp_850])) {
+      print "ok 2\n";
+   }
+   else {
+      print "not ok 2\n# " . join(' ', @data) . "\n";
+   }
 }
 else {
-   print "not ok 2\n# " . join(' ', @data) . "\n";
+   print "ok 2 # skip, no test data for OEM charset $unknown_oem\n";
 }
+
 
 # This should give the real McCoy - it's been converted in both directions.
 @data = sql("SELECT shrimp FROM #nisse WHERE i BETWEEN 10 AND 13", SCALAR);
-if (compare(\@data,
-            [$shrimp_twoway, $shrimp_twoway, $shrimp_twoway, $shrimp_twoway])) {
-   print "ok 3\n";
+unless ($unknown_oem) {
+   if (compare(\@data,
+               [$shrimp_twoway, $shrimp_twoway, $shrimp_twoway, $shrimp_twoway])) {
+      print "ok 3\n";
+   }
+   else {
+      print "not ok 3\n# " . join(' ', @data) . "\n";
+   }
 }
 else {
-   print "not ok 3\n# " . join(' ', @data) . "\n";
+   print "ok 3 # skip, no test data for OEM charset $unknown_oem\n";
 }
 
 # Again, a CP850 shrimp is expected.
 sql_sp("#nisse_get_sp", [1, \$data]);
-if ($data eq $shrimp_850) {
-   print "ok 4\n";
+unless ($unknown_oem) {
+   if ($data eq $shrimp_850) {
+      print "ok 4\n";
+   }
+   else {
+      print "not ok 4\n# $data\n";
+   }
 }
 else {
-   print "not ok 4\n# $data\n";
+   print "ok 4 # skip, no test data for OEM charset $unknown_oem\n";
 }
 
 # Again, in Latin-1.
 sql_sp("#nisse_get_sp", [11, \$data]);
-if ($data eq $shrimp_twoway) {
-   print "ok 5\n";
+unless ($unknown_oem) {
+   if ($data eq $shrimp_twoway) {
+      print "ok 5\n";
+   }
+   else {
+      print "not ok 5\n# $data\n";
+   }
 }
 else {
-   print "not ok 5\n# $data\n";
+   print "ok 5 # skip, no test data for OEM charset $unknown_oem\n";
 }
+
 
 # Turn off conversion. This just can't fail. :-)
 sql_unset_conversion;
@@ -141,12 +178,17 @@ else {
 
 # This is the bogus conversion, we converted Latin-1 to Latin-1.
 @data = sql("SELECT shrimp FROM #nisse WHERE i BETWEEN 10 AND 13", SCALAR);
-if (compare(\@data,
-             [$shrimp_bogus, $shrimp_bogus, $shrimp_bogus, $shrimp_bogus])) {
-   print "ok 7\n";
+unless ($unknown_oem) {
+   if (compare(\@data,
+                [$shrimp_bogus, $shrimp_bogus, $shrimp_bogus, $shrimp_bogus])) {
+      print "ok 7\n";
+   }
+   else {
+      print "not ok 7\n# " . join(' ', @data) . "\n";
+   }
 }
 else {
-   print "not ok 7\n# " . join(' ', @data) . "\n";
+   print "ok 7 # skip, no test data for OEM charset $unknown_oem\n";
 }
 
 # Again, a Latin-1 shrimp is expected.
@@ -160,13 +202,21 @@ else {
 
 # Again, it's bogus.
 sql_sp("#nisse_get_sp", [11, \$data]);
-if ($data eq $shrimp_bogus) {
-   print "ok 9\n";
+unless ($unknown_oem) {
+   if ($data eq $shrimp_bogus) {
+      print "ok 9\n";
+   }
+   else {
+      print "not ok 9\n# $data\n";
+   }
 }
 else {
-   print "not ok 9\n# $data\n";
+   print "ok 9 # skip, no test data for OEM charset $unknown_oem\n";
 }
 
+# From this point, we always use CP850 as the OEM charset.
+$client_cs = 850;
+set_shrimp_850;
 
 # Now we will make a test that we convert hash keys correctly. We will also
 # test asymmetric conversion and that sql_one converts properly.
@@ -193,7 +243,7 @@ sql_set_conversion("CP$client_cs", "iso_1", TO_CLIENT_ONLY);
 }
 
 # After this we have conversion both directions
-sql_set_conversion("CP$client_cs", "iso_1", TO_SERVER_ONLY);
+sql_set_conversion($client_cs, 1252, TO_SERVER_ONLY);
 {
    my %ref;
    $ref{$shrimp_twoway} = $shrimp_twoway;
@@ -262,78 +312,92 @@ sql_unset_conversion(TO_SERVER_ONLY);
    }
 }
 
-if ($client_cs == 850) {
-   # Now we will test with object name that are subject to conversion. First
-   # some tables. Turn off conversion before anything else!
-   # This test only works with CP850, as CP437 is not roundtrip.
-   sql_unset_conversion;
-   sql(<<SQLEND);
-      CREATE TABLE #$shrimp (i       int     NOT NULL PRIMARY KEY,
-                            $shrimp  char(9) NOT NULL)
+# Now we will test with object name that are subject to conversion. First
+# some tables. Turn off conversion before anything else!
+# This test requires CP850, as CP437 is not roundtrip.
+sql_unset_conversion;
+sql(<<SQLEND);
+   CREATE TABLE #$shrimp (i       int     NOT NULL PRIMARY KEY,
+                         $shrimp  char(9) NOT NULL)
 SQLEND
 
-   sql(<<SQLEND);
-      CREATE PROCEDURE #${shrimp}_ins_sp \@i       int,
-                                         \@$shrimp char(9) AS
-         INSERT #$shrimp (i, $shrimp) VALUES (\@i, \@$shrimp)
+sql(<<SQLEND);
+   CREATE PROCEDURE #${shrimp}_ins_sp \@i       int,
+                                      \@$shrimp char(9) AS
+      INSERT #$shrimp (i, $shrimp) VALUES (\@i, \@$shrimp)
 SQLEND
 
-   sql(<<SQLEND);
-      CREATE PROCEDURE #${shrimp}_get_sp \@i int,
-                                         \@$shrimp char(9) OUTPUT AS
+sql(<<SQLEND);
+   CREATE PROCEDURE #${shrimp}_get_sp \@i int,
+                                      \@$shrimp char(9) OUTPUT AS
 
-         SELECT \@$shrimp = $shrimp FROM #$shrimp WHERE \@i = i
+      SELECT \@$shrimp = $shrimp FROM #$shrimp WHERE \@i = i
 SQLEND
 
-   # Insert some data
-   sql("INSERT #$shrimp (i, $shrimp) VALUES (1, 'first row')");
-   if ($X->{SQL_version} =~ /^6\./) {
-      sql("INSERT #$shrimp (i, $shrimp) VALUES (?, ?)",
-          [['int', 2], ['char', 'secondrow']]);
-   }
-   else {
-      sql("INSERT #$shrimp (i, $shrimp) VALUES (\@i, \@$shrimp)",
-          {i => ['int', 2], $shrimp => ['char', 'secondrow']});
-   }
-   sql_insert("#$shrimp", {i => 3, $shrimp => 'third row'});
-   sql_sp("#${shrimp}_ins_sp", [4, 'fourthrow']);
-
-   # Turn on conversion.
-   sql_set_conversion;
-
-   # We assume that things just crashes if test fails.
-   sql("INSERT #$shrimp_850 (i, $shrimp_850) VALUES (5, 'fifth row')");
-   print "ok 18\n";
-   if ($X->{SQL_version} =~ /^6\./) {
-      sql("INSERT #$shrimp_850 (i, $shrimp_850) VALUES (?, ?)",
-          [['int', 6], ['char', 'sixth row']]);
-   }
-   else {
-      sql("INSERT #$shrimp_850 (i, $shrimp_850) VALUES (\@i, \@$shrimp_850)",
-          {i => ['int', 6], $shrimp_850 => ['char', 'sixth row']});
-   }
-   print "ok 19\n";
-   sql_insert("#$shrimp_850", {i => 7, $shrimp_850 => 'row seven'});
-   print "ok 20\n";
-   sql_sp("#${shrimp_850}_ins_sp", [8, 'eighthrow']);
-   print "ok 21\n";
-
-   # Check that data was inserted as expected.
-   @data = sql("SELECT $shrimp_850 FROM #$shrimp_850 ORDER BY i", SCALAR);
-   if (compare(\@data, ['first row', 'secondrow', 'third row', 'fourthrow',
-                        'fifth row', 'sixth row', 'row seven', 'eighthrow'])) {
-      print "ok 22\n";
-   }
-   else {
-      print "not ok 22\n# " . join(' ', @data) . "\n";
-   }
+# Insert some data
+sql("INSERT #$shrimp (i, $shrimp) VALUES (1, 'first row')");
+if ($X->{SQL_version} =~ /^6\./) {
+   sql("INSERT #$shrimp (i, $shrimp) VALUES (?, ?)",
+       [['int', 2], ['char', 'secondrow']]);
 }
 else {
-   print "ok 18 # skip, test cannot work on CP437\n";
-   print "ok 19 # skip, test cannot work on CP437\n";
-   print "ok 20 # skip, test cannot work on CP437\n";
-   print "ok 21 # skip, test cannot work on CP437\n";
-   print "ok 22 # skip, test cannot work on CP437\n";
+   sql("INSERT #$shrimp (i, $shrimp) VALUES (\@i, \@$shrimp)",
+       {i => ['int', 2], $shrimp => ['char', 'secondrow']});
+}
+sql_insert("#$shrimp", {i => 3, $shrimp => 'third row'});
+sql_sp("#${shrimp}_ins_sp", [4, 'fourthrow']);
+
+# Turn on conversion.
+sql_set_conversion(850);
+
+# We assume that things just crashes if test fails.
+sql("INSERT #$shrimp_850 (i, $shrimp_850) VALUES (5, 'fifth row')");
+print "ok 18\n";
+if ($X->{SQL_version} =~ /^6\./) {
+   sql("INSERT #$shrimp_850 (i, $shrimp_850) VALUES (?, ?)",
+       [['int', 6], ['char', 'sixth row']]);
+}
+else {
+   sql("INSERT #$shrimp_850 (i, $shrimp_850) VALUES (\@i, \@$shrimp_850)",
+       {i => ['int', 6], $shrimp_850 => ['char', 'sixth row']});
+}
+print "ok 19\n";
+sql_insert("#$shrimp_850", {i => 7, $shrimp_850 => 'row seven'});
+print "ok 20\n";
+sql_sp("#${shrimp_850}_ins_sp", [8, 'eighthrow']);
+print "ok 21\n";
+
+# Check that data was inserted as expected.
+@data = sql("SELECT $shrimp_850 FROM #$shrimp_850 ORDER BY i", SCALAR);
+if (compare(\@data, ['first row', 'secondrow', 'third row', 'fourthrow',
+                     'fifth row', 'sixth row', 'row seven', 'eighthrow'])) {
+   print "ok 22\n";
+}
+else {
+   print "not ok 22\n# " . join(' ', @data) . "\n";
+}
+
+# Test some more odd code-page variations.
+sql_unset_conversion;
+sql_set_conversion(1251, 1252, TO_CLIENT_ONLY);
+# Latin-1 to Cyrillic. The shrimp gets straighened out.
+@data = sql("SELECT 'räksmörgås'", SCALAR);
+if (compare(\@data, ['raksmorgas'])) {
+   print "ok 23\n";
+}
+else {
+   print "not ok 23\n# " . join(' ', @data) . "\n";
+}
+
+sql_unset_conversion;
+sql_set_conversion(1251, 1252, TO_SERVER_ONLY);
+# Cyrillic to Latin. The shrimp becomes a question.
+@data = sql("SELECT 'räksmörgås'", SCALAR);
+if (compare(\@data, ['r?ksm?rg?s'])) {
+   print "ok 24\n";
+}
+else {
+   print "not ok 24\n# " . join(' ', @data) . "\n";
 }
 
 # Final test: check that a datetime hash is not thrashed when subject to
@@ -344,10 +408,10 @@ $data = sql_one('SELECT dateadd(YEAR, 100, dateadd(minute, 20, ?))',
                 [['datetime', '18140212 17:19:34']], SCALAR);
 if (compare($data, {Year => 1914, Month => 2, Day => 12,
                     Hour => 17, Minute => 39, Second => 34, Fraction => 0})) {
-   print "ok 23\n";
+   print "ok 25\n";
 }
 else {
-   print "not ok 23\n";
+   print "not ok 25\n";
 }
 
 exit;

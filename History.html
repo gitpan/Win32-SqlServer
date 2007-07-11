@@ -1,4 +1,10 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <HTML>
+<STYLE TYPE="text/css">
+<!--
+.allcaps {font-size: 90%;}
+-->
+</STYLE>
 <HEAD>
 <TITLE>History Win32::SqlServer</TITLE>
 </HEAD>
@@ -7,22 +13,51 @@
 <CENTER>
 <H1>History Win32::SqlServer</H1>
 </CENTER>
+<H3>2007-07-11 &#8211; 2.003</H3>
+<UL>
+   <LI>Win32::SqlServer now runs on AMD64. In lieu of hardware to test on, IA64
+   is still unsupported. Note that the <CODE><B>
+   <A HREF="Win32-SqlServer.html#bigint">bigint</A></B></CODE> data type is
+   handled differently on 64-bit.</LI>
+   <LI>Added a mid-level routine <NOBR>
+   <A HREF="Win32-SqlServer.html#getcolumninfo">getcoluminfo()</A></NOBR> that returns information about
+   the columns in the result set(s).</LI>
+   <LI>Added a new parameter to <NOBR><A HREF="Win32-SqlServer.html#sql">sql()</A></NOBR> and
+   <A HREF="Win32-SqlServer.html#sql_sp"><NOBR>sql_sp()</NOBR></A>, <CODE>
+   <NOBR STYLE="text-align: left"><A HREF="Win32-SqlServer.html#colinfostyles">$colinfostyle</A></NOBR></CODE>, that permits you
+   to specify that you want information about the columns in the result set
+   included in the return structure. You can opt get only names, only position,
+   or get a hash with detail information.</LI>
+   <LI>Added a new result style, <A HREF="Win32-SqlServer.html#MULTISET_RC">MULTISET_RC</A>, that is very similar to MULTISET,
+   but which has row counts instead of&nbsp; empty arrays for INSERT, UPDATE and
+   DELETE statements.</LI>
+   <LI>Re-implemented the conversion initiated by
+   <A HREF="Win32-SqlServer.html#sql_set_conversion"><NOBR>sql_set_conversion()</NOBR></A> to
+   use the Windows API, rather than relying on certain files being available in
+   System32. This makes about any code-page conversion accessible from Win32::SqlServer.
+   There is a new routine, <A HREF="Win32-SqlServer.html#codepage_convert">
+   <NOBR>codepage_convert()</NOBR></A>, to convert a single value.</LI>
+   <LI><A HREF="Win32-SqlServer.html#sql_init">sql_init()</A> now has a fifth parameter,
+   <CODE><NOBR>$provider</NOBR></CODE>.</LI>
+   <LI>Fixed bug that caused a crash on Vista when an <CODE><B>sql_variant</B></CODE> value had
+   certain base types.</LI>
+</UL>
 <H3>2006-04-17 &#8211; 2.002</H3>
 <P>Fixed two problems which prevented Win32::SqlServer to run under ASP:</P>
 <UL>
-   <LI>In the binary distribution, the C run-time is now statically linked with 
-      the SqlServer.dll, as under ASP, because it did not pick up MSVCR70.DLL 
-      when it was only in the same directory as SqlServer.dll. (Workaround was 
+   <LI>In the binary distribution, the C run-time is now statically linked with
+   the SqlServer.dll, because ASP did not pick up MSVCR70.DLL
+      when it was only in the same directory as SqlServer.dll. (Workaround was
       to put MSVCR70 in System32.)</LI>
-   <LI>Fixed a problem caused an ASP page with Win32::SqlServer to fail on 
+   <LI>Fixed a problem caused an ASP page with Win32::SqlServer to fail on
       second and succeeding invocations.</LI>
 </UL>
 <H3>2005-11-27 &#8211; 2.001</H3>
-<P>Renamed the module to Win32::SqlServer from the original name MSSQL::OlleDB 
- to comply with requirements from the maintainers of the Perl module list (and 
+<P>Renamed the module to Win32::SqlServer from the original name MSSQL::OlleDB
+ to comply with requirements from the maintainers of the Perl module list (and
  because the original name was more cute than practical). No other changes.</P>
 <H3>2005-11-13 &#8211; 2.000</H3>
-<P>This is the first release of MSSQL::OlleDB. It has version number 2.000 since 
+<P>This is the first release of MSSQL::OlleDB. It has version number 2.000 since
  it is a successor module to
  <A HREF="http://www.sommarskog.se/mssqlperl/mssql-sqllib.html">MSSQL::Sqllib</A>.</P>
 </HTML>
@@ -31,6 +66,6 @@
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 06-04-17 21:28 <!-- $-->
+Last updated <!--$$Modtime:--> 07-07-11 12:07 <!-- $-->
 </I>
 <BODY>

@@ -1,10 +1,72 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/SqlServer.xs 61    06-04-17 21:52 Sommar $
+ $Header: /Perl/OlleDB/SqlServer.xs 72    07-07-10 21:59 Sommar $
 
   Copyright (c) 2004-2006   Erland Sommarskog
 
   $History: SqlServer.xs $
  * 
+ * *****************  Version 72  *****************
+ * User: Sommar       Date: 07-07-10   Time: 21:59
+ * Updated in $/Perl/OlleDB
+ * Win32::SqlServer 2.003.
+ *
+ * *****************  Version 71  *****************
+ * User: Sommar       Date: 07-07-10   Time: 20:59
+ * Updated in $/Perl/OlleDB
+ * One more misspelled error message.
+ *
+ * *****************  Version 70  *****************
+ * User: Sommar       Date: 07-07-08   Time: 21:46
+ * Updated in $/Perl/OlleDB
+ * Corrected error messge for getcolumninfo.
+ *
+ * *****************  Version 69  *****************
+ * User: Sommar       Date: 07-07-07   Time: 16:45
+ * Updated in $/Perl/OlleDB
+ * Corrections/changes to getcolumninfo. For large data types, return just
+ * the base type and undef in MaxLength. The test to distinguish between
+ * money and smallmoney was incorrect.
+ *
+ * *****************  Version 68  *****************
+ * User: Sommar       Date: 07-06-25   Time: 0:31
+ * Updated in $/Perl/OlleDB
+ * Corrected error with column numbers.
+ *
+ * *****************  Version 67  *****************
+ * User: Sommar       Date: 07-06-23   Time: 17:19
+ * Updated in $/Perl/OlleDB
+ * Added getcolumninfo.
+ *
+ * *****************  Version 66  *****************
+ * User: Sommar       Date: 07-06-18   Time: 0:11
+ * Updated in $/Perl/OlleDB
+ * On 64-bit, handle bigint as integer data.
+ *
+ * *****************  Version 65  *****************
+ * User: Sommar       Date: 07-06-17   Time: 19:06
+ * Updated in $/Perl/OlleDB
+ * Added codepage_convert to support new implementation of
+ * sql_set_conversion.
+ *
+ * *****************  Version 64  *****************
+ * User: Sommar       Date: 07-06-16   Time: 21:43
+ * Updated in $/Perl/OlleDB
+ * Basic support for x64 added.
+ *
+ * *****************  Version 63  *****************
+ * User: Sommar       Date: 07-05-27   Time: 23:47
+ * Updated in $/Perl/OlleDB
+ * Removed code in free_pendind_cmd that tried to free data allocated by
+ * the provider, but this is done as soon as data is retrieved. However,
+ * for an sql_variant, we could be fooled to believe that the type
+ * indicator was an address, and try to free that.
+ *
+ * *****************  Version 62  *****************
+ * User: Sommar       Date: 06-10-15   Time: 22:47
+ * Updated in $/Perl/OlleDB
+ * Changed olle_ptr to sqlsrv in the XS routines, to get the USAGE message
+ * to agree with documentation.
+ *
  * *****************  Version 61  *****************
  * User: Sommar       Date: 06-04-17   Time: 21:52
  * Updated in $/Perl/OlleDB
@@ -65,7 +127,7 @@ extern "C" {
 FILE *dbgfile = NULL;
 #endif
 
-#define XS_VERSION "2.002"
+#define XS_VERSION "2.003"
 
 
 // This is stuff for init properties. When the module starts up, we set up a
@@ -152,8 +214,8 @@ typedef struct paramvalue {
       BOOL        bit;
       BYTE        tinyint;
       SHORT       smallint;
-      LONG        intval;
-      LONGLONG    bigint;
+      LONG32      intval;
+      LONG64      bigint;
       FLOAT       real;
       DOUBLE      floatval;
       CY          money;
@@ -204,8 +266,8 @@ typedef struct {
     BSTR                     pending_cmd;  // (Parameterised) cmd for which caller is supplying parmeters.
     paramdata              * paramfirst;   // Head of linked list for parameters.
     paramdata              * paramlast;    // Tail of parameter list.
-    ULONG                    no_of_params; // Length of parameter list.
-    ULONG                    no_of_out_params;  // And how many that are outparams.
+    DBORDINAL                no_of_params; // Length of parameter list.
+    DBORDINAL                no_of_out_params;  // And how many that are outparams.
     BOOL                     params_available;  // Not set until all result sets are exhausted.
 
     // SQLOLEDB parameters that are created by executebatch.
@@ -234,11 +296,11 @@ typedef struct {
     // We get a number of rows at a time into a buffer (because Gert
     // suggested to, but it does not seem to make a difference.)
     HROW                   * rowbuffer;      // Buffered rows from SQLOLEDB.
-    ULONG                    rows_in_buffer; // Size of rowbuffer.
-    ULONG                    current_rowno;  // Current row in rowbuffer.
+    DBCOUNTITEM              rows_in_buffer; // Size of rowbuffer.
+    DBCOUNTITEM              current_rowno;  // Current row in rowbuffer.
 
     // Data with and about the columns.
-    ULONG                    no_of_cols;     // No of columns in current result set.
+    DBORDINAL                no_of_cols;     // No of columns in current result set.
     DBCOLUMNINFO           * column_info;
     WCHAR                  * colname_buffer; // Memory area for names in *colunm_info.
     DBBINDING              * col_bindings;
@@ -544,7 +606,7 @@ static char * BSTR_to_char (BSTR bstr) {
 // string is assumed to be NULL-terminated.
 static SV * BSTR_to_SV (BSTR  bstr,
                         int   bstrlen = -1) {
-   int    buflen;
+   STRLEN buflen;
    char * tmp;
    int    ret;
    SV   * sv;
@@ -1247,7 +1309,7 @@ void free_resultset_data(internaldata *mydata) {
    }
 
    if (mydata->column_keys != NULL) {
-      for (ULONG i = 0; i < mydata->no_of_cols; i++) {
+      for (DBORDINAL i = 0; i < mydata->no_of_cols; i++) {
          if (mydata->column_keys[i] && SvOK(mydata->column_keys[i])) {
             SvREFCNT_dec(mydata->column_keys[i]);
          }
@@ -1273,34 +1335,19 @@ void free_pending_cmd(internaldata *mydata) {
 
    while (mydata->paramfirst != NULL) {
       paramdata * tmp;
-      BYTE      * provider_ptr = NULL;
       tmp = mydata->paramfirst;
-
-      // If there is a parameter buffer, there might be a pointer to an area
-      // allocated by the provider.
-      if (mydata->param_buffer != NULL) {
-         provider_ptr = *(BYTE **) &mydata->param_buffer[tmp->binding.obValue];
-      }
 
       SysFreeString(tmp->param_info.pwszName);
       SysFreeString(tmp->param_info.pwszDataSourceType);
 
       // buffer_ptr is a saved address to input parameter.
       if (tmp->buffer_ptr != NULL) {
-         // So the area in the parameter buffer is a pointer, and if its not
-         // NULL or the same as our save pointer, we must free the area.
-         if (provider_ptr != NULL && provider_ptr != tmp->buffer_ptr) {
-            OLE_malloc_ptr->Free(provider_ptr);
-         }
          Safefree(tmp->buffer_ptr);
       }
 
       // bstr is a saved addres to an nvarchar parameter, different pool than
       // buffer_ptr.
       if (tmp->bstr != NULL) {
-         if (provider_ptr != NULL && provider_ptr != (BYTE *) tmp->bstr) {
-            OLE_malloc_ptr->Free(provider_ptr);
-         }
          SysFreeString(tmp->bstr);
       }
 
@@ -1670,7 +1717,7 @@ static void check_for_errors(SV *          olle_ptr,
         // There was no error message, but obviously things went wrong anyway.
         // There is no reason to carry on.
         olle_croak(olle_ptr,
-           "Internal error: %s failed with %08x. No further error infoformation was collected",
+           "Internal error: %s failed with %08x. No further error information was collected",
            context, hresult);
      }
      // It seems that everything went just fine.
@@ -2539,7 +2586,7 @@ HRESULT  SVstr_to_sqlvalue (SV   * sv,
 
 
 BOOL SV_to_bigint (SV      * sv,
-                   LONGLONG  &bigintval)
+                   LONG64  &bigintval)
 {
    HRESULT ret;
 
@@ -2730,7 +2777,7 @@ BOOL get_datetime_hashvalue(SV         * olle_ptr,
    intvalue = SvIV(sv);
    if (intvalue < minval || intvalue > maxval) {
       BSTR msg = SysAllocStringLen(NULL, 200);
-      wsprintf(msg, L"Part '%S' in dateiume hash has illegal value %d.", part, intvalue);
+      wsprintf(msg, L"Part '%S' in datetime hash has illegal value %d.", part, intvalue);
       olledb_message(olle_ptr, -1, 1, 10, msg);
       SysFreeString(msg);
       return FALSE;
@@ -3012,8 +3059,22 @@ BOOL SV_to_ssvariant (SV        * sv,
     }
 
     if (SvIOK(sv)) {
+#ifdef _WIN64
+       // On 64-bit, we make a choice between int and bigint.
+       LONG64 val = SvIV(sv);
+       if (val < LONG_MIN || val > LONG_MAX) {
+          variant.vt = VT_SS_I8;
+          variant.llBigIntVal = val;
+       }
+       else {
+          variant.vt = VT_SS_I4;
+          variant.lIntVal = val;
+       }
+#else
+       // On 32-bit, we can only handle int, and larger values will go as floats.
        variant.vt = VT_SS_I4;
        variant.lIntVal = SvIV(sv);
+#endif
     }
     else if (SvNOK(sv)) {
        variant.vt = VT_SS_R8;
@@ -3344,7 +3405,7 @@ int enterparameter(SV   * olle_ptr,
    switch (this_param->datatype) {
       case DBTYPE_BOOL :
          param_info->ulParamSize = sizeof(BOOL);
-         mydata->size_param_buffer += sizeof(long);
+         mydata->size_param_buffer += sizeof(BOOL);
          if (! this_param->isnull) {
             value->bit = SvTRUE(sv_value);
          }
@@ -3452,7 +3513,7 @@ int enterparameter(SV   * olle_ptr,
          mydata->size_param_buffer += sizeof(char *);
          binding->dwPart   |= DBPART_LENGTH;
          binding->obLength  = mydata->size_param_buffer;
-         mydata->size_param_buffer += sizeof(ULONG);
+         mydata->size_param_buffer += sizeof(DBLENGTH);
          if (! this_param->isnull) {
             value_OK = SV_to_char(sv_value, value->varchar,
                                   this_param->value_len);
@@ -3468,7 +3529,7 @@ int enterparameter(SV   * olle_ptr,
          mydata->size_param_buffer += sizeof(char *);
          binding->dwPart   |= DBPART_LENGTH;
          binding->obLength  = mydata->size_param_buffer;
-         mydata->size_param_buffer += sizeof(ULONG);
+         mydata->size_param_buffer += sizeof(DBLENGTH);
          if (! this_param->isnull) {
             // The return data from SV_to_XML can either an 8-bit or a wide
             // string depending on encoding.
@@ -3494,7 +3555,7 @@ int enterparameter(SV   * olle_ptr,
          mydata->size_param_buffer += sizeof(WCHAR *);
          binding->dwPart   |= DBPART_LENGTH;
          binding->obLength  = mydata->size_param_buffer;
-         mydata->size_param_buffer += sizeof(ULONG);
+         mydata->size_param_buffer += sizeof(DBLENGTH);
          if (! this_param->isnull) {
             value->nvarchar = SV_to_BSTR(sv_value);
             this_param->bstr = value->nvarchar;
@@ -3512,7 +3573,7 @@ int enterparameter(SV   * olle_ptr,
          mydata->size_param_buffer += sizeof(BYTE *);
          binding->dwPart   |= DBPART_LENGTH;
          binding->obLength  = mydata->size_param_buffer;
-         mydata->size_param_buffer += sizeof(ULONG);
+         mydata->size_param_buffer += sizeof(DBLENGTH);
          if (! this_param->isnull) {
             value_OK = SV_to_binary(sv_value, OptBinaryAsStr(olle_ptr),
                                     istimestamp, value->binary,
@@ -3736,16 +3797,16 @@ int executebatch(SV   *olle_ptr,
     paramdata          * current_param;
     DBPARAMBINDINFO    * cur_param_info;
     DBBINDING          * cur_binding;
-    ULONG              * param_ordinals;
-    ULONG                param_ix = 0;
-    ULONG                value_offset;
-    ULONG                len_offset;
-    ULONG                status_offset;
+    DB_UPARAMS         * param_ordinals;
+    DBORDINAL            param_ix = 0;
+    DBBYTEOFFSET         value_offset;
+    DBBYTEOFFSET         len_offset;
+    DBBYTEOFFSET         status_offset;
     BOOL                 final_retval = TRUE;
     ISessionProperties * sess_property_ptr;
     DBPROP               property[1];
     DBPROPSET            property_set[1];
-    LONG                 rows_affected;
+    DBROWCOUNT           rows_affected;
     DBPARAMS             param_parameter;        // Parameter to cmdtext->Execute.
     SSPARAMPROPS       * ss_param_props = NULL;  // SQL-server specific parameter properies.
     DB_UPARAMS           ss_param_props_cnt = 0;
@@ -3790,7 +3851,7 @@ int executebatch(SV   *olle_ptr,
        // buffer.
        New(902, mydata->param_info, mydata->no_of_params, DBPARAMBINDINFO);
        New(902, mydata->param_bindings, mydata->no_of_params, DBBINDING);
-       New(902, param_ordinals, mydata->no_of_params, ULONG);
+       New(902, param_ordinals, mydata->no_of_params, DB_UPARAMS);
        if (mydata->provider == provider_sqlncli) {
           New(902, ss_param_props, mydata->no_of_params, SSPARAMPROPS);
        }
@@ -3855,15 +3916,15 @@ int executebatch(SV   *olle_ptr,
                    }
 
                    case DBTYPE_I4 : {
-                      long * buffer_ptr =
-                          (long *) (&mydata->param_buffer[value_offset]);
+                      LONG32 * buffer_ptr =
+                          (LONG32 *) (&mydata->param_buffer[value_offset]);
                       * buffer_ptr = current_param->value.intval;
                       break;
                    }
 
                    case DBTYPE_I8 : {
-                      LONGLONG * buffer_ptr =
-                          (LONGLONG *) (&mydata->param_buffer[value_offset]);
+                      LONG64 * buffer_ptr =
+                          (LONG64 *) (&mydata->param_buffer[value_offset]);
                       * buffer_ptr = current_param->value.bigint;
                       break;
                    }
@@ -3964,7 +4025,8 @@ int executebatch(SV   *olle_ptr,
                   current_param->param_info.pwszName,
                   current_param->binding.obStatus,
                   current_param->binding.obValue);
-             */
+            */
+
           }
 
           // And finally, fill in parameter properties for XML and UDT.
@@ -4113,20 +4175,20 @@ int executebatch(SV   *olle_ptr,
 }
 
 //====================================================================
-// Get data from SQL Server. First $X->nextresultset, then conversion
-// routines to from SQL Server types to SV, then extract data, a common
-// helper to $X->nextrow and $X->outputparamerers.
+// Get data from SQL Server. First $X->nextresultset, then getcolumninfo,
+// then conversion routines to from SQL Server types to SV, then extract_data,
+// a common helper to $X->nextrow and $X->outputparamerers.
 //====================================================================
 int nextresultset (SV * olle_ptr,
                    SV * sv_rows_affected)
 {
     internaldata * mydata = get_internaldata(olle_ptr);
-    LONG           rows_affected;
+    DBROWCOUNT     rows_affected;
     int            more_results;
     HRESULT        ret;
     IColumnsInfo*  columns_info_ptr  = NULL;
-    ULONG          no_of_cols;
-    ULONG          bind_offset = 0;
+    DBORDINAL      no_of_cols;
+    DBBYTEOFFSET   bind_offset = 0;
 
     // There must not a cmttext_ptr, else there is no command being processed.
     if (mydata->cmdtext_ptr == NULL) {
@@ -4181,7 +4243,7 @@ int nextresultset (SV * olle_ptr,
        New(902, mydata->col_bindings, no_of_cols, DBBINDING);
 
        // Iterate over the columns to set up the bindings.
-       for (ULONG j = 0; j < no_of_cols; j++) {
+       for (DBORDINAL j = 0; j < no_of_cols; j++) {
           // These fields are the same for all data types.
           mydata->col_bindings[j].iOrdinal  = j+1;
           mydata->col_bindings[j].dwMemOwner = DBMEMOWNER_CLIENTOWNED;
@@ -4258,7 +4320,7 @@ int nextresultset (SV * olle_ptr,
                 bind_offset += sizeof(BYTE *);
                 mydata->col_bindings[j].dwPart   |= DBPART_LENGTH;
                 mydata->col_bindings[j].obLength  = bind_offset;
-                bind_offset += sizeof(ULONG);
+                bind_offset += sizeof(DBLENGTH);
                 break;
 
              case DBTYPE_STR :
@@ -4266,7 +4328,7 @@ int nextresultset (SV * olle_ptr,
                 bind_offset += sizeof(char *);
                 mydata->col_bindings[j].dwPart   |= DBPART_LENGTH;
                 mydata->col_bindings[j].obLength  = bind_offset;
-                bind_offset += sizeof(ULONG);
+                bind_offset += sizeof(DBLENGTH);
                 break;
 
              case DBTYPE_SQLVARIANT :
@@ -4278,7 +4340,7 @@ int nextresultset (SV * olle_ptr,
                 bind_offset += sizeof(WCHAR *);
                 mydata->col_bindings[j].dwPart   |= DBPART_LENGTH;
                 mydata->col_bindings[j].obLength  = bind_offset;
-                bind_offset += sizeof(ULONG);
+                bind_offset += sizeof(DBLENGTH);
                 break;
 
              case DBTYPE_WSTR :
@@ -4293,7 +4355,7 @@ int nextresultset (SV * olle_ptr,
                 bind_offset += sizeof(WCHAR *);
                 mydata->col_bindings[j].dwPart    |= DBPART_LENGTH;
                 mydata->col_bindings[j].obLength   = bind_offset;
-                bind_offset += sizeof(ULONG);
+                bind_offset += sizeof(DBLENGTH);
                 break;
           }
        }
@@ -4338,14 +4400,289 @@ int nextresultset (SV * olle_ptr,
     return more_results;
 }
 
+//----------------------------------------------------------------------
+// Some helper routines for getcolumninfo and nextrow to handle the output
+// hash and array.
+//------------------------------------------------------------------------
+void allocate_return_areas(internaldata   * mydata,
+                           BOOL             have_hash,
+                           BOOL             have_array,
+                           SV            *  hashref,
+                           SV            *  arrayref,
+                           HV            *  &return_hash,
+                           AV            *  &return_array)
+{
+    if (have_hash) {
+       return_hash = newHV();
+       sv_setsv(hashref, sv_2mortal(newRV_noinc((SV*) return_hash)));
+
+       // Allocate an SV per key. Key names are usually the column name, but
+       // if there is no name, or dups, we have to do it ourselves. We save
+       // the keys in mydata, to allocate them only once per result set.
+       if (mydata->column_keys == NULL) {
+          New(902, mydata->column_keys, mydata->no_of_cols, SV*);
+          memset(mydata->column_keys, 0, mydata->no_of_cols * sizeof(SV*));
+
+          for (DBORDINAL colno = 0; colno < mydata->no_of_cols; colno++) {
+            SV * colkey;
+
+            if (wcslen(mydata->column_info[colno].pwszName) > 0) {
+               // There is a column name, lets use it.
+               colkey = BSTR_to_SV(mydata->column_info[colno].pwszName);
+            }
+            else {
+               // Anonymous column, construct a default name.
+               char  tmp[20];
+               sprintf(tmp, "Col %d", colno + 1);
+               colkey = newSVpv(tmp, strlen(tmp));
+            }
+
+            // Check for duplicates and iterate till we have one, but
+            // we don't try forever.
+            char c = '@';
+            while (hv_exists_ent(return_hash, colkey, 0) && c++ <= 'Z') {
+               if (PL_dowarn) {
+                  warn("Column name '%s' appears twice or more in the result set",
+                       SvPV_nolen(colkey));
+               }
+               SvREFCNT_dec(colkey);
+               char  tmp[20];
+               sprintf(tmp, "Col %d%c", colno + 1, c);
+               colkey = newSVpv(tmp, strlen(tmp));
+            }
+
+            // Save the key value.
+            mydata->column_keys[colno] = colkey;
+          }
+       }
+    }
+
+    if (have_array) {
+       return_array = newAV();
+       av_extend(return_array, mydata->no_of_cols);
+       sv_setsv(arrayref, sv_2mortal(newRV_noinc((SV*) return_array)));
+    }
+}
+
+
+//----------------------------------------------------------------------
+// $X->getcolumninfo
+//----------------------------------------------------------------------
+void getcolumninfo (SV   * olle_ptr,
+                    SV   * hashref,
+                    SV   * arrayref)
+{
+    internaldata * mydata = get_internaldata(olle_ptr);
+    BOOL           have_hash;
+    BOOL           have_array;
+    HV           * return_hash;
+    AV           * return_array;
+
+     // Check that we have a active result set.
+    if (! mydata->have_resultset) {
+        olle_croak (olle_ptr, "Call to getcolumninfo without active result set. Call nextresults first");
+    }
+
+    // What references did we get?
+    have_hash  = (hashref  != NULL && ! SvREADONLY(hashref));
+    have_array = (arrayref != NULL && ! SvREADONLY(arrayref));
+
+    // But the result set may be empty and without a rowset ptr. In such
+    // case we just drop out.
+    if (mydata->rowset_ptr == NULL) {
+       if (have_hash) {
+          sv_setsv(hashref, &PL_sv_undef);
+       }
+       if (have_array) {
+          sv_setsv(arrayref, &PL_sv_undef);
+       }
+       return;
+    }
+
+    // Create the Perl hash and/or array for returning the data.
+    allocate_return_areas(mydata, have_hash, have_array,
+                          hashref, arrayref, return_hash, return_array);
+
+    // Iterate over all columns.
+    for (DBORDINAL j = 0; j < mydata->no_of_cols; j++) {
+        DBCOLUMNINFO * colinfo = &mydata->column_info[j];
+
+        // A hash with information about this column.
+        HV * hv = newHV();
+
+        // Position, name, length, precision and scale. Note that we don't
+        // create any names here, but blank and dups are accepted.
+        SV * sv_colno     = newSViv(j + 1);
+        SV * sv_colname   = BSTR_to_SV(colinfo->pwszName);
+        SV * sv_maxlength = (colinfo->dwFlags & DBCOLUMNFLAGS_ISLONG ?
+                                newSVsv(&PL_sv_undef) :
+                                newSViv(colinfo->ulColumnSize));
+        SV * sv_precision = colinfo->bPrecision != (BYTE) ~0    ?
+                               newSViv(colinfo->bPrecision) :
+                               newSVsv(&PL_sv_undef);
+        SV * sv_scale     = colinfo->bScale != (BYTE) ~0 ?
+                               newSViv(colinfo->bScale) :
+                               newSVsv(&PL_sv_undef);
+        SV * sv_maybenull =
+            newSViv(colinfo->dwFlags & DBCOLUMNFLAGS_MAYBENULL ? 1 : 0);
+        SV * sv_readonly =
+            newSViv(colinfo->dwFlags &
+                    (DBCOLUMNFLAGS_WRITE | DBCOLUMNFLAGS_WRITEUNKNOWN) ?
+                     0 : 1);
+
+        // To get the type, we need to run a switch. We store the name in a
+        // local variable first.
+        char       datatypestr[100];
+        SV       * sv_datatype  = NULL;
+
+        // Set name and other info depending on data type.
+        switch (colinfo->wType) {
+           case DBTYPE_BOOL :
+              sprintf(datatypestr, "%s", "bit");
+              break;
+
+           case DBTYPE_UI1 :
+              sprintf(datatypestr, "%s", "tinyint");
+              break;
+
+           case DBTYPE_I2 :
+              sprintf(datatypestr, "%s", "smallint");
+              break;
+
+           case DBTYPE_I4 :
+              sprintf(datatypestr, "%s", "int");
+              break;
+
+           case DBTYPE_R4 :
+              sprintf(datatypestr, "%s", "real");
+              break;
+
+           case DBTYPE_R8 :
+              sprintf(datatypestr, "%s", "float");
+              break;
+
+           case DBTYPE_I8 :
+              sprintf(datatypestr, "%s", "bigint");
+              break;
+
+           case DBTYPE_CY :
+              if (colinfo->bPrecision < 18) {
+                 sprintf(datatypestr, "%s", "smallmoney");
+              }
+              else {
+                 sprintf(datatypestr, "%s", "money");
+              }
+              break;
+
+           case DBTYPE_NUMERIC :
+              sprintf(datatypestr, "%s", "decimal");
+              break;
+
+           case DBTYPE_GUID :
+              sprintf(datatypestr, "%s", "uniqueidentifier");
+              break;
+
+           case DBTYPE_DBTIMESTAMP :
+              if (colinfo->bPrecision < 23) {
+                  sprintf(datatypestr, "%s", "smalldatetime");
+              }
+              else {
+                  sprintf(datatypestr, "%s", "datetime");
+              }
+              break;
+
+           case DBTYPE_UDT   :
+              sprintf(datatypestr, "%s", "UDT");
+              break;
+
+           case DBTYPE_BYTES :
+              if (colinfo->dwFlags & DBCOLUMNFLAGS_ISROWVER) {
+                 sprintf(datatypestr, "%s", "timestamp");
+              }
+              else if (colinfo->dwFlags & DBCOLUMNFLAGS_ISFIXEDLENGTH) {
+                 sprintf(datatypestr, "%s", "binary");
+              }
+              else {
+                 sprintf(datatypestr, "%s", "varbinary");
+              }
+              break;
+
+           case DBTYPE_STR :
+              if (colinfo->dwFlags & DBCOLUMNFLAGS_ISFIXEDLENGTH) {
+                 sprintf(datatypestr, "%s", "char");
+              }
+              else {
+                 sprintf(datatypestr, "%s", "varchar");
+              }
+              break;
+
+           case DBTYPE_SQLVARIANT :
+              sprintf(datatypestr, "%s", "sql_variant");
+              break;
+
+           case DBTYPE_XML :
+              sprintf(datatypestr, "%s", "xml");
+              break;
+
+           case DBTYPE_WSTR :
+              if (colinfo->dwFlags & DBCOLUMNFLAGS_ISFIXEDLENGTH) {
+                 sprintf(datatypestr, "%s", "nchar");
+              }
+              else {
+                 sprintf(datatypestr, "%s", "nvarchar");
+              }
+              break;
+
+           default          :
+              sprintf(datatypestr, "%s", "UNKNOWN!");
+              break;
+        }
+
+        sv_datatype = newSVpvn(datatypestr, strlen(datatypestr));
+
+        // Save keys into the hash.
+        hv_store(hv, "Colno",     strlen("Colno"),     sv_colno, 0);
+        hv_store(hv, "Name",      strlen("Name"),      sv_colname, 0);
+        hv_store(hv, "Type",      strlen("Type"),      sv_datatype, 0);
+        hv_store(hv, "Maxlength", strlen("Maxlength"), sv_maxlength, 0);
+        hv_store(hv, "Precision", strlen("Precision"), sv_precision, 0);
+        hv_store(hv, "Scale",     strlen("Scale"),     sv_scale, 0);
+        hv_store(hv, "Maybenull", strlen("Maybenull"), sv_maybenull, 0);
+        hv_store(hv, "Readonly",  strlen("Readonly"),  sv_readonly, 0);
+
+        // Create a hash reference.
+        SV * hvref = newSV(NULL);
+        sv_setsv(hvref, sv_2mortal(newRV_noinc((SV *) hv)));
+
+        // And save the reference in the return hash.
+        if (have_hash) {
+           hv_store_ent(return_hash, mydata->column_keys[j], hvref, 0);
+        }
+
+        // And save to the array. Note that if we save in both hash and
+        // array, we need to bump the reference count.
+        if (have_array) {
+           if (have_hash) {
+              SvREFCNT_inc(hvref);
+           }
+           av_store(return_array, j, hvref);
+        }
+    }
+}
+
 //---------------------------------------------------------------------
 // Conversion-to-SV routines. These routines convert a non-trivial value
 // from SQL Server a suitable SV. In most cases there is an option that
 // determines the datatype/format for the Perl value.
 //---------------------------------------------------------------------
-SV * bigint_to_SV (LONGLONG       bigintval,
+SV * bigint_to_SV (LONG64       bigintval,
                    formatoptions  opts)
 {
+#ifdef _WIN64
+   // On Win64, we return bigint as any other integer.
+   return newSViv (bigintval);
+#else
+   // On 32-bit, we treat bigint just like we treat decimal.
    if (opts.DecimalAsStr) {
       char str[20];
       sprintf(str, "%I64d", bigintval);
@@ -4354,6 +4691,7 @@ SV * bigint_to_SV (LONGLONG       bigintval,
    else {
       return newSVnv((double) bigintval);
    }
+#endif
 }
 
 SV * binary_to_SV (BYTE         * binaryval,
@@ -4739,10 +5077,10 @@ void extract_data(SV           * olle_ptr,
 
     DBSTATUS       value_status = *((DBSTATUS *) &data_buffer[binding.obStatus]);
     DBBYTEOFFSET   value_offset = binding.obValue;
-    ULONG          value_len = 0;
+    DBLENGTH       value_len = 0;
 
     if (binding.dwPart & DBPART_LENGTH) {
-       value_len = * ((ULONG *) &data_buffer[binding.obLength]);
+       value_len = * ((DBBYTEOFFSET *) &data_buffer[binding.obLength]);
     }
 
    /* {
@@ -4783,7 +5121,7 @@ void extract_data(SV           * olle_ptr,
              }
 
              case DBTYPE_I4        :  {
-                long value = * ((long *) &data_buffer[value_offset]);
+                INT32 value = * ((INT32 *) &data_buffer[value_offset]);
                 perl_value = newSViv(value);
                 break;
              }
@@ -4801,7 +5139,7 @@ void extract_data(SV           * olle_ptr,
              }
 
              case DBTYPE_I8       : {
-                LONGLONG value = * ((LONGLONG *) &data_buffer[value_offset]);
+                LONG64 value = * ((LONG64 *) &data_buffer[value_offset]);
                 perl_value = bigint_to_SV(value, opts);
                 break;
              }
@@ -4914,7 +5252,6 @@ int nextrow (SV   * olle_ptr,
     BOOL           have_array;
     HV           * return_hash;
     AV           * return_array;
-    BOOL           new_keys = FALSE;
     SV           * colvalue;
 
      // Check that we have a active result set.
@@ -4948,7 +5285,7 @@ int nextrow (SV   * olle_ptr,
        if (mydata->rowbuffer == NULL) {
           New(902, mydata->rowbuffer, optRowsAtATime, HROW);
 
-          // Get rows to the buffer..
+          // Get rows to the buffer.
           ret = mydata->rowset_ptr->GetNextRows(NULL, 0, optRowsAtATime,
                                                 &(mydata->rows_in_buffer),
                                                 &(mydata->rowbuffer));
@@ -4982,27 +5319,11 @@ int nextrow (SV   * olle_ptr,
        check_for_errors(olle_ptr, "rowset_ptr->GetData", ret);
 
        // Create the Perl hash and/or array for returning the data.
-       if (have_hash) {
-          return_hash = newHV();
-          sv_setsv(hashref, sv_2mortal(newRV_noinc((SV*) return_hash)));
-
-          // We only determine hash keys once per result set to save some
-          // time. Here we allocate an array to save them.
-          if (mydata->column_keys == NULL) {
-             New(902, mydata->column_keys, mydata->no_of_cols, SV*);
-             memset(mydata->column_keys, 0, mydata->no_of_cols * sizeof(SV*));
-             new_keys = TRUE;
-          }
-       }
-
-       if (have_array) {
-          return_array = newAV();
-          av_extend(return_array, mydata->no_of_cols);
-          sv_setsv(arrayref, sv_2mortal(newRV_noinc((SV*) return_array)));
-       }
+       allocate_return_areas(mydata, have_hash, have_array,
+                             hashref, arrayref, return_hash, return_array);
 
        // Iterate over all columns.
-       for (ULONG j = 0; j < mydata->no_of_cols; j++) {
+       for (DBORDINAL j = 0; j < mydata->no_of_cols; j++) {
            // Extract the data into colvalue.
            extract_data(olle_ptr, formatopts, FALSE,
                         mydata->column_info[j].pwszName,
@@ -5011,43 +5332,8 @@ int nextrow (SV   * olle_ptr,
                         mydata->col_bind_status[j],
                         mydata->data_buffer, colvalue);
 
-           // And save the value in the hash.
+           // Save the value in the hash.
            if (have_hash) {
-              // First get the key as an SV (must be an SV to handle UTF-8
-              // correctly. Allocate one on first round and save.
-              if (new_keys) {
-                 SV * colkey;
-
-                 if (wcslen(mydata->column_info[j].pwszName) > 0) {
-                    // There is a column name, lets use it.
-                    colkey = BSTR_to_SV(mydata->column_info[j].pwszName);
-                 }
-                 else {
-                    // Anonymous column, construct a default name.
-                    char  tmp[20];
-                    sprintf(tmp, "Col %d", j + 1);
-                    colkey = newSVpv(tmp, strlen(tmp));
-                 }
-
-                 // Check for duplicates and iterate till we have one, but
-                 // we don't try forever.
-                 char c = '@';
-                 while (hv_exists_ent(return_hash, colkey, 0) && c++ <= 'Z') {
-                    if (PL_dowarn) {
-                       warn("Column name '%s' appears twice or more in the result set",
-                            SvPV_nolen(colkey));
-                    }
-                    SvREFCNT_dec(colkey);
-                    char  tmp[20];
-                    sprintf(tmp, "Col %d%c", j + 1, c);
-                    colkey = newSVpv(tmp, strlen(tmp));
-                 }
-
-                 // Save the key value.
-                 mydata->column_keys[j] = colkey;
-              }
-
-              // And now store the column value.
               hv_store_ent(return_hash, mydata->column_keys[j], colvalue, 0);
            }
 
@@ -5087,8 +5373,8 @@ void getoutputparams (SV * olle_ptr,
     internaldata  * mydata = get_internaldata(olle_ptr);
     formatoptions   formatopts = getformatoptions(olle_ptr);
     paramdata     * current_param;
-    ULONG           parno = 0;
-    ULONG           outparno = 0;
+    DBORDINAL       parno = 0;
+    DBORDINAL       outparno = 0;
     BOOL            have_hash;
     BOOL            have_array;
     HV            * return_hash;
@@ -5170,6 +5456,104 @@ void getoutputparams (SV * olle_ptr,
     free_batch_data(mydata);
 }
 
+//-----------------------------------------------------------------------------
+// change_codepage, used to implement sql_set_conversion.
+//-----------------------------------------------------------------------------
+void codepage_convert(SV     * olle_ptr,
+                      SV     * sv,
+                      UINT     from_cp,
+                      UINT     to_cp)
+
+{  int      widelen;
+   int      ret;
+   DWORD    err;
+   BSTR     bstr;
+   STRLEN   sv_len;
+   char   * sv_text = (char *) SvPV(sv, sv_len);
+   STRLEN   outlen;
+
+   if (sv_len > 0) {
+      // If the input string is UTF_8, we should ignore from_cp.
+      if (SvUTF8(sv)) {
+         from_cp = CP_UTF8;
+      }
+
+      // First find out how long the Unicode string will be, by calling
+      // MultiByteToWideChar without a buffer. Not that we always set flags to
+      // 0 here, since it works with all code pages.
+      widelen = MultiByteToWideChar(from_cp, 0, sv_text, sv_len, NULL, 0);
+
+      if (widelen > 0) {
+         // Allocate Unicode string and convert to Unicode.
+         bstr = SysAllocStringLen(NULL, widelen);
+         ret = MultiByteToWideChar(from_cp, 0, sv_text, sv_len, bstr, widelen);
+      }
+      else {
+         ret = 0;
+      }
+
+      // Check for errors.
+      if (ret == 0) {
+         err = GetLastError();
+         if (err == ERROR_INVALID_PARAMETER) {
+            olle_croak(olle_ptr,
+                       "Conversion from codepage %d to Unicode failed. Maybe you are using an non-existing code-page?",
+                       from_cp);
+         }
+         else {
+            olle_croak(olle_ptr,
+                       "Conversion from codepage %d to Unicode failed with error %d",
+                       from_cp, err);
+         }
+      }
+
+      // Now determine the length for the string in the receiving code page.
+      outlen = WideCharToMultiByte(to_cp, 0, bstr, widelen, NULL, 0, NULL, NULL);
+
+      if (outlen > 0) {
+         // Note that with some code pages the new string could be shorter or
+         // longer.
+         if (outlen > sv_len) {
+            sv_text = SvGROW(sv, outlen);
+         }
+         SvCUR_set(sv, outlen);
+         sv_text = (char *) SvPV(sv, sv_len);
+
+         // Convert to target.
+         ret = WideCharToMultiByte(to_cp, 0, bstr, widelen, sv_text, outlen, NULL, NULL);
+      }
+      else {
+         ret = 0;
+      }
+
+      if (ret == 0) {
+         err = GetLastError();
+         if (err == ERROR_INVALID_PARAMETER) {
+            olle_croak(olle_ptr,
+                       "Conversion to codepage %d from Unicode failed. Maybe you are using an non-existing code-page?",
+                       to_cp);
+         }
+         else {
+            olle_croak(olle_ptr,
+                       "Conversion to codepage %d from Unicode failed with error %d",
+                       to_cp, err);
+         }
+      }
+
+      // Get rid of the bstr.
+      SysFreeString(bstr);
+
+      // Set or unset the UTF8 flag depending on target charset.
+      if (to_cp == CP_UTF8) {
+         SvUTF8_on(sv);
+      }
+      else {
+         SvUTF8_off(sv);
+      }
+   }
+}
+
+
 
 //======================================================================
 // The XS part of it all.
@@ -5194,39 +5578,39 @@ int
 setupinternaldata()
 
 void
-setloginproperty(olle_ptr, prop_name, prop_value)
-   SV   * olle_ptr;
+setloginproperty(sqlsrv, prop_name, prop_value)
+   SV   * sqlsrv;
    char * prop_name;
    SV   * prop_value;
 
 
 int
-connect(olle_ptr)
-   SV * olle_ptr
+connect(sqlsrv)
+   SV * sqlsrv
   CODE:
 {
-    internaldata  * mydata = get_internaldata(olle_ptr);
+    internaldata  * mydata = get_internaldata(sqlsrv);
 
     // Check that we are not already connected.
     if (mydata->datasrc_ptr != NULL) {
-       olle_croak(olle_ptr, "Attempt to connect despite already being connected");
+       olle_croak(sqlsrv, "Attempt to connect despite already being connected");
     }
 
-    RETVAL = do_connect(olle_ptr, FALSE);
+    RETVAL = do_connect(sqlsrv, FALSE);
 }
 OUTPUT:
    RETVAL
 
 void
-disconnect(olle_ptr)
-   SV * olle_ptr
+disconnect(sqlsrv)
+   SV * sqlsrv
 
 int
-isconnected(olle_ptr)
-   SV * olle_ptr
+isconnected(sqlsrv)
+   SV * sqlsrv
   CODE:
 {
-   internaldata  * mydata = get_internaldata(olle_ptr);
+   internaldata  * mydata = get_internaldata(sqlsrv);
    RETVAL = mydata->datasrc_ptr != NULL;
 }
 OUTPUT:
@@ -5279,13 +5663,13 @@ CODE:
 }
 
 void
-initbatch(olle_ptr, sv_cmdtext)
-    SV  *olle_ptr
+initbatch(sqlsrv, sv_cmdtext)
+    SV  *sqlsrv
     SV  *sv_cmdtext
 
 int
-enterparameter(olle_ptr, nameoftype, sv_maxlen, paramname, isinput, isoutput, sv_value = NULL, precision = 18, scale = 0, typeinfo = NULL)
-   SV            * olle_ptr
+enterparameter(sqlsrv, nameoftype, sv_maxlen, paramname, isinput, isoutput, sv_value = NULL, precision = 18, scale = 0, typeinfo = NULL)
+   SV            * sqlsrv
    SV            * nameoftype
    SV            * sv_maxlen
    SV            * paramname
@@ -5297,18 +5681,28 @@ enterparameter(olle_ptr, nameoftype, sv_maxlen, paramname, isinput, isoutput, sv
    SV            * typeinfo
 
 int
-executebatch(olle_ptr, rows_affected = NULL)
-  SV * olle_ptr;
+executebatch(sqlsrv, rows_affected = NULL)
+  SV * sqlsrv;
   SV * rows_affected;
 
 int
-nextresultset(olle_ptr, rows_affected = NULL)
-  SV * olle_ptr;
+nextresultset(sqlsrv, rows_affected = NULL)
+  SV * sqlsrv;
   SV * rows_affected;
 
+void
+getcolumninfo (sqlsrv, hashref, arrayref)
+    SV * sqlsrv
+    SV * hashref
+    SV * arrayref
+OUTPUT:
+   hashref
+   arrayref
+
+
 int
-nextrow (olle_ptr, hashref, arrayref)
-    SV * olle_ptr
+nextrow (sqlsrv, hashref, arrayref)
+    SV * sqlsrv
     SV * hashref
     SV * arrayref
 OUTPUT:
@@ -5317,8 +5711,8 @@ OUTPUT:
    arrayref
 
 void
-getoutputparams (olle_ptr, hashref, arrayref)
-    SV * olle_ptr
+getoutputparams (sqlsrv, hashref, arrayref)
+    SV * sqlsrv
     SV * hashref
     SV * arrayref
 OUTPUT:
@@ -5327,20 +5721,20 @@ OUTPUT:
 
 
 void
-cancelbatch (olle_ptr)
-    SV * olle_ptr
+cancelbatch (sqlsrv)
+    SV * sqlsrv
 CODE:
 {
-    internaldata * mydata = get_internaldata(olle_ptr);
+    internaldata * mydata = get_internaldata(sqlsrv);
     free_batch_data(mydata);
 }
 
 void
-cancelresultset (olle_ptr)
-    SV * olle_ptr
+cancelresultset (sqlsrv)
+    SV * sqlsrv
 CODE:
 {
-    internaldata * mydata = get_internaldata(olle_ptr);
+    internaldata * mydata = get_internaldata(sqlsrv);
     free_resultset_data(mydata);
 }
 
@@ -5439,3 +5833,10 @@ void
 replaceparamholders (olle_ptr, cmdstring)
    SV * olle_ptr
    SV * cmdstring
+
+
+void codepage_convert(olle_ptr, string, from_cp, to_cp)
+  SV   * olle_ptr
+  SV   * string
+  unsigned int   from_cp
+  unsigned int   to_cp

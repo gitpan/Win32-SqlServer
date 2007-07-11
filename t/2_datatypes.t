@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/2_datatypes.t 17    05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/t/2_datatypes.t 18    07-06-18 0:10 Sommar $
 #
 # This test script tests using sql_sp and sql_insert in all possible
 # ways and with testing use of all datatypes.
 #
 # $History: 2_datatypes.t $
 # 
+# *****************  Version 18  *****************
+# User: Sommar       Date: 07-06-18   Time: 0:10
+# Updated in $/Perl/OlleDB/t
+# Tests added/modified for bigint on x64.
+#
 # *****************  Version 17  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB/t
@@ -100,7 +105,7 @@ use strict;
 use IO::File;
 use English;
 
-use vars qw($sqlver @tblcols $no_of_tests @testres %tbl
+use vars qw($sqlver $x86 @tblcols $no_of_tests @testres %tbl
             %expectpar %expectcol %expectfile %test %filetest %comment);
 
 use constant TESTFILE => "datatypes.log";
@@ -1128,6 +1133,7 @@ $X->{'ErrInfo'}{NoWhine}++;
 $X->{'ErrInfo'}{NeverPrint}{1708}++;  # Suppresses message for sql_variant table.
 
 $sqlver = (split(/\./, $X->{SQL_version}))[0];
+$x86 = ($ENV{'PROCESSOR_ARCHITECTURE'} eq 'x86');
 
 # Make sure that we have standard settings, except for ANSI_WARNINGS
 # that we want to be off, as we test overlong input.
@@ -1851,26 +1857,44 @@ goto finally if $sqlver == 7;
 clear_test_data;
 create_bigint;
 
-$X->{DecimalAsStr} = 0;
-%tbl       = (bigintcol   => 123456912345678);
-%expectcol = (bigintcol   => $tbl{bigintcol} - 12345678);
-%expectpar = (bigintcol   => -2 * $tbl{bigintcol});
-%test      = (bigintcol   => 'abs(%s - %s) < 100');
-do_tests($X, 1, 'bigint', 'DecimalAsStr = 0');
+# Different tests for x86 and 64-bit.
+if ($x86) {
+   $X->{DecimalAsStr} = 0;
+   %tbl       = (bigintcol   => 123456912345678);
+   %expectcol = (bigintcol   => $tbl{bigintcol} - 12345678);
+   %expectpar = (bigintcol   => -2 * $tbl{bigintcol});
+   %test      = (bigintcol   => 'abs(%s - %s) < 100');
+   do_tests($X, 1, 'bigint', 'x86 DecimalAsStr = 0');
 
-$X->{DecimalAsStr} = 1; # Input is still numeric.
-%tbl       = (bigintcol   => 123456912345678);
-%expectcol = (bigintcol   => $tbl{bigintcol} - 12345678);
-%expectpar = (bigintcol   => -2 * $tbl{bigintcol});
-%test      = (bigintcol   => 'abs(%s - %s) < 100');
-do_tests($X, 1, 'bigint', 'DecimalAsStr = 1, num in');
+   $X->{DecimalAsStr} = 1; # Input is still numeric.
+   %tbl       = (bigintcol   => 123456912345678);
+   %expectcol = (bigintcol   => $tbl{bigintcol} - 12345678);
+   %expectpar = (bigintcol   => -2 * $tbl{bigintcol});
+   %test      = (bigintcol   => 'abs(%s - %s) < 100');
+   do_tests($X, 1, 'bigint', 'x86 DecimalAsStr = 1, num in');
 
-# Now we also send strings in.
-%tbl       = (bigintcol   => '123456912345678');
-%expectcol = (bigintcol   => '123456900000000');
-%expectpar = (bigintcol   => '-246913824691356');
-%test      = (bigintcol   => '%s eq %s');
-do_tests($X, 1, 'bigint', 'DecimalAsStr = 1, str in');
+   # Now we also send strings in.
+   %tbl       = (bigintcol   => '123456912345678');
+   %expectcol = (bigintcol   => '123456900000000');
+   %expectpar = (bigintcol   => '-246913824691356');
+   %test      = (bigintcol   => '%s eq %s');
+   do_tests($X, 1, 'bigint', 'x86 DecimalAsStr = 1, str in');
+}
+else {
+   %tbl       = (bigintcol   => 123456789012345678);
+   %expectcol = (bigintcol   => $tbl{bigintcol} - 12345678);
+   %expectpar = (bigintcol   => -2 * $tbl{bigintcol});
+   %test      = (bigintcol   => '%s = %s');
+   do_tests($X, 1, 'bigint', 'Regular 64-bit');
+
+   # Test strings in, but they should still come back as numbers.
+   %tbl       = (bigintcol   => '123456912345678');
+   %expectcol = (bigintcol   => 123456900000000);
+   %expectpar = (bigintcol   => -246913824691356);
+   %test      = (bigintcol   => '%s == %s');
+   do_tests($X, 1, 'bigint', '64-bit, str in');
+}
+
 
 # And test null values.
 %tbl       = (bigintcol => undef);
@@ -1962,41 +1986,112 @@ do_tests($X, 0, 'sql_variant', 'int');
               outtype => "N'$tbl{'outtype'}'");
 do_tests($X, 0, 'sql_variant', 'int');
 
-$X->{DecimalAsStr} = 0;
-%tbl       = (varcol  => 123456912345678,
-              intype  => undef,
-              outtype => 'bigint');
-%expectcol = (varcol  => 123456900000000,
-              intype  => 'float',
-              outtype => $tbl{'outtype'});
-%expectpar = (varcol  => -246913824691356,
-              intype  => $expectcol{'intype'},
-              outtype => $tbl{'outtype'});
-%expectfile= (varcol  => "N'$tbl{'varcol'}'",
-              intype  => 'NULL',
-              outtype => "N'$tbl{'outtype'}'");
-%test      = (varcol  => 'abs(%s - %s) < 100',
-              intype  => '%s eq %s',
-              outtype => '%s eq %s');
-do_tests($X, 0, 'sql_variant', 'bigint');
+if ($x86) {
+   $X->{DecimalAsStr} = 0;
+   %tbl       = (varcol  => 123456912345678,
+                 intype  => undef,
+                 outtype => 'bigint');
+   %expectcol = (varcol  => 123456900000000,
+                 intype  => 'float',
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => -246913824691356,
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => 'abs(%s - %s) < 100',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'bigint x86');
 
-$X->{DecimalAsStr} = 1;
-%tbl       = (varcol  => '123456912345678',
-              intype  => undef,
-              outtype => 'bigint');
-%expectcol = (varcol  => '123456900000000',
-              intype  => 'varchar',
-              outtype => $tbl{'outtype'});
-%expectpar = (varcol  => '-246913824691356',
-              intype  => $expectcol{'intype'},
-              outtype => $tbl{'outtype'});
-%expectfile= (varcol  => "N'$tbl{'varcol'}'",
-              intype  => 'NULL',
-              outtype => "N'$tbl{'outtype'}'");
-%test      = (varcol  => '%s eq %s',
-              intype  => '%s eq %s',
-              outtype => '%s eq %s');
-do_tests($X, 0, 'sql_variant', 'bigint as str');
+   $X->{DecimalAsStr} = 1;
+   %tbl       = (varcol  => '123456912345678',
+                 intype  => undef,
+                 outtype => 'bigint');
+   %expectcol = (varcol  => '123456900000000',
+                 intype  => 'varchar',
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => '-246913824691356',
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s eq %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'bigint x86 as str');
+}
+else {
+   %tbl       = (varcol  => 123456912345678,
+                 intype  => undef,
+                 outtype => 'bigint');
+   %expectcol = (varcol  => 123456900000000,
+                 intype  => 'bigint',
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => -246913824691356,
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s == %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'bigint 64-bit');
+
+   %tbl       = (varcol  => 0x7fff_ffff,
+                 intype  => undef,
+                 outtype => 'bigint');
+   %expectcol = (varcol  => $tbl{'varcol'} - 12345678,
+                 intype  => 'int',
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => -2*$tbl{'varcol'},
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s == %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'bigint 64-bit, maxint in');
+
+   %tbl       = (varcol  => $tbl{'varcol'} + 1,
+                 intype  => undef,
+                 outtype => 'bigint');
+   %expectcol = (varcol  => $tbl{'varcol'} - 12345678,
+                 intype  => 'bigint',
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => -2*$tbl{'varcol'},
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s == %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'bigint 64-bit, maxint+1 in');
+
+   %tbl       = (varcol  => -1 * $tbl{'varcol'},
+                 intype  => undef,
+                 outtype => 'bigint');
+   %expectcol = (varcol  => $tbl{'varcol'} - 12345678,
+                 intype  => 'int',
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => -2*$tbl{'varcol'},
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s == %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'bigint 64-bit, minint in');
+}
 
 %tbl       = (varcol  => 786.987,
               intype  => undef,
