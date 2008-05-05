@@ -1,11 +1,64 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/2_datatypes.t 18    07-06-18 0:10 Sommar $
+# $Header: /Perl/OlleDB/t/2_datatypes.t 28    08-05-04 22:27 Sommar $
 #
 # This test script tests using sql_sp and sql_insert in all possible
 # ways and with testing use of all datatypes.
 #
 # $History: 2_datatypes.t $
 # 
+# *****************  Version 28  *****************
+# User: Sommar       Date: 08-05-04   Time: 22:27
+# Updated in $/Perl/OlleDB/t
+# Incorrect skip of output parameters for the spatial data types.
+#
+# *****************  Version 27  *****************
+# User: Sommar       Date: 08-04-28   Time: 23:17
+# Updated in $/Perl/OlleDB/t
+# Use precise functions for the geography type.
+#
+# *****************  Version 26  *****************
+# User: Sommar       Date: 08-02-10   Time: 17:15
+# Updated in $/Perl/OlleDB/t
+# Added test for rowversion-
+#
+# *****************  Version 25  *****************
+# User: Sommar       Date: 07-11-20   Time: 21:35
+# Updated in $/Perl/OlleDB/t
+# Added tests for the spatial data types.
+#
+# *****************  Version 24  *****************
+# User: Sommar       Date: 07-11-12   Time: 23:03
+# Updated in $/Perl/OlleDB/t
+# Modified some tests for date/time and sql_variant, including tests when
+# hash is complete.
+#
+# *****************  Version 23  *****************
+# User: Sommar       Date: 07-11-11   Time: 20:17
+# Updated in $/Perl/OlleDB/t
+# Test some end of months.
+#
+# *****************  Version 22  *****************
+# User: Sommar       Date: 07-11-10   Time: 23:50
+# Updated in $/Perl/OlleDB/t
+# Changed the year for one of the smalldatetime tests to test the upper
+# limit.
+#
+# *****************  Version 21  *****************
+# User: Sommar       Date: 07-11-10   Time: 20:11
+# Updated in $/Perl/OlleDB/t
+# Added tests for the new date/time data types.
+#
+# *****************  Version 20  *****************
+# User: Sommar       Date: 07-09-16   Time: 22:43
+# Updated in $/Perl/OlleDB/t
+# Added tests for large UDTs and hierarchyid. Modified the tests for
+# varcharmax somewhat.
+#
+# *****************  Version 19  *****************
+# User: Sommar       Date: 07-09-09   Time: 0:10
+# Updated in $/Perl/OlleDB/t
+# Correct checks for the provider version.
+#
 # *****************  Version 18  *****************
 # User: Sommar       Date: 07-06-18   Time: 0:10
 # Updated in $/Perl/OlleDB/t
@@ -266,6 +319,40 @@ SQLEND
 SQLEND
 }
 
+sub create_rowversion {
+# To test that we handle the name rowversion correctly. The slask thing is
+# only there to make the test scheme work in general.
+   drop_test_objects('rowversion');
+
+   sql(<<SQLEND);
+      CREATE TABLE rowversion(slask     int        NOT NULL,
+                              tstamp    rowversion NOT NULL);
+SQLEND
+
+   sql(<<SQLEND);
+      CREATE TRIGGER rowversion_tri ON rowversion FOR INSERT AS
+      UPDATE rowversion
+      SET    slask = slask - 10
+SQLEND
+
+
+   @tblcols = qw(slask tstamp);
+
+   sql(<<'SQLEND');
+   CREATE PROCEDURE rowversion_sp @slask int OUTPUT,
+                                  @tstamp  rowversion  OUTPUT AS
+
+   DELETE rowversion
+
+   INSERT rowversion(slask) VALUES(@slask)
+
+   SELECT @slask = @slask + 10,
+          @tstamp = substring(@tstamp, 5, 4) + substring(@tstamp, 1, 4)
+
+   SELECT slask, tstamp = @tstamp FROM rowversion
+SQLEND
+}
+
 
 sub create_decimal {
    drop_test_objects('decimal');
@@ -342,6 +429,61 @@ SQLEND
 
    SELECT datetimecol, smalldatecol
    FROM   datetime
+SQLEND
+}
+
+sub create_newdatetime {
+   drop_test_objects('newdatetime');
+
+   sql(<<SQLEND);
+      CREATE TABLE newdatetime(datecol       date              NULL,
+                               time0col      time(0)           NULL,
+                               time7col      time(7)           NULL,
+                               datetime2col  datetime2(3)      NULL,
+                               dtoffset1col  datetimeoffset(1) NULL,
+                               dtoffset7col  datetimeoffset(7) NULL)
+SQLEND
+
+   @tblcols = qw(datecol time0col time7col datetime2col
+                 dtoffset1col dtoffset7col);
+
+   sql(<<SQLEND);
+      CREATE TRIGGER newdatetime_tri ON newdatetime FOR INSERT AS
+      UPDATE newdatetime
+      SET    datecol      = dateadd(DAY, 17, datecol),
+             time0col     = dateadd(HOUR, 1, time0col),
+             time7col     = dateadd(NS,  600, time7col),
+             datetime2col = dateadd(MS, 1, datetime2col),
+             dtoffset1col = dateadd(HOUR, 3, dtoffset1col),
+             dtoffset7col = switchoffset(dtoffset7col, '-04:30')
+SQLEND
+
+   sql(<<'SQLEND');
+   CREATE PROCEDURE newdatetime_sp
+                    @datecol      date              OUTPUT,
+                    @time0col     time(0)           OUTPUT,
+                    @time7col     time(7)           OUTPUT,
+                    @datetime2col datetime2(3)      OUTPUT,
+                    @dtoffset1col datetimeoffset(1) OUTPUT,
+                    @dtoffset7col datetimeoffset(7) OUTPUT AS
+
+   DELETE newdatetime
+
+   INSERT newdatetime(datecol, time0col, time7col, datetime2col,
+                      dtoffset1col, dtoffset7col)
+      VALUES (@datecol, @time0col, @time7col, @datetime2col,
+              @dtoffset1col, @dtoffset7col)
+
+   SELECT @datecol       = dateadd(YEAR, 5, @datecol),
+          @time0col      = dateadd(MINUTE, 14, @time0col),
+          @time7col      = dateadd(MCS, 230, @time7col),
+          @datetime2col  = dateadd(DAY, 2, @datetime2col),
+          @dtoffset1col  = dateadd(MINUTE, 30, @dtoffset1col),
+          @dtoffset7col  = switchoffset(@dtoffset7col, '+08:00');
+
+   SELECT datecol, time0col, time7col, datetime2col,
+          dtoffset1col, dtoffset7col
+   FROM   newdatetime
 SQLEND
 }
 
@@ -465,7 +607,7 @@ SQLEND
 
    @tblcols  = qw(varcol outtype intype);
 
-   sql(<<'SQLEND');
+   my $trigger = <<'SQLEND';
       CREATE TRIGGER sql_variant_tri ON sql_variant FOR INSERT AS
       DECLARE @var      sql_variant,
               @outtype  sysname
@@ -527,11 +669,29 @@ SQLEND
          UPDATE sql_variant SET varcol = convert(varbinary(20), @var)
       ELSE IF @outtype = 'uniqueidentifier'
          UPDATE sql_variant SET varcol = convert(uniqueidentifier, @var)
+SQLEND
+
+   if ($sqlver >= 10) {
+      $trigger .= <<'SQLEND';
+   ELSE IF @outtype = 'datetime2'
+      UPDATE sql_variant SET varcol = dateadd(DAY, -50,
+                                         convert(datetime2(4), @var))
+   ELSE IF @outtype = 'date'
+      UPDATE sql_variant SET varcol = dateadd(DAY, -50,  convert(date, @var))
+   ELSE IF @outtype = 'time'
+      UPDATE sql_variant SET varcol = dateadd(MCS, -50,  convert(time(5), @var))
+   ELSE IF @outtype = 'datetimeoffset'
+      UPDATE sql_variant SET varcol = dateadd(DAY, -50,
+                                         convert(datetimeoffset(0), @var))
+SQLEND
+   }
+   $trigger .= <<'SQLEND';
       ELSE
          UPDATE sql_variant SET varcol = NULL
 SQLEND
+   sql($trigger);
 
-   sql(<<'SQLEND');
+   my $proc = <<'SQLEND';
    CREATE PROCEDURE sql_variant_sp
                     @varcol       sql_variant     OUTPUT,
                     @outtype      sysname,
@@ -584,12 +744,29 @@ SQLEND
       SELECT @varcol = convert(varbinary(20), @varcol)
    ELSE IF @outtype = 'uniqueidentifier'
       SELECT @varcol = convert(uniqueidentifier, @varcol)
+SQLEND
+
+   if ($sqlver >= 10) {
+      $proc .= <<'SQLEND';
+   ELSE IF @outtype = 'datetime2'
+      SELECT @varcol = dateadd(HOUR, 10, convert(datetime2(2), @varcol))
+   ELSE IF @outtype = 'date'
+      SELECT @varcol = dateadd(YEAR, 10, convert(date, @varcol))
+   ELSE IF @outtype = 'time'
+      SELECT @varcol = dateadd(HOUR, 10, convert(time(7), @varcol))
+   ELSE IF @outtype = 'datetimeoffset'
+      SELECT @varcol = dateadd(HOUR, 10, convert(datetimeoffset, @varcol))
+SQLEND
+   }
+
+   $proc .= <<'SQLEND';
    ELSE
       SELECT @varcol = NULL
 
    SELECT varcol, intype, outtype = @outtype
    FROM   sql_variant
 SQLEND
+   sql($proc);
 }
 
 sub create_varcharmax {
@@ -619,8 +796,8 @@ SQLEND
    INSERT varcharmax(varcharcol, nvarcharcol)
       VALUES (@varcharcol, @nvarcharcol)
 
-   SELECT @varcharcol  = upper(@varcharcol),
-          @nvarcharcol = upper(@nvarcharcol)
+   SELECT @varcharcol  = upper(@varcharcol) + 'UPPER',
+          @nvarcharcol = upper(@nvarcharcol) + 'UPPER'
 
    SELECT varcharcol, nvarcharcol
    FROM   varcharmax
@@ -676,7 +853,8 @@ CREATE XML SCHEMA COLLECTION OlleSC AS '
 '
 SQLEND
 
-    create_the_udts($X, 'OlleComplexInteger', 'OllePoint', 'OlleString');
+    create_the_udts($X, 'OlleComplexInteger', 'OllePoint', 'OlleString',
+                        'OlleStringMax');
 
     sql(<<SQLEND);
        CREATE TABLE UDT1 (cmplxcol  OlleComplexInteger NULL,
@@ -723,7 +901,7 @@ SQLEND
        IF @pointcol IS NOT NULL
           SET @pointcol.Transpose()
 
-       SELECT @stringcol = UPPER(@stringcol.ToString())
+       SELECT @stringcol = UPPER(@stringcol.ToString() + 'upper')
 
        IF @xmlcol IS NOT NULL
           SET @xmlcol.modify('replace value of (/root)[1]
@@ -849,6 +1027,126 @@ SQLEND
     sql($spcode);
 }
 
+sub create_hierarchy {
+    my($X, $output) = @_;
+
+    drop_test_objects('hierarchy');
+
+    sql(<<SQLEND);
+       CREATE TABLE hierarchy (hiercol hierarchyid   NULL)
+SQLEND
+
+    @tblcols = qw(hiercol );
+
+    sql(<<SQLEND);
+       CREATE TRIGGER hierarchy_tri ON hierarchy FOR INSERT AS
+       UPDATE hierarchy
+       SET    hiercol  = hiercol.GetDescendant(NULL, NULL)
+SQLEND
+
+   my $spcode = <<'SQLEND';
+       CREATE PROCEDURE hierarchy_sp @hiercol hierarchyid OUTPUT AS
+
+       DELETE hierarchy
+
+       INSERT hierarchy (hiercol) VALUES (@hiercol)
+
+       SELECT @hiercol = @hiercol.GetAncestor(1)
+
+       SELECT hiercol FROM hierarchy
+SQLEND
+
+    if (not $output) {
+       $spcode =~ s/\bOUTPUT\b//g;
+    }
+
+    sql($spcode);
+}
+
+sub create_UDTlarge {
+    my($X, $output) = @_;
+
+    drop_test_objects('UDTlarge');
+
+    sql(<<SQLEND);
+       CREATE TABLE UDTlarge (maxstringcol  OlleStringMax NULL)
+SQLEND
+
+    @tblcols = qw(maxstringcol);
+
+    sql(<<SQLEND);
+       CREATE TRIGGER UDTlarge_tri ON UDTlarge FOR INSERT AS
+       UPDATE UDTlarge
+       SET    maxstringcol = reverse(convert(nvarchar(MAX), maxstringcol))
+SQLEND
+
+   my $spcode = <<'SQLEND';
+       CREATE PROCEDURE UDTlarge_sp @maxstringcol  OlleStringMax OUTPUT AS
+
+       DELETE UDTlarge
+
+       INSERT UDTlarge (maxstringcol)
+          VALUES (@maxstringcol)
+
+       SELECT @maxstringcol = upper(convert(nvarchar(MAX), @maxstringcol) +
+                                    N'UPPER')
+
+       SELECT maxstringcol
+       FROM   UDTlarge
+SQLEND
+
+    if (not $output) {
+       $spcode =~ s/\bOUTPUT\b//g;
+    }
+
+    sql($spcode);
+}
+
+
+sub create_spatial {
+    my($X, $output) = @_;
+
+    drop_test_objects('spatial');
+
+    sql(<<SQLEND);
+       CREATE TABLE spatial (geometrycol  geometry  NULL,
+                             geographycol geography NULL)
+SQLEND
+
+    @tblcols = qw(geometrycol geographycol);
+
+    sql(<<SQLEND);
+       CREATE TRIGGER sptial_tri ON spatial FOR INSERT AS
+       UPDATE spatial
+       SET    geometrycol  = geometrycol.STBuffer(2),
+              geographycol = geographycol.STStartPoint()
+SQLEND
+
+   my $spcode = <<'SQLEND';
+       CREATE PROCEDURE spatial_sp @geometrycol  geometry OUTPUT,
+                                   @geographycol geography OUTPUT AS
+
+       DELETE spatial
+
+       INSERT spatial (geometrycol, geographycol)
+          VALUES (@geometrycol, @geographycol)
+
+       SELECT @geometrycol = @geometrycol.STBuffer(3),
+              @geographycol = @geographycol.STPointN(2)
+
+       SELECT geometrycol, geographycol
+       FROM   spatial
+SQLEND
+
+    if (not $output) {
+       $spcode =~ s/\bOUTPUT\b//g;
+    }
+
+    sql($spcode);
+}
+
+
+
 sub create_xmltest {
     my($X, $output) = @_;
 
@@ -934,15 +1232,28 @@ sub datehash_compare {
     my($val, $expect) = @_;
 
     foreach my $part (keys %$expect) {
-       return 0 if not defined $$val{$part} or $$expect{$part} != $$val{$part};
+       if (not defined $$val{$part} or $$expect{$part} != $$val{$part}) {
+          warn "Expected $part=$$expect{$part}, got $$val{$part}.\n";
+          return 0;
+       }
     }
+
+    foreach my $part (keys %$val) {
+       if (not defined $$expect{$part}) {
+          warn "Unexpected part '$part'\n";
+          return 0;
+       }
+    }
+
     return 1;
 }
 
 
-sub regional_to_ISO {
-  # Help routine to convert date in regional to ISO
+sub ISO_to_regional {
+  # Help routine to convert ISO date to regional.
   my ($date) = @_;
+  $date =~ s/(\s*[-+]\s*\d+\s*:\s*\d+\s*)$//;
+  my $tz = $1;
   open DH, ">datehelperin.txt";
   print DH "$date\n";
   close DH;
@@ -950,10 +1261,12 @@ sub regional_to_ISO {
   open DH, "datehelperout.txt";
   my $line = <DH>;
   close DH;
-  my $ret = (split(/\s*£\s*/, $line))[1];
+  my $ret = (split(/\s*£\s*/, $line))[0];
   $ret =~ s/^\s*|\s*$//g;
+  $ret .= $tz if defined $tz;
   return $ret;
 }
+
 
 sub open_testfile {
    open(TFILE, '>:utf8', TESTFILE);
@@ -1531,19 +1844,19 @@ do_tests($X, 1, 'datetime', 'ISO in/out, nulls');
 
 
 %tbl       = (datetimecol  => '1996-08-13',
-              smalldatecol => '1996-08-13');
+              smalldatecol => '1996-8-13');
 %expectcol = (datetimecol  => '1996-08-30 00:00:00.000',
               smalldatecol => '1996-11-13 00:00');
 %expectpar = (datetimecol  => '1996-08-13 04:00:00.000',
               smalldatecol => '1996-08-13 00:14');
 %expectfile= (datetimecol  => "'1996-08-13'",
-              smalldatecol => "'1996-08-13'");
+              smalldatecol => "'1996-8-13'");
 %test      = (datetimecol  => '%s eq %s',
               smalldatecol => '%s eq %s');
 do_tests($X, 0, 'datetime', 'ISO dates only');
 
 %tbl       = (datetimecol  => '19960813 04:36:24.997',
-              smalldatecol => '19960813 04:36');
+              smalldatecol => '19960813 4:36');
 %expectcol = (datetimecol  => '1996-08-30 04:36:24.997',
               smalldatecol => '1996-11-13 04:36');
 %expectpar = (datetimecol  => '1996-08-13 08:36:24.997',
@@ -1636,34 +1949,20 @@ do_tests($X, 0, 'datetime', 'Hash in dates only');
               smalldatecol => '%s eq %s');
 do_tests($X, 0, 'datetime', 'Float in/ ISO out');
 
-# For regional settings we need a help file.
-{
-   open DH, ">datehelperin.txt";
-   print DH "1996-08-13 04:36:24", "\n", "1996-08-13 04:36", "\n";
-   close DH;
-   system("../helpers/datetesthelper");
-   open DH, "datehelperout.txt";
-   my $line1 = <DH>;
-   my $line2 = <DH>;
-   close DH;
-   my ($regionaldate) = split(/\s*£\s*/, $line1);
-   my ($regionalsmall) = split(/\s*£\s*/, $line2);
-
-   %tbl       = (datetimecol  => $regionaldate,
-                 smalldatecol => $regionalsmall);
-   %expectcol = (datetimecol  => '1996-08-30 04:36:24.000',
-                 smalldatecol => '1996-11-13 04:36');
-   %expectpar = (datetimecol  => '1996-08-13 08:36:24.000',
-                 smalldatecol => '1996-08-13 04:50');
-   %expectfile= (datetimecol  => "'$regionaldate'",
-                 smalldatecol => "'$regionalsmall'");
-   %test      = (datetimecol  => '%s eq %s',
-                 smalldatecol => '%s eq %s');
-   do_tests($X, 0, 'datetime', 'Reg setting long in/ISO out');
-}
+%tbl       = (datetimecol  => ISO_to_regional("1996-08-13 04:36:24"),
+              smalldatecol => ISO_to_regional("1996-08-13 04:36"));
+%expectcol = (datetimecol  => '1996-08-30 04:36:24.000',
+              smalldatecol => '1996-11-13 04:36');
+%expectpar = (datetimecol  => '1996-08-13 08:36:24.000',
+              smalldatecol => '1996-08-13 04:50');
+%expectfile= (datetimecol  => "'$tbl{datetimecol}'",
+              smalldatecol => "'$tbl{smalldatecol}'");
+%test      = (datetimecol  => '%s eq %s',
+              smalldatecol => '%s eq %s');
+do_tests($X, 0, 'datetime', 'Reg setting long in/ISO out');
 
 $X->{DatetimeOption} = DATETIME_STRFMT;
-%tbl       = (datetimecol  => '19960813 04:36:24.997',
+%tbl       = (datetimecol  => '19960813 04:36:24 . 997',
               smalldatecol => '19960813 04:36');
 %expectcol = (datetimecol  => '19960830 04:36:24.997',
               smalldatecol => '19961113 04:36(:00)?');
@@ -1676,12 +1975,12 @@ do_tests($X, 1, 'datetime', 'ISO in/ STRFMT out default');
 
 $X->{DateFormat} = "%d.%m.%y";
 undef $X->{msecFormat};
-%tbl       = (datetimecol  => '19960813 04:36:24.997',
-              smalldatecol => '19960813 04:36');
-%expectcol = (datetimecol  => '30.08.96',
-              smalldatecol => '13.11.96');
-%expectpar = (datetimecol  => '13.08.96',
-              smalldatecol => '13.08.96');
+%tbl       = (datetimecol  => '  19960831 04 :36:24.997',
+              smalldatecol => '19960731 04:36  ');
+%expectcol = (datetimecol  => '17.09.96',
+              smalldatecol => '31.10.96');
+%expectpar = (datetimecol  => '31.08.96',
+              smalldatecol => '31.07.96');
 undef %expectfile;
 %test      = (datetimecol  => '%s eq %s',
               smalldatecol => '%s eq %s');
@@ -1700,18 +1999,20 @@ undef %expectfile;
 do_tests($X, 1, 'datetime', 'ISO in/ FLOAT out');
 
 $X->{DatetimeOption} = DATETIME_HASH;
-%tbl       = (datetimecol  => '19960813 04:36:24.997',
-              smalldatecol => '19960813 04:36');
-%expectcol = (datetimecol  => {Year => 1996, Month => 8, Day => 30,
+%tbl       = (datetimecol  => '19960229 04:36:24.997',
+              smalldatecol => '20000229 04:36');
+%expectcol = (datetimecol  => {Year => 1996, Month => 3, Day => 17,
                                Hour => 4, Minute => 36, Second => 24,
                                Fraction => 997},
-              smalldatecol => {Year => 1996, Month => 11, Day => 13,
-                               Hour => 4, Minute => 36});
-%expectpar = (datetimecol  => {Year => 1996, Month => 8, Day => 13,
+              smalldatecol => {Year => 2000, Month => 5, Day => 29,
+                               Hour => 4, Minute => 36, Second => 0,
+                               Fraction => 0});
+%expectpar = (datetimecol  => {Year => 1996, Month => 2, Day => 29,
                                Hour => 8, Minute => 36, Second => 24,
                                Fraction => 997},
-              smalldatecol => {Year => 1996, Month => 8, Day => 13,
-                               Hour => 4, Minute => 50});
+              smalldatecol => {Year => 2000, Month => 2, Day => 29,
+                               Hour => 4, Minute => 50, Second => 0,
+                               Fraction => 0});
 undef %expectfile;
 %test      = (datetimecol  => 'datehash_compare(%s, %s)',
               smalldatecol => 'datehash_compare(%s, %s)');
@@ -1731,13 +2032,13 @@ do_tests($X, 1, 'datetime', 'NULL in/hash out');
 $X->{DatetimeOption} = DATETIME_REGIONAL;
 %tbl       = (datetimecol  => '19960813 04:36:24',
               smalldatecol => '19960813 04:36');
-%expectcol = (datetimecol  => '1996-08-30 04:36:24',
-              smalldatecol => '1996-11-13 04:36(:00)?');
-%expectpar = (datetimecol  => '1996-08-13 08:36:24',
-              smalldatecol => '1996-08-13 04:50(:00)?');
+%expectcol = (datetimecol  => ISO_to_regional('1996-08-30 04:36:24'),
+              smalldatecol => ISO_to_regional('1996-11-13 04:36'));
+%expectpar = (datetimecol  => ISO_to_regional('1996-08-13 08:36:24'),
+              smalldatecol => ISO_to_regional('1996-08-13 04:50'));
 undef %expectfile;
-%test      = (datetimecol  => 'regional_to_ISO(%s) eq %s',
-              smalldatecol => 'regional_to_ISO(%s) =~ /^%s$/');
+%test      = (datetimecol  => '%s eq %s',
+              smalldatecol => '%s eq %s');
 do_tests($X, 1, 'datetime', 'ISO in/ REGIONAL out');
 
 drop_test_objects('datetime');
@@ -1904,6 +2205,21 @@ else {
 do_tests($X, 1, 'bigint', 'null values');
 
 drop_test_objects('bigint');
+
+#------------------------- ROWVERSION ---------------------------------
+clear_test_data;
+create_rowversion;
+
+$X->{BinaryAsStr} = 1;
+%tbl       = (slask        => 4711,
+              tstamp       => '0x00004711ABCD0009');
+%expectcol = (slask        => 4701,
+              tstamp       => '^[0-9A-F]{16}$');
+%expectpar = (slask        => 4721,
+              tstamp       => 'ABCD000900004711');
+%test      = (slask        => '%s == %s',
+              tstamp       => '%s =~ /%s/');
+do_tests($X, 1, 'rowversion', 'BinaryAsStr = 1');
 
 #---------------------------- SQL_VARIANT ------------------------------
 clear_test_data;
@@ -2199,13 +2515,19 @@ $X->{DecimalAsStr} = 0;
               outtype => '%s eq %s');
 do_tests($X, 0, 'sql_variant', 'money as dec');
 
+# For all tests with date hashes, the type is different depending on
+# the new date/time data types are available.
+my $datetimeintype = 'datetime' .
+                     (($sqlver >= 10 and
+                      $X->{Provider} >= PROVIDER_SQLNCLI10) ? '2' : '');
+
 $X->{DatetimeOption} = DATETIME_ISO;
 %tbl       = (varcol  => {Year => 1996, Month => 10, Day => 21,
                           Hour => 14, Minute => 16, Second => 23},
               intype  => undef,
               outtype => 'datetime');
 %expectcol = (varcol  => '1996-09-01 14:16:23.000',
-              intype  => 'datetime',
+              intype  => $datetimeintype,
               outtype => $tbl{'outtype'});
 %expectpar = (varcol  => '1996-10-22 00:16:23.000',
               intype  => $expectcol{'intype'},
@@ -2223,7 +2545,7 @@ do_tests($X, 0, 'sql_variant', 'datetime hash/iso');
               intype  => undef,
               outtype => 'smalldatetime');
 %expectcol = (varcol  => '1996-09-01 14:16',
-              intype  => 'datetime',
+              intype  => $datetimeintype,
               outtype => $tbl{'outtype'});
 %expectpar = (varcol  => '1996-10-22 00:16',
               intype  => $expectcol{'intype'},
@@ -2238,19 +2560,19 @@ do_tests($X, 0, 'sql_variant', 'smalldatetime hash/iso');
 
 $X->{DatetimeOption} = DATETIME_REGIONAL;
 %tbl       = (varcol  => {Year => 1996, Month => 10, Day => 21,
-                          Hour => 14, Minute => 16, Second => 23},
+                          Second => 23},
               intype  => undef,
               outtype => 'datetime');
-%expectcol = (varcol  => '1996-09-01 14:16:23',
-              intype  => 'datetime',
+%expectcol = (varcol  => ISO_to_regional('1996-09-01 00:00:23'),
+              intype  => $datetimeintype,
               outtype => $tbl{'outtype'});
-%expectpar = (varcol  => '1996-10-22 00:16:23',
+%expectpar = (varcol  => ISO_to_regional('1996-10-21 10:00:23'),
               intype  => $expectcol{'intype'},
               outtype => $tbl{'outtype'});
 %expectfile= (varcol  => "N'$tbl{'varcol'}'",
               intype  => 'NULL',
               outtype => "N'$tbl{'outtype'}'");
-%test      = (varcol  => 'regional_to_ISO(%s) eq %s',
+%test      = (varcol  => '%s eq %s',
               intype  => '%s eq %s',
               outtype => '%s eq %s');
 do_tests($X, 0, 'sql_variant', 'datetime hash/regional');
@@ -2275,15 +2597,15 @@ $X->{DatetimeOption} = DATETIME_HASH;
               outtype => '%s eq %s');
 do_tests($X, 0, 'sql_variant', 'datetime iso/hash');
 
-%tbl       = (varcol  => '19961021 14:16',
+%tbl       = (varcol  => '20790521 14:16',
               intype  => undef,
               outtype => 'smalldatetime');
-%expectcol = (varcol  => {Year => 1996, Month => 9, Day => 1, Hour => 14,
-                          Minute => 16},
+%expectcol = (varcol  => {Year => 2079, Month => 4, Day => 1, Hour => 14,
+                          Minute => 16, Second => 0, Fraction => 0},
               intype  => 'varchar',
               outtype => $tbl{'outtype'});
-%expectpar = (varcol  => {Year => 1996, Month => 10, Day => 22, Hour => 0,
-                          Minute => 16},
+%expectpar = (varcol  => {Year => 2079, Month => 5, Day => 22, Hour => 0,
+                          Minute => 16, Second => 0, Fraction => 0},
               intype  => $expectcol{'intype'},
               outtype => $tbl{'outtype'});
 %expectfile= (varcol  => "N'$tbl{'varcol'}'",
@@ -2467,6 +2789,327 @@ do_tests($X, 0, 'sql_variant', 'NULL out');
               outtype => '%s eq %s');
 do_tests($X, 0, 'sql_variant', 'NULL in/out');
 
+# New data types in SQL 2008 comes here.
+if ($sqlver >= 10) {
+   $X->{DatetimeOption} = DATETIME_ISO;
+   %tbl       = (varcol  => {Year => 1996, Month => 10, Day => 21},
+                 intype  => undef,
+                 outtype => 'datetime2');
+   %expectcol = (varcol  => '1996-09-01 00:00:00.0000',
+                 intype  => ($X->{Provider} >= PROVIDER_SQLNCLI10 ?
+                            'date' : 'datetime'),
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => '1996-10-21 10:00:00.00',
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s eq %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'date hash/ datetime2 iso');
+
+   %tbl       = (varcol  => {Year => 1996, Month => 10, Day => 21,
+                             Hour => 14, Minute => 16, Second => 23,
+                             Fraction => 13.23, TZHour => 9},
+                 intype  => undef,
+                 outtype => 'datetimeoffset');
+   if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+      %expectcol = (varcol  => '1996-09-01 14:16:23 +09:00',
+                    intype  => 'datetimeoffset',
+                    outtype => $tbl{'outtype'});
+      %expectpar = (varcol  => '1996-10-22 00:16:23.0132300 +09:00',
+                    intype  => $expectcol{'intype'},
+                    outtype => $tbl{'outtype'});
+   }
+   else {
+      %expectcol = (varcol  => '1996-09-01 14:16:23 +00:00',
+                    intype  => 'datetime',
+                    outtype => $tbl{'outtype'});
+      %expectpar = (varcol  => '1996-10-22 00:16:23.0130000 +00:00',
+                    intype  => $expectcol{'intype'},
+                    outtype => $tbl{'outtype'});
+   }
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s eq %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'datetimeoffset hash/iso');
+
+   $X->{DatetimeOption} = DATETIME_REGIONAL;
+   %tbl       = (varcol  => {Hour => 14, Minute => 16, Second => 23},
+                 intype  => undef,
+                 outtype => 'datetime');
+   if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+      %expectcol = (varcol  => ISO_to_regional('1899-11-12 14:16:23'),
+                    intype  => 'time',
+                    outtype => $tbl{'outtype'});
+      %expectpar = (varcol  => ISO_to_regional('1900-01-02 00:16:23'),
+                    intype  => $expectcol{'intype'},
+                    outtype => $tbl{'outtype'});
+      %test      = (varcol  => '%s eq %s',
+                    intype  => '%s eq %s',
+                    outtype => '%s eq %s');
+   }
+   else {
+      $tbl{'outtype'} = 'varchar';
+      %expectcol = (varcol  => '\(HSAH$',
+                    intype  => 'varchar',
+                    outtype => $tbl{'outtype'});
+      %expectpar = (varcol  => '^HASH\(',
+                    intype  => $expectcol{'intype'},
+                    outtype => $tbl{'outtype'});
+      %test      = (varcol  => '%s =~ %s',
+                    intype  => '%s eq %s',
+                    outtype => '%s eq %s');
+   }
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   do_tests($X, 0, 'sql_variant', 'time hash/datetime regional');
+
+   $X->{DatetimeOption} = DATETIME_HASH;
+   %tbl       = (varcol  => '19961021',
+                 intype  => undef,
+                 outtype => 'date');
+   if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+      %expectcol = (varcol  => {Year => 1996, Month => 9, Day => 1},
+                    intype  => 'varchar',
+                    outtype => $tbl{'outtype'});
+      %expectpar = (varcol  => {Year => 2006, Month => 10, Day => 21},
+                    intype  => $expectcol{'intype'},
+                    outtype => $tbl{'outtype'});
+   }
+   else {
+      %expectcol = (varcol  => '1996-09-01',
+                    intype  => 'varchar',
+                    outtype => $tbl{'outtype'});
+      %expectpar = (varcol  => '2006-10-21',
+                    intype  => $expectcol{'intype'},
+                    outtype => $tbl{'outtype'});
+   }
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+      %test      = (varcol  => 'datehash_compare(%s, %s)',
+                    intype  => '%s eq %s',
+                    outtype => '%s eq %s');
+   }
+   else {
+      %test      = (varcol  => '%s eq %s',
+                    intype  => '%s eq %s',
+                    outtype => '%s eq %s');
+   }
+   do_tests($X, 0, 'sql_variant', 'date iso/hash');
+
+   $X->{TZOffset} = '+08:00';
+   %tbl       = (varcol  => '19961021 14:16',
+                 intype  => undef,
+                 outtype => 'datetimeoffset');
+   if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+      %expectcol = (varcol  => {Year => 1996, Month => 9, Day => 1, Hour => 22,
+                                Minute => 16, Second => 0, Fraction => 0},
+                    intype  => 'varchar',
+                    outtype => $tbl{'outtype'});
+      %expectpar = (varcol  => {Year => 1996, Month => 10, Day => 22, Hour => 8,
+                                Minute => 16, Second => 0, Fraction => 0},
+                    intype  => $expectcol{'intype'},
+                    outtype => $tbl{'outtype'});
+   }
+   else {
+      %expectcol = (varcol  => '1996-09-01 14:16:00 +00:00',
+                    intype  => 'varchar',
+                    outtype => $tbl{'outtype'});
+      %expectpar = (varcol  => '1996-10-22 00:16:00.0000000 +00:00',
+                    intype  => $expectcol{'intype'},
+                    outtype => $tbl{'outtype'});
+   }
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+      %test      = (varcol  => 'datehash_compare(%s, %s)',
+                    intype  => '%s eq %s',
+                    outtype => '%s eq %s');
+   }
+   else {
+      %test      = (varcol  => '%s eq %s',
+                    intype  => '%s eq %s',
+                    outtype => '%s eq %s');
+   }
+   do_tests($X, 0, 'sql_variant', 'datetimeoffset (tzoffset) iso/hash');
+   undef $X->{TZOffset};
+
+   $X->{DatetimeOption} = DATETIME_ISO;
+   %tbl       = (varcol  => '14:16:20.7654321',
+                 intype  => undef,
+                 outtype => 'time');
+   %expectcol = (varcol  => '14:16:20.76538',
+                 intype  => 'varchar',
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => '00:16:20.7654321',
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s eq %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'time iso');
+}
+else {
+   # For lower versions, test that hashes always interpreted as datetime.
+   $X->{DatetimeOption} = DATETIME_ISO;
+   %tbl       = (varcol  => {Year => 1996, Month => 10, Day => 21},
+                 intype  => undef,
+                 outtype => 'smalldatetime');
+   %expectcol = (varcol  => '1996-09-01 00:00',
+                 intype  => 'datetime',
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => '1996-10-21 10:00',
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s eq %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'date hash pre-SQL 2008');
+
+   %tbl       = (varcol  => {Year => 1996, Month => 10, Day => 21,
+                             Hour => 14, Minute => 16, Second => 23,
+                             Fraction => 12.23, TZHour => 9},
+                 intype  => undef,
+                 outtype => 'smalldatetime');
+   %expectcol = (varcol  => '1996-09-01 14:16',
+                 intype  => 'datetime',
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => '1996-10-22 00:16',
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s eq %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'datetimeoffset hash pre-SQL 2008');
+
+   $X->{DatetimeOption} = DATETIME_REGIONAL;
+   %tbl       = (varcol  => {Year => 1999, Month => 12, Day => 30,
+                             Hour => 14, Minute => 16, Second => 23},
+                 intype  => undef,
+                 outtype => 'datetime');
+   %expectcol = (varcol  => ISO_to_regional('1999-11-10 14:16:23'),
+                 intype  => 'datetime',
+                 outtype => $tbl{'outtype'});
+   %expectpar = (varcol  => ISO_to_regional('1999-12-31 00:16:23'),
+                 intype  => $expectcol{'intype'},
+                 outtype => $tbl{'outtype'});
+   %expectfile= (varcol  => "N'$tbl{'varcol'}'",
+                 intype  => 'NULL',
+                 outtype => "N'$tbl{'outtype'}'");
+   %test      = (varcol  => '%s eq %s',
+                 intype  => '%s eq %s',
+                 outtype => '%s eq %s');
+   do_tests($X, 0, 'sql_variant', 'time hash pre-SQL 2008');
+}
+
+# Finally some tests with incomplete datetime hases.
+%tbl       = (varcol  => {Year => 1999, Month => 12,
+                          Hour => 14, Minute => 16, Second => 23},
+              intype  => undef,
+              outtype => 'varchar');
+%expectcol = (varcol  => '\(HSAH$',
+              intype  => 'varchar',
+              outtype => $tbl{'outtype'});
+%expectpar = (varcol  => '^HASH\(',
+              intype  => $expectcol{'intype'},
+              outtype => $tbl{'outtype'});
+%expectfile= (varcol  => "N'$tbl{'varcol'}'",
+              intype  => 'NULL',
+              outtype => "N'$tbl{'outtype'}'");
+%test      = (varcol  => '%s =~ %s',
+              intype  => '%s eq %s',
+              outtype => '%s eq %s');
+do_tests($X, 0, 'sql_variant', 'Incomplete date-time hash1');
+
+%tbl       = (varcol  => {Year => 1999, Day => 12,
+                          Hour => 14, Minute => 16, Second => 23},
+              intype  => undef,
+              outtype => 'varchar');
+%expectcol = (varcol  => '\(HSAH$',
+              intype  => 'varchar',
+              outtype => $tbl{'outtype'});
+%expectpar = (varcol  => '^HASH\(',
+              intype  => $expectcol{'intype'},
+              outtype => $tbl{'outtype'});
+%expectfile= (varcol  => "N'$tbl{'varcol'}'",
+              intype  => 'NULL',
+              outtype => "N'$tbl{'outtype'}'");
+%test      = (varcol  => '%s =~ %s',
+              intype  => '%s eq %s',
+              outtype => '%s eq %s');
+do_tests($X, 0, 'sql_variant', 'Incomplete date-time hash2');
+
+%tbl       = (varcol  => {Month => 12, Day => 12},
+              intype  => undef,
+              outtype => 'varchar');
+%expectcol = (varcol  => '\(HSAH$',
+              intype  => 'varchar',
+              outtype => $tbl{'outtype'});
+%expectpar = (varcol  => '^HASH\(',
+              intype  => $expectcol{'intype'},
+              outtype => $tbl{'outtype'});
+%expectfile= (varcol  => "N'$tbl{'varcol'}'",
+              intype  => 'NULL',
+              outtype => "N'$tbl{'outtype'}'");
+%test      = (varcol  => '%s =~ %s',
+              intype  => '%s eq %s',
+              outtype => '%s eq %s');
+do_tests($X, 0, 'sql_variant', 'Incomplete date-time hash3');
+
+%tbl       = (varcol  => {Hour => 12, Second => 12},
+              intype  => undef,
+              outtype => 'varchar');
+%expectcol = (varcol  => '\(HSAH$',
+              intype  => 'varchar',
+              outtype => $tbl{'outtype'});
+%expectpar = (varcol  => '^HASH\(',
+              intype  => $expectcol{'intype'},
+              outtype => $tbl{'outtype'});
+%expectfile= (varcol  => "N'$tbl{'varcol'}'",
+              intype  => 'NULL',
+              outtype => "N'$tbl{'outtype'}'");
+%test      = (varcol  => '%s =~ %s',
+              intype  => '%s eq %s',
+              outtype => '%s eq %s');
+do_tests($X, 0, 'sql_variant', 'Incomplete date-time hash4');
+
+%tbl       = (varcol  => {Minute => 12, Second => 12},
+              intype  => undef,
+              outtype => 'varchar');
+%expectcol = (varcol  => '\(HSAH$',
+              intype  => 'varchar',
+              outtype => $tbl{'outtype'});
+%expectpar = (varcol  => '^HASH\(',
+              intype  => $expectcol{'intype'},
+              outtype => $tbl{'outtype'});
+%expectfile= (varcol  => "N'$tbl{'varcol'}'",
+              intype  => 'NULL',
+              outtype => "N'$tbl{'outtype'}'");
+%test      = (varcol  => '%s =~ %s',
+              intype  => '%s eq %s',
+              outtype => '%s eq %s');
+do_tests($X, 0, 'sql_variant', 'Incomplete date-time hash5');
+
+
 drop_test_objects('sql_variant');
 
 #-------------------------- (N)VARCHAR MAX -----------------------------
@@ -2480,11 +3123,11 @@ create_varcharmax;
 # as (8000) or (4000).
 %tbl       = (varcharcol   => 'Hello Dolly! ' x 2000,
               nvarcharcol  => "21 pa\x{017A}dziernika 2004 " x 2000);
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectcol = (varcharcol  => ' !ylloD olleH' x 2000,
                  nvarcharcol => " 4002 akinreizd\x{017A}ap 12" x 2000);
-   %expectpar = (varcharcol  => 'HELLO DOLLY! ' x 2000,
-                 nvarcharcol => "21 PA\x{0179}DZIERNIKA 2004 " x 2000);
+   %expectpar = (varcharcol  => 'HELLO DOLLY! ' x 2000 . 'UPPER',
+                 nvarcharcol => "21 PA\x{0179}DZIERNIKA 2004 " x 2000 . 'UPPER');
    %test      = (varcharcol  => '%s eq %s',
                  nvarcharcol => '%s eq %s');
 }
@@ -2507,8 +3150,8 @@ do_tests($X, 1, 'varcharmax');
               nvarcharcol  => '');
 %expectcol = (varcharcol   => '',
               nvarcharcol  => '');
-%expectpar = (varcharcol   => '',
-              nvarcharcol  => '');
+%expectpar = (varcharcol   => 'UPPER',
+              nvarcharcol  => 'UPPER');
 %test      = (varcharcol   => '%s eq %s',
               nvarcharcol  => '%s eq %s');
 do_tests($X, 1, 'varcharmax', 'empty string');
@@ -2518,7 +3161,7 @@ do_tests($X, 1, 'varcharmax', 'empty string');
 %expectcol = (varcharcol   => undef,
               nvarcharcol  => '   ');
 %expectpar = (varcharcol   => undef,
-              nvarcharcol  => '   ');
+              nvarcharcol  => '   ' . 'UPPER');
 %test      = (varcharcol   => 'not defined %s',
               nvarcharcol  => '%s eq %s');
 do_tests($X, 1, 'varcharmax', 'null');
@@ -2534,7 +3177,7 @@ create_varbinmax;
 # as (8000) or (4000).
 $X->{BinaryAsStr} = 1;
 %tbl       = (varbincol    => '47119660AB0102' x 10000);
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectcol = (varbincol    => '0201AB60961147' x 10000);
    %expectpar = (varbincol    => '47119660AB0102' x 20000);
    %test      = (varbincol    => '%s eq %s');
@@ -2555,7 +3198,7 @@ do_tests($X, 1, 'varbinmax', 'empty string');
 
 $X->{BinaryAsStr} = 'x';
 %tbl       = (varbincol    => '0x' . '47119660AB0102' x 10000);
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectcol = (varbincol    => '0x' . '0201AB60961147' x 10000);
    %expectpar = (varbincol    => '0x' . '47119660AB0102' x 20000);
    %test      = (varbincol    => '%s eq %s');
@@ -2577,7 +3220,7 @@ do_tests($X, 1, 'varbinmax', 'empty 0x');
 
 $X->{BinaryAsStr} = 0;
 %tbl       = (varbincol    => '47119660AB0102' x 10000);
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectcol = (varbincol    => '2010BA06691174' x 10000);
    %expectpar = (varbincol    => '47119660AB0102' x 20000);
    %test      = (varbincol    => '%s eq %s');
@@ -2607,6 +3250,7 @@ drop_test_objects('varbinmax');
 
 #------------------------------- UDT -----------------------------------
 # We cannot do UDT tests, if the CLR is not enabled on the server.
+udt:
 my $clr_enabled = sql_one(<<SQLEND, Win32::SqlServer::SCALAR);
 SELECT value
 FROM   sys.configurations
@@ -2619,7 +3263,7 @@ $X->sql("SET ANSI_WARNINGS ON");
 goto no_udt if not $clr_enabled;
 
 clear_test_data;
-create_UDT1($X, $X->{Provider} == PROVIDER_SQLNCLI);
+create_UDT1($X, $X->{Provider} >= PROVIDER_SQLNCLI);
 
 $X->{BinaryAsStr} = 'x';
 %tbl       = (cmplxcol  => '0x800000058000000700',
@@ -2630,10 +3274,10 @@ $X->{BinaryAsStr} = 'x';
               pointcol  => '0x0180000012800000088000000A',
               stringcol => '0x0005000000657373694E',
               xmlcol    => '<root>input trigger text</root>');
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectpar = (cmplxcol  => '0x8000000A8000000E00',
                  pointcol  => '0x01800000048000000580000009',
-                 stringcol => '0x00050000004E49535345',
+                 stringcol => '0x000A0000004E495353455550504552',
                  xmlcol    => '<root>input procedure text</root>');
 }
 else {
@@ -2654,7 +3298,7 @@ $X->{BinaryAsStr} = 1;
               pointcol  => '0180000012800000088000000A',
               stringcol => '00A00F0000' . '657373694E' x 800,
               xmlcol    => '<root>input trigger text</root>');
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectpar = (cmplxcol  => '8000000A8000000E00',
                  pointcol  => '01800000048000000580000009',
                  stringcol => '00A00F0000' . '4E49535345' x 800,
@@ -2678,10 +3322,10 @@ $X->{BinaryAsStr} = 0;
               pointcol  => pack('H*', '0180000012800000088000000A'),
               stringcol => pack('H*', '0005000000657373694E'),
               xmlcol    => '<root>input trigger text</root>');
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectpar = (cmplxcol  => pack('H*', '8000000A8000000E00'),
                  pointcol  => pack('H*', '01800000048000000580000009'),
-                 stringcol => pack('H*', '00050000004E49535345'),
+                 stringcol => pack('H*', '000A0000004E495353455550504552'),
                  xmlcol    => '<root>input procedure text</root>');
 }
 else {
@@ -2702,7 +3346,7 @@ do_tests($X, 1, 'UDT1', 'BinaryAsBinary');
               pointcol  => undef,
               stringcol => undef,
               xmlcol    => undef);
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectpar = (cmplxcol  => undef,
                  pointcol  => undef,
                  stringcol => undef,
@@ -2719,7 +3363,7 @@ do_tests($X, 1, 'UDT1', '0x, NULL');
 
 
 clear_test_data;
-create_UDT2($X, $X->{Provider} == PROVIDER_SQLNCLI);
+create_UDT2($X, $X->{Provider} >= PROVIDER_SQLNCLI);
 
 $X->{BinaryAsStr} = 'x';
 %tbl       = (cmplxcol  => '0x800000058000000700',
@@ -2728,7 +3372,7 @@ $X->{BinaryAsStr} = 'x';
 %expectcol = (cmplxcol  => '0x800000078000000500',
               intcol    => 30,
               stringcol => '0x0000000000');
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectpar = (cmplxcol  => '0x8000000A8000000E00',
                  intcol    => 106,
                  stringcol => '0x0000000000');
@@ -2743,7 +3387,7 @@ else {
 do_tests($X, 1, 'UDT2', 'Bin0x');
 
 clear_test_data;
-create_UDT3($X, $X->{Provider} == PROVIDER_SQLNCLI);
+create_UDT3($X, $X->{Provider} >= PROVIDER_SQLNCLI);
 $X->{BinaryAsStr} = 1;
 %tbl       = (xmlcol    => '<TEST>Lantliv</TEST>',
               pointcol  => '0x01800000098000000480000005',
@@ -2751,7 +3395,7 @@ $X->{BinaryAsStr} = 1;
 %expectcol = (xmlcol    => '<TEST>Lantliv trigger text</TEST>',
               pointcol  => '0180000012800000088000000A',
               nollcol   => 19);
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectpar = (xmlcol    => '<TEST>Lantliv procedure text</TEST>',
                  pointcol  => '01800000048000000580000009',
                  nollcol   => -9);
@@ -2762,11 +3406,63 @@ else {
 %test      = (xmlcol    => '%s eq %s',
               pointcol  => '%s eq %s',
               nollcol   => 'abs(%s - %s) < 1E-9');
-do_tests($X, 1, 'UDT3', 'Bin0x');
+do_tests($X, 1, 'UDT3', 'Bin');
+
+# We now test large UDTs.
+goto drop_udts if $sqlver < 10;
+
+# Skip testing large UDTs with SQLOLEDB since they don't go together at all.
+goto drop_udts if $X->{Provider} == PROVIDER_SQLOLEDB;
+
+clear_test_data;
+create_UDTlarge($X, $X->{Provider} >= PROVIDER_SQLNCLI10);
+
+%tbl       = (maxstringcol => '0x000D00000052C3A46B736DC3B67267C3A573');
+%expectcol = (maxstringcol =>  '000D00000073C3A56772C3B66D736BC3A452');
+if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+  %expectpar = (maxstringcol => '001200000052C3844B534DC3965247C385535550504552');
+}
+else {
+   %expectpar = ();
+}
+%test      = (maxstringcol  => '%s eq %s');
+do_tests($X, 1, 'UDTlarge', 'Short');
+
+%tbl       = (maxstringcol => '0x00C8320000' .
+                              ('52C3A46B736DC3B67267C3A573' x 1000));
+%expectcol = (maxstringcol =>  '00C8320000' .
+                              ('73C3A56772C3B66D736BC3A452' x 1000));
+if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+  %expectpar = (maxstringcol => '00CD320000' .
+                               ('52C3844B534DC3965247C38553' x 1000) .
+                               '5550504552');
+}
+else {
+   %expectpar = ();
+}
+%test      = (maxstringcol  => '%s eq %s');
+do_tests($X, 1, 'UDTlarge', 'Long strings');
+
+
+%tbl       = (maxstringcol => undef);
+%expectcol = (maxstringcol =>  undef);
+if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+  %expectpar = (maxstringcol => undef);
+}
+else {
+   %expectpar = ();
+}
+%test      = (maxstringcol  => 'not defined %s');
+do_tests($X, 1, 'UDTlarge', 'NULL');
+
+
+drop_udts:
 
 drop_test_objects('UDT1');
 drop_test_objects('UDT2');
 drop_test_objects('UDT3');
+drop_test_objects('UDTlarge');
+
     sql(<<SQLEND);
     IF EXISTS (SELECT * FROM sys.xml_schema_collections WHERE name = 'OlleSC')
             DROP XML SCHEMA COLLECTION OlleSC
@@ -2780,7 +3476,7 @@ binmode(STDOUT, ':utf8:');
 binmode(STDERR, ':utf8:');
 
 clear_test_data;
-create_xmltest($X, $X->{Provider} == PROVIDER_SQLNCLI);
+create_xmltest($X, $X->{Provider} >= PROVIDER_SQLNCLI);
 
 %tbl       = (xmlcol    => "<R\x{00C4}KSM\x{00D6}RG\x{00C5}S>" .
                            "21 pa\x{017A}dziernika 2004 " x 2000 .
@@ -2799,7 +3495,7 @@ create_xmltest($X, $X->{Provider} == PROVIDER_SQLNCLI);
                            x 1000 . '</TÄST>',
               nvarcol   => $tbl{'xmlcol'},
               nvarsccol => "Vi är alltid bäst i räksmörgåstäster! " x 1500);
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectpar = (xmlcol   => '<row><Lågland>' .
                              "21 pa\x{017A}dziernika 2004 " x 2000 .
                              '</Lågland></row>',
@@ -2837,7 +3533,7 @@ do_tests($X, 1, 'xmltest');
                            "21 pa\x{017A}dziernika 2004 " .
                            "</R\x{00C4}KSM\x{00D6}RG\x{00C5}S>",
               nvarsccol => "Vi är alltid bäst i räksmörgåstäster! ");
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectpar = (xmlcol   => '<row><Lågland>( |\&\#x20;){3,3}</Lågland></row>',
                  xmlsccol => '<TÄST>UNDEF</TÄST>',
                  nvarcol  => "21 pa\x{017A}dziernika 2004 ",
@@ -2863,7 +3559,7 @@ do_tests($X, 1, 'xmltest', 'take two');
               xmlsccol  => '<TÄST/>',
               nvarcol   => undef,
               nvarsccol => undef);
-if ($X->{Provider} == PROVIDER_SQLNCLI) {
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
    %expectpar = (xmlcol   => '<row\s*/\s*>',
                  xmlsccol => '<TÄST/>',
                  nvarcol  => undef,
@@ -2885,6 +3581,673 @@ drop_test_objects('xmltest');
             DROP XML SCHEMA COLLECTION [Olles SC]
 SQLEND
 
+#-------------------------- NEW DATE/TIME DATA TYPES -------------------
+# From here it's only SQL 2008 and later.
+goto finally if $sqlver < 10;
+
+clear_test_data;
+create_newdatetime($X);
+
+# Get local timezone.
+my $localtz;
+{ my $now = time;
+  my @localtime = localtime($now);
+  my @UTC = gmtime($now);
+  my $UTC_minutes = $UTC[2] * 60 + $UTC[1];
+  my $localminutes = $localtime[2] * 60 + $localtime[1];
+  my $offsetminutes = $localminutes - $UTC_minutes;
+  my $localday = $localtime[5]*10000 + $localtime[4]*100 + $localtime[3];
+  my $UTCday = $UTC[5]*10000 + $UTC[4]*100 + $UTC[3];
+  if ($localday < $UTCday) {
+     $offsetminutes -= 24 * 60;
+  }
+  elsif ($localday > $UTCday) {
+     $offsetminutes += 24 * 60;
+  }
+  my $hour   = int($offsetminutes / 60);
+  my $minute = $offsetminutes % 60;
+  if ($hour < 0 and $minute != 0) {
+        $minute = 60 - $minute;
+  }
+  $localtz = sprintf("%+2.2d:%2.2d", $hour, $minute);
+}
+
+$X->{DatetimeOption} = DATETIME_ISO;
+%tbl       = (datecol       => '1996-08-13 17:36:24.998',
+              time0col      => '1996-08-13 04:36:24.998',
+              time7col      => '1996-08-13 04:36:24.998',
+              datetime2col  => '1996-08-13 04:36:24.998   ',
+              dtoffset1col  => '1996-08-13 04:36:24. 998',
+              dtoffset7col  => '1996-08-13T04:36:24.998');
+%expectcol = (datecol       => '1996-08-30',
+              time0col      => '05:36:24',
+              time7col      => '04:36:24.9980006',
+              datetime2col  => '1996-08-13 04:36:24.999',
+              dtoffset1col  => '1996-08-13 07:36:24.9 +00:00',
+              dtoffset7col  => '1996-08-13 00:06:24.9980000 -04:30');
+%expectpar = (datecol       => '2001-08-13',
+              time0col      => '04:50:24',
+              time7col      => '04:36:24.9982300',
+              datetime2col  => '1996-08-15 04:36:24.998',
+              dtoffset1col  => '1996-08-13 05:06:24.9 +00:00',
+              dtoffset7col  => '1996-08-13 12:36:24.9980000 +08:00');
+if ($X->{Provider} < PROVIDER_SQLNCLI10) {
+   # Due to rounding issues we get different results with legacy providers
+   # in some cases.
+   $expectcol{'time0col'} = '05:36:25';
+   $expectpar{'time0col'} = '04:50:25';
+   $expectcol{'dtoffset1col'} = '1996-08-13 07:36:25.0 +00:00';
+   $expectpar{'dtoffset1col'} = '1996-08-13 05:06:25.0 +00:00';
+}
+# Need different test for file, because SQL Server rounds, but we truncate.
+%expectfile = (datecol      => "'1996-08-13 17:36:24.998'",
+              time0col      => "'1996-08-13 04:36:24.998'",
+              time7col      => "'1996-08-13 04:36:24.998'",
+              datetime2col  => "'1996-08-13 04:36:24.998   '",
+              dtoffset1col  => "'1996-08-13 04:36:24. 998'",
+              dtoffset7col  => "'1996-08-13T04:36:24.998'");
+%test      = (datecol      => '%s eq %s',
+              time0col     => '%s eq %s',
+              time7col     => '%s eq %s',
+              datetime2col => '%s eq %s',
+              dtoffset1col => '%s eq %s',
+              dtoffset7col => '%s eq %s');
+do_tests($X, 0, 'newdatetime', 'ISO in/out extra');
+
+$X->{DatetimeOption} = DATETIME_ISO;
+%tbl       = (datecol       => '   19960813',
+              time0col      => '04:36:24 + 02 :00   ',
+              time7col      => '4:36:24.9999994 + 02: 00',
+              datetime2col  => '1996-8-1 04:36:24.998',
+              dtoffset1col  => '1996-08-13 04:36:24.6 -03:30  ',
+              dtoffset7col  => '19960813 04:36:24.1234567+03:00');
+%expectcol = (datecol       => '1996-08-30',
+              time0col      => '05:36:24',
+              time7col      => '04:36:25.0000000',
+              datetime2col  => '1996-08-01 04:36:24.999',
+              dtoffset1col  => '1996-08-13 07:36:24.6 -03:30',
+              dtoffset7col  => '1996-08-12 21:06:24.1234567 -04:30');
+%expectpar = (datecol       => '2001-08-13',
+              time0col      => '04:50:24',
+              time7col      => '04:36:25.0002294',
+              datetime2col  => '1996-08-03 04:36:24.998',
+              dtoffset1col  => '1996-08-13 05:06:24.6 -03:30',
+              dtoffset7col  => '1996-08-13 09:36:24.1234567 +08:00');
+# Because there is no rounding, we can run the log file. For these types,
+# SQL server never misinterprets YYYY-MM-DD.
+undef %expectfile;
+%test      = (datecol      => '%s eq %s',
+              time0col     => '%s eq %s',
+              time7col     => '%s eq %s',
+              datetime2col => '%s eq %s',
+              dtoffset1col => '%s eq %s',
+              dtoffset7col => '%s eq %s');
+do_tests($X, 1, 'newdatetime', 'ISO in/out offset');
+
+$X->{DatetimeOption} = DATETIME_ISO;
+%tbl       = (datecol       => undef,
+              time0col      => undef,
+              time7col      => undef,
+              datetime2col  => undef,
+              dtoffset1col  => undef,
+              dtoffset7col  => undef);
+%expectcol = (datecol       => undef,
+              time0col      => undef,
+              time7col      => undef,
+              datetime2col  => undef,
+              dtoffset1col  => undef,
+              dtoffset7col  => undef);
+%expectpar = (datecol       => undef,
+              time0col      => undef,
+              time7col      => undef,
+              datetime2col  => undef,
+              dtoffset1col  => undef,
+              dtoffset7col  => undef);
+%test      = (datecol      => 'not defined %s',
+              time0col     => 'not defined %s',
+              time7col     => 'not defined %s',
+              datetime2col => 'not defined %s',
+              dtoffset1col => 'not defined %s',
+              dtoffset7col => 'not defined %s');
+do_tests($X, 1, 'newdatetime', 'ISO in/out all NULL');
+
+
+# With an older provider get off here. We have done tests with ISO, which
+# is the only that works anyway.
+goto done_newdatetime if $X->{Provider} < PROVIDER_SQLNCLI10;
+
+$X->{TZOffset} = 'local';
+%tbl       = (datecol       => '    0004-02-26',
+              time0col      => '23: 12   :   12  ',
+              time7col      => '14:36',
+              datetime2col  => '1996-8-1   4:6:4',
+              dtoffset1col  => "04:36:24 $localtz",
+              dtoffset7col  => '1996-08-13 04:36:24.1234567');
+%expectcol = (datecol       => '0004-03-14',
+              time0col      => '00:12:12',
+              time7col      => '14:36:00.0000006',
+              datetime2col  => '1996-08-01 04:06:04.001',
+              dtoffset1col  => '1899-12-30 07:36:24.0',
+              dtoffset7col  => '1996-08-13 04:36:24.1234567');
+%expectpar = (datecol       => '0009-02-26',
+              time0col      => '23:26:12',
+              time7col      => '14:36:00.0002300',
+              datetime2col  => '1996-08-03 04:06:04.000',
+              dtoffset1col  => '1899-12-30 05:06:24.0',
+              dtoffset7col  => '1996-08-13 04:36:24.1234567');
+# Can't run the log file, since the TZOffset feature does not work with
+# the log file.
+%expectfile = (datecol      => "'$tbl{'datecol'}'",
+              time0col      => "'$tbl{'time0col'}'",
+              time7col      => "'$tbl{'time7col'}'",
+              datetime2col  => "'$tbl{'datetime2col'}'",
+              dtoffset1col  => "'$tbl{'dtoffset1col'}'",
+              dtoffset7col  => "'$tbl{'dtoffset7col'}'");
+%test      = (datecol      => '%s eq %s',
+              time0col     => '%s eq %s',
+              time7col     => '%s eq %s',
+              datetime2col => '%s eq %s',
+              dtoffset1col => '%s eq %s',
+              dtoffset7col => '%s eq %s');
+do_tests($X, 0, 'newdatetime', 'ISO in/out offset local');
+
+
+$X->{TZOffset} = '-08:00';
+$X->{DatetimeOption} = DATETIME_HASH;
+%tbl       = (datecol       => '0004-02-26 12:00',
+              time0col      => '0:0',
+              time7col      => '00:00:00.0000001',
+              datetime2col  => '   1896-12-01T06:00',
+              dtoffset1col  => "1996-08-13 04:36:24  +  1:0",
+              dtoffset7col  => '1996-08-13 04:36:24.1234567');
+%expectcol = (datecol       => {Year => 4, Month => 3, Day => 14},
+              time0col      => {Hour => 1, Minute=> 0, Second => 0,
+                                Fraction => 0},
+              time7col      => {Hour => 0, Minute=> 0, Second => 0,
+                                Fraction => 0.0007},
+              datetime2col  => {Year => 1896, Month => 12, Day => 1,
+                                Hour => 6, Minute=> 0, Second => 0,
+                                Fraction => 1},
+              dtoffset1col  => {Year => 1996, Month => 8, Day => 12,
+                                Hour => 22, Minute=> 36, Second => 24,
+                                Fraction => 0},
+              dtoffset7col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 4, Minute=> 36, Second => 24,
+                                Fraction => 123.4567});
+%expectpar = (datecol       => {Year => 9, Month => 2, Day => 26},
+              time0col      => {Hour => 0, Minute=> 14, Second => 0,
+                                Fraction => 0},
+              time7col      => {Hour => 0, Minute=> 0, Second => 0,
+                                Fraction => 0.2301},
+              datetime2col  => {Year => 1896, Month => 12, Day => 3,
+                                Hour => 6, Minute=> 0, Second => 0,
+                                Fraction => 0},
+              dtoffset1col  => {Year => 1996, Month => 8, Day => 12,
+                                Hour => 20, Minute=> 6, Second => 24,
+                                Fraction => 0},
+              dtoffset7col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 4, Minute=> 36, Second => 24,
+                                Fraction => 123.4567});
+# Can't run the log file, since the TZOffset feature does not work with
+# the log file.
+%expectfile = (datecol      => "'$tbl{'datecol'}'",
+              time0col      => "'$tbl{'time0col'}'",
+              time7col      => "'$tbl{'time7col'}'",
+              datetime2col  => "'$tbl{'datetime2col'}'",
+              dtoffset1col  => "'$tbl{'dtoffset1col'}'",
+              dtoffset7col  => "'$tbl{'dtoffset7col'}'");
+%test      = (datecol      => 'datehash_compare(%s, %s)',
+              time0col     => 'datehash_compare(%s, %s)',
+              time7col     => 'datehash_compare(%s, %s)',
+              datetime2col => 'datehash_compare(%s, %s)',
+              dtoffset1col => 'datehash_compare(%s, %s)',
+              dtoffset7col => 'datehash_compare(%s, %s)');
+do_tests($X, 0, 'newdatetime', 'ISO in, hash out, offset explicit');
+
+
+$X->{TZOffset} = '-02:45';
+$X->{DatetimeOption} = DATETIME_HASH;
+%tbl       = (datecol       => {Year => 2005, Month => 12, Day => 31},
+              time0col      => {Hour => 0, Minute => 0},
+              time7col      => {Hour => 23, Minute => 59, Second => 59,
+                                Fraction => 999.9999},
+              datetime2col  => {Year => 2005, Month => 12, Day => 31},
+              dtoffset1col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 4, Minute => 36, Second => 24,
+                                Fraction => 123, TZHour => 4, TZMinute => 30},
+              dtoffset7col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 4, Minute => 36, Second => 24});
+%expectcol = (datecol       => {Year => 2006, Month => 1, Day => 17},
+              time0col      => {Hour => 1, Minute=> 0, Second => 0,
+                                Fraction => 0},
+              time7col      => {Hour => 0, Minute=> 0, Second => 0,
+                                Fraction => 0.0005},
+              datetime2col  => {Year => 2005, Month => 12, Day => 31,
+                                Hour => 0, Minute=> 0, Second => 0,
+                                Fraction => 1},
+              dtoffset1col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 0, Minute=> 21, Second => 24,
+                                Fraction => 100},
+              dtoffset7col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 4, Minute=> 36, Second => 24,
+                                Fraction => 0});
+%expectpar = (datecol       => {Year => 2010, Month => 12, Day => 31},
+              time0col      => {Hour => 0, Minute=> 14, Second => 0,
+                                Fraction => 0},
+              time7col      => {Hour => 0, Minute=> 0, Second => 0,
+                                Fraction => 0.2299},
+              datetime2col  => {Year => 2006, Month => 1, Day => 2,
+                                Hour => 0, Minute=> 0, Second => 0,
+                                Fraction => 0},
+              dtoffset1col  => {Year => 1996, Month => 8, Day => 12,
+                                Hour => 21, Minute=> 51, Second => 24,
+                                Fraction => 100},
+              dtoffset7col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 4, Minute=> 36, Second => 24,
+                                Fraction => 0});
+# For HASH the file test is really stupid.
+%expectfile= (datecol      => "^'HASH\\(",
+              time0col     => "^'HASH\\(",
+              time7col     => "^'HASH\\(",
+              datetime2col => "^'HASH\\(",
+              dtoffset1col => "^'HASH\\(",
+              dtoffset7col => "^'HASH\\(");
+%filetest  = (datecol      => '%s =~ /%s/',
+              time0col     => '%s =~ /%s/',
+              time7col     => '%s =~ /%s/',
+              datetime2col => '%s =~ /%s/',
+              dtoffset1col => '%s =~ /%s/',
+              dtoffset7col => '%s =~ /%s/');
+%test      = (datecol      => 'datehash_compare(%s, %s)',
+              time0col     => 'datehash_compare(%s, %s)',
+              time7col     => 'datehash_compare(%s, %s)',
+              datetime2col => 'datehash_compare(%s, %s)',
+              dtoffset1col => 'datehash_compare(%s, %s)',
+              dtoffset7col => 'datehash_compare(%s, %s)');
+do_tests($X, 0, 'newdatetime', 'hash in/out, offset explicit');
+
+
+$X->{TZOffset} = '+02:00';
+$X->{DatetimeOption} = DATETIME_FLOAT;
+%tbl       = (datecol       => {Year => 2005, Month => 12, Day => 31},
+              time0col      => {Hour => 5, Minute => 0},
+              time7col      => {Hour => 18, Minute => 0, Second => 0,
+                                Fraction => 0},
+              datetime2col  => {Year => 2005, Month => 12, Day => 31,
+                                Hour => 12},
+              dtoffset1col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 18, Minute => 0, Second => 0,
+                                Fraction => 0, TZHour => -1},
+              dtoffset7col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 18, Minute => 0, Second => 0});
+%expectcol = (datecol       => 38734,
+              time0col      => 0.25,
+              time7col      => 0.75,
+              datetime2col  => 38717.5 + 0.001/86400,
+              dtoffset1col  => 35291,
+              dtoffset7col  => 35290.75);
+%expectpar = (datecol       => 40543,
+              time0col      => (5 * 60 + 14)/(60*24),
+              time7col      => 0.75,
+              datetime2col  => 38719.5,
+              dtoffset1col  => 35290 + 21.5/24,
+              dtoffset7col  => 35290.75);
+# For HASH the file test is really stupid.
+%expectfile= (datecol      => "^'HASH\\(",
+              time0col     => "^'HASH\\(",
+              time7col     => "^'HASH\\(",
+              datetime2col => "^'HASH\\(",
+              dtoffset1col => "^'HASH\\(",
+              dtoffset7col => "^'HASH\\(");
+%filetest  = (datecol      => '%s =~ /%s/',
+              time0col     => '%s =~ /%s/',
+              time7col     => '%s =~ /%s/',
+              datetime2col => '%s =~ /%s/',
+              dtoffset1col => '%s =~ /%s/',
+              dtoffset7col => '%s =~ /%s/');
+%test      = (datecol      => 'abs(%s - %s) < 1E-9',
+              time0col     => 'abs(%s - %s) < 1E-9',
+              time7col     => 'abs(%s - %s) < 1E-9',
+              datetime2col => 'abs(%s - %s) < 1E-9',
+              dtoffset1col => 'abs(%s - %s) < 1E-9',
+              dtoffset7col => 'abs(%s - %s) < 1E-9');
+do_tests($X, 0, 'newdatetime', 'hash in/ float out, no offset');
+
+$X->{TZOffset} = undef;
+$X->{DatetimeOption} = DATETIME_FLOAT;
+%tbl       = (datecol       => {Year => 2005, Month => 12, Day => 31,
+                                Hour => 12, Minute => 14},
+              time0col      => {Year => 2005, Month => 12, Day => 31,
+                                Hour => 5, Minute => 0},
+              time7col      => {Hour => 18, Minute => 0, Second => 0,
+                                Fraction => 0},
+              datetime2col  => {Year => 1895, Month => 12, Day => 31,
+                                Hour => 6},
+              dtoffset1col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 18, Minute => 0, Second => 0,
+                                Fraction => 0, TZHour => -1},
+              dtoffset7col  => {Year => 1996, Month => 8, Day => 13,
+                                Hour => 18, Minute => 0, Second => 0,
+                                TZHour => 8, TZMinute => 0});
+%expectcol = (datecol       => 38734,
+              time0col      => 0.25,
+              time7col      => 0.75,
+              datetime2col  => -1460.25 - 0.001/86400,
+              dtoffset1col  => 35290 + 21/24,
+              dtoffset7col  => 35290 + 5.5/24);
+%expectpar = (datecol       => 40543,
+              time0col      => (5 * 60 + 14)/(60*24),
+              time7col      => 0.75,
+              datetime2col  => -1458.25,
+              dtoffset1col  => 35290 + 18.5/24,
+              dtoffset7col  => 35290.75);
+# For HASH the file test is really stupid.
+%expectfile= (datecol      => "^'HASH\\(",
+              time0col     => "^'HASH\\(",
+              time7col     => "^'HASH\\(",
+              datetime2col => "^'HASH\\(",
+              dtoffset1col => "^'HASH\\(",
+              dtoffset7col => "^'HASH\\(");
+%filetest  = (datecol      => '%s =~ /%s/',
+              time0col     => '%s =~ /%s/',
+              time7col     => '%s =~ /%s/',
+              datetime2col => '%s =~ /%s/',
+              dtoffset1col => '%s =~ /%s/',
+              dtoffset7col => '%s =~ /%s/');
+%test      = (datecol      => 'abs(%s - %s) < 1E-9',
+              time0col     => 'abs(%s - %s) < 1E-9',
+              time7col     => 'abs(%s - %s) < 1E-9',
+              datetime2col => 'abs(%s - %s) < 1E-9',
+              dtoffset1col => 'abs(%s - %s) < 1E-9',
+              dtoffset7col => 'abs(%s - %s) < 1E-9');
+do_tests($X, 0, 'newdatetime', 'hash in/ float out, no offset');
+
+$X->{DatetimeOption} = DATETIME_HASH;
+%tbl       = (datecol       => 38717,
+              time0col      => 0,
+              time7col      => 12.75,
+              datetime2col  => -364.75,
+              dtoffset1col  => 38717.25,
+              dtoffset7col  => 38717.25);
+%expectcol = (datecol       => {Year => 2006, Month => 1, Day => 17},
+              time0col      => {Hour => 1, Minute=> 0, Second => 0,
+                                Fraction => 0},
+              time7col      => {Hour => 18, Minute=> 0, Second => 0,
+                                Fraction => 0.0006},
+              datetime2col  => {Year => 1898, Month => 12, Day => 31,
+                                Hour => 18, Minute=> 0, Second => 0,
+                                Fraction => 1},
+              dtoffset1col  => {Year => 2005, Month => 12, Day => 31,
+                                Hour => 9, Minute => 0, Second => 0,
+                                Fraction => 0, TZHour => 0, TZMinute => 0},
+              dtoffset7col  => {Year => 2005, Month => 12, Day => 31,
+                                Hour => 1, Minute=> 30, Second => 0,
+                                Fraction => 0, TZHour => -4, TZMinute => -30});
+%expectpar = (datecol       => {Year => 2010, Month => 12, Day => 31},
+              time0col      => {Hour => 0, Minute=> 14, Second => 0,
+                                Fraction => 0},
+              time7col      => {Hour => 18, Minute=> 0, Second => 0,
+                                Fraction => 0.23},
+              datetime2col  => {Year => 1899, Month => 1, Day => 2,
+                                Hour => 18, Minute=> 0, Second => 0,
+                                Fraction => 0},
+              dtoffset1col  => {Year => 2005, Month => 12, Day => 31,
+                                Hour => 6, Minute=> 30, Second => 0,
+                                Fraction => 0, TZHour => 0, TZMinute => 0},
+              dtoffset7col  => {Year => 2005, Month => 12, Day => 31,
+                                Hour => 14, Minute=> 0, Second => 0,
+                                Fraction => 0, TZHour => 8, TZMinute => 0});
+# We still cannot use the logfile, because floats does not convert to the
+# new types.
+%expectfile = (datecol      => "'$tbl{'datecol'}'",
+              time0col      => "'$tbl{'time0col'}'",
+              time7col      => "'$tbl{'time7col'}'",
+              datetime2col  => "'$tbl{'datetime2col'}'",
+              dtoffset1col  => "'$tbl{'dtoffset1col'}'",
+              dtoffset7col  => "'$tbl{'dtoffset7col'}'");
+%filetest  = (datecol      => "%s eq %s",
+              time0col     => "%s eq %s",
+              time7col     => "%s eq %s",
+              datetime2col => "%s eq %s",
+              dtoffset1col => "%s eq %s",
+              dtoffset7col => "%s eq %s");
+%test      = (datecol      => 'datehash_compare(%s, %s)',
+              time0col     => 'datehash_compare(%s, %s)',
+              time7col     => 'datehash_compare(%s, %s)',
+              datetime2col => 'datehash_compare(%s, %s)',
+              dtoffset1col => 'datehash_compare(%s, %s)',
+              dtoffset7col => 'datehash_compare(%s, %s)');
+do_tests($X, 0, 'newdatetime', 'float in, hash out');
+
+
+$X->{DatetimeOption} = DATETIME_REGIONAL;
+%tbl       = (datecol       => '   19960813',
+              time0col      => '04:36:24 + 02 :00   ',
+              time7col      => '4:36:24.9999994 + 02: 00',
+              datetime2col  => '1996-8-1 04:36:24.998',
+              dtoffset1col  => '1996-08-13 04:36:24.6 -03:30  ',
+              dtoffset7col  => '19960813 04:36:24.1234567+03:00');
+%expectcol = (datecol       => ISO_to_regional('1996-08-30'),
+              time0col      => ISO_to_regional('05:36:24'),
+              time7col      => ISO_to_regional('04:36:25'),
+              datetime2col  => ISO_to_regional('1996-08-01 04:36:25'),
+              dtoffset1col  => ISO_to_regional('1996-08-13 07:36:25 -03:30'),
+              dtoffset7col  => ISO_to_regional('1996-08-12 21:06:24 -04:30'));
+%expectpar = (datecol       => ISO_to_regional('2001-08-13'),
+              time0col      => ISO_to_regional('04:50:24'),
+              time7col      => ISO_to_regional('04:36:25'),
+              datetime2col  => ISO_to_regional('1996-08-03 04:36:25'),
+              dtoffset1col  => ISO_to_regional('1996-08-13 05:06:25 -03:30'),
+              dtoffset7col  => ISO_to_regional('1996-08-13 09:36:24 +08:00'));
+# We get an occasion to run the log file.
+undef %expectfile;
+undef %filetest;
+%test      = (datecol      => '%s eq %s',
+              time0col     => '%s eq %s',
+              time7col     => '%s eq %s',
+              datetime2col => '%s eq %s',
+              dtoffset1col => '%s eq %s',
+              dtoffset7col => '%s eq %s');
+do_tests($X, 1, 'newdatetime', 'ISO in regional out');
+
+$X->{DatetimeOption} = DATETIME_REGIONAL;
+$X->{TZOffset} = '+05:30';
+%tbl       = (datecol       => '19960813',
+              time0col      => '14:36:24',
+              time7col      => '14:36:24',
+              datetime2col  => '1996-12-31 14:36:24.998',
+              dtoffset1col  => '1996-08-13 14:36:24 -03 : 30',
+              dtoffset7col  => '19960813 14:36:24 +03:00');
+%expectcol = (datecol       => ISO_to_regional('1996-08-30'),
+              time0col      => ISO_to_regional('15:36:24'),
+              time7col      => ISO_to_regional('14:36:24'),
+              datetime2col  => ISO_to_regional('1996-12-31 14:36:25'),
+              dtoffset1col  => ISO_to_regional('1996-08-14 02:36:24'),
+              dtoffset7col  => ISO_to_regional('1996-08-13 17:06:24'));
+%expectpar = (datecol       => ISO_to_regional('2001-08-13'),
+              time0col      => ISO_to_regional('14:50:24'),
+              time7col      => ISO_to_regional('14:36:24'),
+              datetime2col  => ISO_to_regional('1997-01-02 14:36:25'),
+              dtoffset1col  => ISO_to_regional('1996-08-14 00:06:24'),
+              dtoffset7col  => ISO_to_regional('1996-08-13 17:06:24'));
+# We get an occasion to run the log file.
+undef %expectfile;
+undef %filetest;
+%test      = (datecol      => '%s eq %s',
+              time0col     => '%s eq %s',
+              time7col     => '%s eq %s',
+              datetime2col => '%s eq %s',
+              dtoffset1col => '%s eq %s',
+              dtoffset7col => '%s eq %s');
+do_tests($X, 1, 'newdatetime', 'ISO in regional out, offset explicit');
+
+
+$X->{DatetimeOption} = DATETIME_ISO;
+$X->{TZOffset} = '+05:30';
+%tbl       = (datecol       => ISO_to_regional('1996-08-13'),
+              time0col      => ISO_to_regional('14:36:00'),
+              time7col      => ISO_to_regional('00:36:24'),
+              datetime2col  => ISO_to_regional('1996-12-31 14:36:24'),
+              dtoffset1col  => ISO_to_regional('1996-08-13 14:36:24 -03 : 30'),
+              dtoffset7col  => ISO_to_regional('1996-08-13 14:36:24 +03:00'));
+%expectcol = (datecol       => '1996-08-30',
+              time0col      => '15:36:00',
+              time7col      => '00:36:24.0000006',
+              datetime2col  => '1996-12-31 14:36:24.001',
+              dtoffset1col  => '1996-08-14 02:36:24.0',
+              dtoffset7col  => '1996-08-13 17:06:24.0000000');
+%expectpar = (datecol       => '2001-08-13',
+              time0col      => '14:50:00',
+              time7col      => '00:36:24.0002300',
+              datetime2col  => '1997-01-02 14:36:24.000',
+              dtoffset1col  => '1996-08-14 00:06:24.0',
+              dtoffset7col  => '1996-08-13 17:06:24.0000000');
+# No log file with regional dates.
+undef %expectfile;
+%expectfile = (datecol      => "'$tbl{'datecol'}'",
+              time0col      => "'$tbl{'time0col'}'",
+              time7col      => "'$tbl{'time7col'}'",
+              datetime2col  => "'$tbl{'datetime2col'}'",
+              dtoffset1col  => "'$tbl{'dtoffset1col'}'",
+              dtoffset7col  => "'$tbl{'dtoffset7col'}'");
+%test      = (datecol      => '%s eq %s',
+              time0col     => '%s eq %s',
+              time7col     => '%s eq %s',
+              datetime2col => '%s eq %s',
+              dtoffset1col => '%s eq %s',
+              dtoffset7col => '%s eq %s');
+do_tests($X, 0, 'newdatetime', 'Regional in/ISO out, offset explicit');
+
+
+$X->{DatetimeOption} = DATETIME_ISO;
+$X->{TZOffset} = undef;
+%tbl       = (datecol       => ISO_to_regional('2096-08-13'),
+              time0col      => ISO_to_regional('12:00:00'),
+              time7col      => ISO_to_regional('00:36:24'),
+              datetime2col  => ISO_to_regional('1996-12-31 14:36:24'),
+              dtoffset1col  => ISO_to_regional('1996-08-13 14:36:24 -3:0'),
+              dtoffset7col  => ISO_to_regional('1996-08-13 14:36:24+03:00'));
+%expectcol = (datecol       => '2096-08-30',
+              time0col      => '13:00:00',
+              time7col      => '00:36:24.0000006',
+              datetime2col  => '1996-12-31 14:36:24.001',
+              dtoffset1col  => '1996-08-13 17:36:24.0 -03:00',
+              dtoffset7col  => '1996-08-13 07:06:24.0000000 -04:30');
+%expectpar = (datecol       => '2101-08-13',
+              time0col      => '12:14:00',
+              time7col      => '00:36:24.0002300',
+              datetime2col  => '1997-01-02 14:36:24.000',
+              dtoffset1col  => '1996-08-13 15:06:24.0 -03:00',
+              dtoffset7col  => '1996-08-13 19:36:24.0000000 +08:00');
+# No log file with regional dates.
+undef %expectfile;
+%expectfile = (datecol      => "'$tbl{'datecol'}'",
+              time0col      => "'$tbl{'time0col'}'",
+              time7col      => "'$tbl{'time7col'}'",
+              datetime2col  => "'$tbl{'datetime2col'}'",
+              dtoffset1col  => "'$tbl{'dtoffset1col'}'",
+              dtoffset7col  => "'$tbl{'dtoffset7col'}'");
+%test      = (datecol      => '%s eq %s',
+              time0col     => '%s eq %s',
+              time7col     => '%s eq %s',
+              datetime2col => '%s eq %s',
+              dtoffset1col => '%s eq %s',
+              dtoffset7col => '%s eq %s');
+do_tests($X, 0, 'newdatetime', 'Regional in/ISO out, no TZoffset');
+
+$X->{DatetimeOption} = DATETIME_STRFMT;
+$X->{DateFormat} = '%Y%m%d %H:%M:%S';
+$X->{MsecFormat} = '.%3.3d';
+$X->{TZOffset} = undef;
+%tbl       = (datecol       => '2096-08-13',
+              time0col      => '12:00:00',
+              time7col      => '00:36:24',
+              datetime2col  => '1996-12-31 14:36:24',
+              dtoffset1col  => '1996-08-13 14:36:24 -3:0',
+              dtoffset7col  => '1996-08-13 14:36:24+03:00');
+%expectcol = (datecol       => '20960830 00:00:00',
+              time0col      => '19000101 13:00:00',
+              time7col      => '19000101 00:36:24.000',
+              datetime2col  => '19961231 14:36:24.001',
+              dtoffset1col  => '19960813 17:36:24.000',
+              dtoffset7col  => '19960813 07:06:24.000');
+%expectpar = (datecol       => '21010813 00:00:00',
+              time0col      => '19000101 12:14:00',
+              time7col      => '19000101 00:36:24.000',
+              datetime2col  => '19970102 14:36:24.000',
+              dtoffset1col  => '19960813 15:06:24.000',
+              dtoffset7col  => '19960813 19:36:24.000');
+undef %expectfile;
+%test      = (datecol      => '%s eq %s',
+              time0col     => '%s eq %s',
+              time7col     => '%s eq %s',
+              datetime2col => '%s eq %s',
+              dtoffset1col => '%s eq %s',
+              dtoffset7col => '%s eq %s');
+do_tests($X, 1, 'newdatetime', 'ISO in/STRFMT out, no TZoffset');
+
+
+done_newdatetime:
+drop_test_objects('newdatetime');
+
+#----------------------- hierarchyid ----------------------------------
+clear_test_data;
+create_hierarchy($X, $X->{Provider} >= PROVIDER_SQLNCLI);
+
+$X->{BinaryAsStr} = '1';
+%tbl       = (hiercol      => '0x5D5C1F');    # /1/10/23/
+%expectcol = (hiercol      => '5D5C1F58');
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
+  %expectpar = (hiercol      => '5D50');
+}
+else {
+   %expectpar = ();
+}
+%test      = (hiercol       => '%s eq %s');
+do_tests($X, 1, 'hierarchy', 'BinAsStr');
+
+%tbl       = (hiercol      => undef);
+%expectcol = (hiercol      => undef);
+if ($X->{Provider} >= PROVIDER_SQLNCLI) {
+  %expectpar = (hiercol      => undef);
+}
+else {
+   %expectpar = ();
+}
+%test      = (hiercol       => 'not defined %s');
+do_tests($X, 1, 'hierarchy', 'NULL');
+drop_test_objects('hierarchy');
+
+#--------------------------- Spatial datatypes -------------------------
+# Since these are large UDT we can test these with SQLOLEDB.
+goto done_spatial if $X->{Provider} == PROVIDER_SQLOLEDB;
+
+clear_test_data;
+create_spatial($X, $X->{Provider} >= PROVIDER_SQLNCLI10);
+
+{ open(F, '../helpers/spatial.data') or warn "Could not read file 'spatial data': $!\n";
+  my @file = <F>;
+  close F;
+  my ($geometry, $geometrycol, $geometrypar,
+      $geography, $geographycol, $geographypar) = split(/\n/, join('', @file));
+
+  $X->{BinaryAsStr} = 'x';
+  %tbl =       (geometrycol  => $geometry,
+                geographycol => $geography);
+  %expectcol = (geometrycol  => $geometrycol,
+                geographycol => $geographycol);
+  if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+     %expectpar = (geometrycol  => $geometrypar,
+                   geographycol => $geographypar);
+  }
+  %test      = (geometrycol  => '%s eq %s',
+                geographycol => '%s eq %s');
+  do_tests($X, 1, 'spatial');
+}
+
+
+drop_test_objects('spatial');
+done_spatial: 1;
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 # Finally test parameterless SP.

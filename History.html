@@ -13,6 +13,86 @@
 <CENTER>
 <H1>History Win32::SqlServer</H1>
 </CENTER>
+<H3>2008-05-04 &#8211; 2.004</H3>
+<P>The big thing for this release is support for new features in SQL 2008, 
+detailed below. At the time, SQL 2008 is still in beta, RTM is scheduled for Q3 
+of 2008. Thus I need to add the caveat that there may be issues with 
+Win32::SqlServer 2.004 and the RTM release. Rest assured that I will monitor 
+this, and relase a new version of Win32::SqlServer if required.</P>
+<P>Another big thing is support for Perl 5.10; Win32::SqlServer now ships with 
+binaries for ActiveState builds 10xx.</P>
+<P><B>Changes for SQL 2008:</B></P>
+<P>To have full access to these features, you need to use SQLNCLI10 provider 
+that ships with SQL 2008. Win32::SqlServer will use this provider by default if 
+it is installed.</P>
+	<UL><LI>Table-valued parameters.
+		See the section <A HREF="Win32-SqlServer.html#TVP">Working with Table 
+		Variables</A> for details for the high-level interface. For the 
+		mid-level interface there are two new routines:
+		<A HREF="Win32-SqlServer.html#definetablecolumn"><NOBR>
+		definetablecolumn()</NOBR></A> and <NOBR>
+		<A HREF="Win32-SqlServer.html#inserttableparam">inserttableparam()</A></NOBR>.</LI>
+		<LI>The new data types <B><CODE>date</CODE></B>, <B><CODE>time</CODE></B>,
+		<CODE><B>datetime2</B></CODE> and <B><CODE>datetimeoffset</CODE></B>. 
+		See the section <A HREF="Win32-SqlServer.html#datetime">Date and Time 
+		Data Ttypes</A>. There are some incompatibilities in that 
+		Win32::SqlServer previous silently accepted if there was garbage at the 
+		end of an ISO-formatted date string. Not so any more.</LI>
+		<LI>FILESTREAM: Win32::SqlServer provides access to the <NOBR>
+		<A HREF="Win32-SqlServer.html#OpenSqlFilestream">OpenSqlFilesteam()</A></NOBR> 
+		API, so that you can access FILESTREAM columns using Win32::API 
+		functions ReadFile and WriteFile.</LI>
+		<LI>Support for large UDTs, that is UDTs that can exceed 8000 bytes in 
+		size.</LI>
+		<LI>The new built-in CLR types <B><CODE>hierarchyid</CODE></B>, <B>
+		<CODE>geometry</CODE></B> and <B><CODE>geography</CODE></B> are 
+		recognised, but apart from the name, Win32::SqlServer has no particular 
+		support for these; they are handled as any other CLR UDT.</LI>
+	</UL>
+	
+<P><B>Other changes and bugfixes:</B></P>	
+<UL>
+	<LI>Behvaiour change: previously if you declared a varchar/nvarbinar/varbinary 
+	parameter to <NOBR><A HREF="Win32-SqlServer.html#sql">sql()</A></NOBR> 
+	without specifying the length, for instance <NOBR><CODE>[&#39;nvarchar&#39;, $value]</CODE></NOBR>, 
+	Win32::SqlServer would infer the length of the value of the parameter. This 
+	has been changed, so that Win32::SqlServer now uses the maximum value, that 
+	is 8000 for <B><CODE>varbinary</CODE></B> and <B><CODE>varchar</CODE></B> 
+	and 4000 for <B><CODE>nvarchar</CODE></B>. If the value exceeds this length, 
+	Win32::SqlServer uses MAX. The reason for this change is that the parameter 
+	list is part of the statement that is in SQL Server&#39;s plan cache. By using a 
+	consistent parameter length, Win32::SqlServer reduces the cache bloat. For 
+	char/nchar/binary, Win32::SqlServer still infers the length from the actual 
+	value when none is explicitly provided, but now issues a warning to inform 
+	you that this is not good practice.</LI>
+	<LI>The variables <CODE><NOBR>$Win32:SqlServer::VERSION</NOBR></CODE> and
+	<CODE><NOBR>$Win32::SqlServer::Version</NOBR></CODE> are now
+	<A HREF="Win32-SqlServer.html#Versionnumbers">documented</A>.</LI>
+	<LI>Bugfix: character-set conversion did not work when there was no default 
+	handle. (Which there isn&#39;t if you connect with <NOBR>
+	<A HREF="Win32-SqlServer.html#setloginproperty">setloginproperty()</A></NOBR> 
+	and <A HREF="Win32-SqlServer.html#connect"><NOBR>connect()</NOBR></A> rather 
+	than <A HREF="Win32-SqlServer.html#sql_init">sql_init()</A>.)</LI>
+	<LI>Despite that the manual said that you could use <B><CODE>rowversion</CODE></B> 
+	as an alternative to <B><CODE>timestamp</CODE></B>, this was not the case. 
+	This has been corrected.</LI>
+	<LI>Bugfix: the check for duplicate column names in the result set was 
+	broken.</LI>
+	<LI>The <A HREF="Win32-SqlServer.html#EXPORTTAGS">export tag</A> <CODE>:consts</CODE> did 
+	not include the constants for command states.</LI>
+	<LI>Consistent behaviour when you pass an empty command batch. No matter if 
+	you pass <CODE>undef</CODE>, an empty string or a string of blanks, the 
+	batch is accepted without errors. In 2.003, you got an error for <CODE>undef</CODE> 
+	and an empty string, but not for a string with or more spaces.</LI>
+	<LI>If you call a Win32::SqlServer routine without specifying a handle, and 
+	there is no default handle, you will now get a clear error message up front. 
+	The next version of Win32::SqlServer will probnbly warn you rely on the 
+	default handle, as this is a deprecated feature.</LI>
+</UL>
+<P>To build Win32::SqlServer from sources, you now need Visual Studio 2005 (or the .Net 2.0 SDK),
+and the SDK for SQL Server Native Client 10 that ships with SQL 2008. See the README for the 
+source distribution for further details.
+</P>
 <H3>2007-07-11 &#8211; 2.003</H3>
 <UL>
    <LI>Win32::SqlServer now runs on AMD64. In lieu of hardware to test on, IA64
@@ -66,6 +146,6 @@
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 07-07-11 12:07 <!-- $-->
+Last updated <!--$$Modtime:--> 08-05-04 14:17 <!-- $-->
 </I>
 <BODY>

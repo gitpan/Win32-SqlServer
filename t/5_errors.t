@@ -1,10 +1,67 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/5_errors.t 13    05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/t/5_errors.t 24    08-05-04 22:51 Sommar $
 #
 # Tests sql_message_handler and errors raised by OlleDB itself.
 #
 # $History: 5_errors.t $
 # 
+# *****************  Version 24  *****************
+# User: Sommar       Date: 08-05-04   Time: 22:51
+# Updated in $/Perl/OlleDB/t
+# Still not right for SQL 6.5.
+#
+# *****************  Version 23  *****************
+# User: Sommar       Date: 08-05-04   Time: 21:35
+# Updated in $/Perl/OlleDB/t
+# Small data-type goof forSQL 6.5.
+#
+# *****************  Version 22  *****************
+# User: Sommar       Date: 08-05-04   Time: 19:06
+# Updated in $/Perl/OlleDB/t
+# We can only test OpenSqlFilestream with SQLNCLI10 after all.
+#
+# *****************  Version 21  *****************
+# User: Sommar       Date: 08-03-23   Time: 19:33
+# Updated in $/Perl/OlleDB/t
+# Added tests for table valued-parameters.
+#
+# *****************  Version 20  *****************
+# User: Sommar       Date: 08-02-24   Time: 21:58
+# Updated in $/Perl/OlleDB/t
+# Changed the test for no data types since the behaviour now is a little
+# different.
+#
+# *****************  Version 19  *****************
+# User: Sommar       Date: 08-01-06   Time: 23:34
+# Updated in $/Perl/OlleDB/t
+# Adjusted checks for error message on conversion of input value to
+# include that it is a parameter (and not a column).
+#
+# *****************  Version 18  *****************
+# User: Sommar       Date: 07-12-01   Time: 23:36
+# Updated in $/Perl/OlleDB/t
+# Added check of error handling with OpenSqlFilestream.
+#
+# *****************  Version 17  *****************
+# User: Sommar       Date: 07-11-12   Time: 23:03
+# Updated in $/Perl/OlleDB/t
+# One more incorrect date format to test.
+#
+# *****************  Version 16  *****************
+# User: Sommar       Date: 07-11-11   Time: 19:17
+# Updated in $/Perl/OlleDB/t
+# Test numbering was messed up.
+#
+# *****************  Version 15  *****************
+# User: Sommar       Date: 07-11-11   Time: 17:33
+# Updated in $/Perl/OlleDB/t
+# Added checks for date/time values.
+#
+# *****************  Version 14  *****************
+# User: Sommar       Date: 07-09-09   Time: 0:10
+# Updated in $/Perl/OlleDB/t
+# Handle the provider name more cleanly.
+#
 # *****************  Version 13  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB/t
@@ -96,12 +153,24 @@ sub setup_a_test {
 $^W = 1;
 $| = 1;
 
-print "1..141\n";
-
+print "1..234\n";
 
 my $X = testsqllogin();
 my $sqlver = (split(/\./, $X->{SQL_version}))[0];
 $X->{ErrInfo}{CheckRetStat} = 0;
+
+# Set the provider name to use when testing provider messages.
+my $PROVIDERNAME;
+if ($X->{Provider} == Win32::SqlServer::PROVIDER_SQLOLEDB) {
+   $PROVIDERNAME = 'Microsoft OLE DB Provider for SQL Server';
+}
+elsif ($X->{Provider} == Win32::SqlServer::PROVIDER_SQLNCLI) {
+   $PROVIDERNAME = 'Microsoft SQL Native Client';
+}
+else {
+   $PROVIDERNAME = 'Microsoft SQL Server Native Client 10.0';
+}
+
 
 $X->sql(<<'SQLEND');
    CREATE PROCEDURE #nisse_sp @msgtext varchar(25), @sev int AS
@@ -227,7 +296,7 @@ $X = testsqllogin();
 $sql_call = q!$X->sql("WAITFOR DELAY '00:00:05'", NORESULT)!;
 $X->{CommandTimeout} = 1;
 $expect_print =
-    ['=~ /Message HYT00 .* (OLE DB Provider|Native Client)/',
+    ["=~ /Message HYT00 .*$PROVIDERNAME/",
      qq!=~ /[Tt]imeout expired\n/!,
      "=~ / 1> WAITFOR DELAY '00:00:05'/"];
 do_test($sql_call, 43, 1, $expect_print);
@@ -246,16 +315,16 @@ delete  $X->{ErrInfo}{NeverPrint}{'HYT00'};
 $X->{ErrInfo}{MaxSeverity} = 17;
 $X->{ErrInfo}{PrintLines} = 17;
 $expect_print =
-    ['=~ /Message HYT00 .* (OLE DB Provider|Native Client)/',
+    ["=~ /Message HYT00 .*$PROVIDERNAME/",,
      qq!=~ /[Tt]imeout expired\n/!,
-     "=~ /Message from Microsoft (OLE DB Provider for SQL Server|SQL Native Client) at/"];
+     "=~ /Message from $PROVIDERNAME at/"];
 do_test($sql_call, 52, 0, $expect_print);
 
 # Test AlwaysStopOn and AlwaysPrint.
 $X->{ErrInfo}{AlwaysPrint}{'HYT00'}++;
 $X->{ErrInfo}{AlwaysStopOn}{'HYT00'}++;
 $expect_print =
-    ['=~ /Message HYT00 .* (OLE DB Provider|Native Client)/',
+    ["=~ /Message HYT00 .*$PROVIDERNAME/",,
      qq!=~ /[Tt]imeout expired\n/!,
      "=~ / 1> WAITFOR DELAY '00:00:05'/"];
 do_test($sql_call, 55, 1, $expect_print);
@@ -376,7 +445,7 @@ $X->executebatch;
 $X->cancelbatch;
 PERLEND
 $expect_print =
-    ['=~ /^Message [0-9A-F]{8}.*(OLE DB Provider|Native Client).*Severity:? 16/i',
+    ["=~ /^Message [0-9A-F]{8}.*$PROVIDERNAME.*Severity:? 16/i",
      '=~ /Win32::SqlServer call/',
      '=~ /No value given/',
      '=~ / 1> SELECT \?/'];
@@ -387,26 +456,27 @@ $expect_msgs = [{State    => "== 127",
                  Line     => "== 0",
                  Proc     => "eq 'cmdtext_ptr->Execute'",
                  SQLstate => "=~ /[0-9A-F]{8}/i",
-                 Source   => "=~ /OLE DB Provider|Native Client/"}];
+                 Source   => "=~ /$PROVIDERNAME/"}];
 do_test($sql_call, 76, 1, $expect_print, $expect_msgs);
 
 # This one generates "Invalid character for cast specification"
 $X->sql(<<'SQLEND');
-   CREATE PROCEDURE #date_sp @d smalldatetime AS
+   CREATE PROCEDURE #date_sp @d smalldatetime,
+                             @e datetime = '19870101' AS
    SELECT @d = @d
 SQLEND
-$sql_call = '$X->sql_sp("#date_sp", ["2103-01-01"])';
+$sql_call = '$X->sql_sp("#date_sp", ["2079-12-01"])';
 $expect_print =
-    ['=~ /^Message \w{5}.*(OLE DB Provider|Native Client).*Severity:? 16/i',
+    ["=~ /^Message \\w{5}.*$PROVIDERNAME.*Severity:? 16/i",
      "=~ /Invalid.*cast specification/",
-     q!=~ / {3,5}1> EXEC #date_sp\s+\@d\s*=\s*'2103-01-01'/!];
+     q!=~ / {3,5}1> EXEC #date_sp\s+\@d\s*=\s*'2079-12-01'/!];
 push(@$expect_msgs, {State    => '>= 1',
                      Errno    => '== 0',
                      Severity => '== 16',
                      Text     => '=~ /Invalid.*cast specification/',
                      Line     => '== 0',
                      SQLstate => '=~ /\w{5}/',
-                     Source   => '=~ /OLE DB Provider|Native Client/'});
+                     Source   => "=~ /$PROVIDERNAME/"});
 do_test($sql_call, 79, 1, $expect_print, $expect_msgs);
 
 # Now we move on to test OlleDB's own messages. First errors with datetime
@@ -418,7 +488,7 @@ $expect_print =
      "=~ /Mandatory part 'Month' missing/",
      "=~ /Message from Win32::SqlServer at/",
      '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
-     "=~ /Could not convert Perl value.+smalldatetime/",
+     "=~ /Could not convert Perl value.+smalldatetime.+parameter/",
      "=~ /Message from Win32::SqlServer at/",
      '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
      "=~ /One or more parameters .+ Cannot execute/",
@@ -432,7 +502,7 @@ $expect_msgs = [{State    => '>= 1',
                 {State    => '>= 1',
                  Errno    => '<= -1',
                  Severity => '== 10',
-                 Text     => "=~ /Could not convert Perl value.+smalldatetime/",
+                 Text     => "=~ /Could not convert Perl value.+smalldatetime.+parameter/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"},
                 {State    => '>= 1',
@@ -453,7 +523,7 @@ $expect_print =
      "=~ /Part 'Month' .+ illegal value 13/",
      "=~ /Message from Win32::SqlServer at/",
      '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
-     "=~ /Could not convert Perl value.+smalldatetime/",
+     "=~ /Could not convert Perl value.+smalldatetime.+parameter/",
      "=~ /Message from Win32::SqlServer at/",
      '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
      "=~ /One or more parameters .+ Cannot execute/",
@@ -468,7 +538,7 @@ $expect_msgs = [{State    => '>= 1',
                 {State    => '>= 1',
                  Errno    => '<= -1',
                  Severity => '== 10',
-                 Text     => "=~ /Could not convert Perl value.+smalldatetime/",
+                 Text     => "=~ /Could not convert Perl value.+smalldatetime.+parameter/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"},
                 {State    => '>= 1',
@@ -491,7 +561,7 @@ $expect_print =
      q!=~ /'bludder' .+ parameter '\@P1' .*illegal/!,
      "=~ /Message from Win32::SqlServer at/",
      '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
-     "=~ /Could not convert Perl value .+12345.+ decimal/",
+     "=~ /Could not convert Perl value .+12345.+ decimal.+parameter/",
      "=~ /Message from Win32::SqlServer at/",
      '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
      "=~ /One or more parameters .+ Cannot execute/"];
@@ -516,7 +586,7 @@ $expect_msgs = [{State    => '>= 1',
                 {State    => '>= 1',
                  Errno    => '<= -1',
                  Severity => '== 10',
-                 Text     => "=~ /Could not convert Perl value .+12345.+ decimal/",
+                 Text     => "=~ /Could not convert Perl value .+12345.+ decimal.+parameter/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"},
                 {State    => '>= 1',
@@ -623,14 +693,14 @@ do_test($sql_call, 97, 1, $expect_print, $expect_msgs);
 
 # Test calling procedure with too many parameters.
 delete $X->{ErrInfo}{Messages};
-$sql_call = '$X->sql_sp("#date_sp", ["2103-01-01", 12])';
+$sql_call = '$X->sql_sp("#date_sp", ["2103-01-01", "2103-01-01", 12])';
 $expect_print =
     ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
-     q!=~ /2 parameters passed .+ '#date_sp' .+ only .*(one|1) parameter\b/!];
+     q!=~ /3 parameters passed .+ '#date_sp' .+ only .*(two|2) parameters\b/!];
 $expect_msgs = [{State    => '>= 1',
                  Errno    => '<= -1',
                  Severity => '== 16',
-                 Text     => q!=~ /2 parameters passed .+ '#date_sp' .+ only .*(one|1) parameter\b/!,
+                 Text     => q!=~ /3 parameters passed .+ '#date_sp' .+ only .*(two|2) parameters\b/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
 do_test($sql_call, 100, 1, $expect_print, $expect_msgs);
@@ -749,7 +819,7 @@ $expect_msgs = [{State    => '>= 1',
                  Line     => '== 1',
                  Server   => 'or 1',
                  SQLstate => 'eq "42000"'}];
-do_test($sql_call, 112, 1, $expect_print, $expect_msgs, 1);
+do_test($sql_call, 112, 1, $expect_print, $expect_msgs, 7);
 
 # No data type specified. And an OLE DB error on 6.5.
 delete $X->{ErrInfo}{Messages};
@@ -766,16 +836,16 @@ if ($sqlver > 6) {
      qq!eq "Line 1\n"!,
      'eq "This is jazz\n"',
      q!=~ / 1> EXEC sp_executesql\s+N'RAISERROR\(\@P1, 12, 17\)'/!,
-     q!=~ / 2> \s+N'\@P1 char\(\d+\),\s+\@P2 char(\(1\))?'/!,
+     q!=~ / 2> \s+N'\@P1 varchar\(8000\),\s+\@P2 varchar\(8000\)'/!,
      q!=~ / 3> \s+\@P1 = 'This is jazz', \@P2 = NULL/!);
 }
 else {
    push(@$expect_print,
-     '=~ /^Message [0-9A-F]{8}.*(OLE DB Provider|Native Client).*Severity:? 16/i',
+     "=~ /^Message [0-9A-F]{8}.*$PROVIDERNAME.*Severity:? 16/i",
      '=~ /Win32::SqlServer call/',
      '=~ /Multiple-step/',
      '=~  / 1> RAISERROR\(\?, 12, 17\)/',
-     q!=~ / 2> \/\*\s+N'\@P1 char\(\d+\),\s+\@P2 char(\(1\))?'/!,
+     q!=~ / 2> \/\*\s+N'\@P1 varchar\(255\),\s+\@P2 varchar\(255\)'/!,
      q!=~ / 3> \s+\@P1 = 'This is jazz', \@P2 = NULL\s*\*\//!);
 }
 $expect_msgs = [{State    => '>= 1',
@@ -799,7 +869,7 @@ if ($sqlver == 6) {
                        Line     => "== 0",
                        Proc     => "eq 'cmdtext_ptr->Execute'",
                        SQLstate => "=~ /[0-9A-F]{8}/i",
-                       Source   => "=~ /OLE DB Provider|Native Client/"};
+                       Source   => "=~ /$PROVIDERNAME/"};
 }
 do_test($sql_call, 115, 1, $expect_print, $expect_msgs);
 
@@ -871,7 +941,7 @@ $expect_msgs = [{State    => '>= 1',
                  Line     => '== 1',
                  Server   => 'or 1',
                  SQLstate => 'eq "01000"'}];
-do_test($sql_call, 121, 0, $expect_print, $expect_msgs, 1);
+do_test($sql_call, 121, 0, $expect_print, $expect_msgs, 7);
 
 # Using UDT without specifying user-type. (We can to this on all platforms,
 # because this is trapped early by OlleDB itself.)
@@ -886,7 +956,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => q!=~ /No actual user type .+ UDT .+ '\@P1'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 124, 1, $expect_print, $expect_msgs, 0);
+do_test($sql_call, 124, 1, $expect_print, $expect_msgs);
 
 # UDT with conflicting specifiers.
 delete $X->{ErrInfo}{Messages};
@@ -900,7 +970,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => q!=~ /Conflicting .+ \('OllePoint' and 'OlleString'\) .+ '\@P1' .+ UDT/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 127, 1, $expect_print, $expect_msgs, 0);
+do_test($sql_call, 127, 1, $expect_print, $expect_msgs);
 
 # XML with conflicting specifiers.
 delete $X->{ErrInfo}{Messages};
@@ -914,7 +984,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => q!=~ /Conflicting .+ \('OlleSC' and 'OlleSC2'\) .+ '\@P1' .+ xml/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 130, 1, $expect_print, $expect_msgs, 0);
+do_test($sql_call, 130, 1, $expect_print, $expect_msgs);
 
 
 # We will now test sql_has_errors. First get a default connection.
@@ -1007,6 +1077,1082 @@ else {
    print "not ok 141\n";
 }
 
+# Lots of tests around date/time data types. Use a new connection for this.
+undef $X;
+$X = testsqllogin();
+$X->{ErrInfo}{SaveMessages}++;
+
+$X->sql(<<'SQLEND');
+   CREATE PROCEDURE #datetime_sp @d datetime,
+                                 @sd smalldatetime AS
+   SELECT @d = @d
+SQLEND
+if ($sqlver >= 10) {
+   $X->sql(<<'SQLEND');
+      CREATE PROCEDURE #time_sp @d time AS
+      SELECT @d = @d
+SQLEND
+   $X->sql(<<'SQLEND');
+      CREATE PROCEDURE #date_sp @d date AS
+      SELECT @d = @d
+SQLEND
+   $X->sql(<<'SQLEND');
+      CREATE PROCEDURE #dtoffset_sp @d datetimeoffset AS
+      SELECT @d = @d
+SQLEND
+   $X->sql(<<'SQLEND');
+      CREATE PROCEDURE #datetime2_sp @d datetime2 AS
+      SELECT @d = @d
+SQLEND
+}
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", [{Year => 1991, Month => 0, Day => 17},
+                                          "20010101"])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Month' .* illegal value 0/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'HASH\(/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Month' .* illegal value/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 142, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["1750-12-20", "20010101"])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Year' .* illegal value 1750/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1750/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Year' .* illegal value 1750/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 145, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", [{Year => 1991, Month => 65537, Day => 17},
+                                          "1899-12-31"])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Month' .* illegal value 65537/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Year' .* illegal value 1899/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'HASH\(/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Month' .* illegal value 65537/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Year' .* illegal value 1899/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 148, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", [{Year => -1991, Month => 12, Day => 17},
+                                          "1999-12-31 24:00:00"])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Year' .* illegal value -1991/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Hour' .* illegal value 24/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'HASH\(/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Year' .* illegal value -1991/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Hour' .* illegal value 24/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 151, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["1997-02-29", "1999-11-31"])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Day' .* illegal value 29/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Day' .* illegal value 31/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1997/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Day' .* illegal value 29/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Day' .* illegal value 31/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 154, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["1997-01-31 12:60:60", "1999-03-31 12:59:60"])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Minute' .* illegal value 60/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Second' .* illegal value 60/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1997/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Minute' .* illegal value 60/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Second' .* illegal value 60/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 157, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["1997-05-31 00:00:00.9999999",
+                                         {Year => 1997, Month => 10, Day => 31,
+                                         Fraction => -2}])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'Fraction' .* illegal value -2/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1997/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'Fraction' .* illegal value -2/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 160, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["1997-04-30 14:12:10 +25:00",
+                                         {Year => 1997, Month => 12, Day => 1,
+                                         Hour => 12, Minute => 12,
+                                         TZHour => -2, TZMinute => 15}])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'TZHour' .* illegal value 25/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'TZMinute' .* illegal value 15/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1997/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'TZHour' .* illegal value 25/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'TZMinute' .* illegal value 15/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 163, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["1997-0829 12:00:00",
+                                         {Year => 1997, Month => 12, Day => 1,
+                                         Hour => 12, Minute => 12,
+                                         TZHour => 2, TZMinute => -15}])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value '1997.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Part 'TZMinute' .* illegal value -15/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1997/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value '1997.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Part 'TZMinute' .* illegal value -15/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 166, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["1997-08-29 12:00:00.12323 +0200",
+                                         {Year => 1997, Month => 12, Day => 1,
+                                         Hour => 12, Minute => 12,
+                                         TZMinute => 15}])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value '1997.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /TZMinute appears in datetime hash/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1997/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value '1997.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /TZMinute appears in datetime hash/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 169, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["19970225 12:00.00", "1997"])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value '1997.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value '1997.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1997/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value '1997.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value '1997.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 172, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["1997-02-25Z12:00", "1997-12-12 12"])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value '1997.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value '1997.+ smalldatetime/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1997/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value '1997.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value '1997.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 175, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["1997-02-25 12:00:", "1997-09-23 12:00:00."])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value '1997.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value '1997.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1997/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value '1997.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value '1997.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 178, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime_sp", ["1925-08-07T", "1925-08-07T12"])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value '1925.+ datetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Could not convert Perl value '1925.+ smalldatetime.+parameter/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime_sp\s+\@d\s*=\s*'1925/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value '1925.+ datetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Could not convert Perl value '1925.+ smalldatetime.+parameter/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 181, 1, $expect_print, $expect_msgs);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#date_sp", [{Month => 10, Day => 17}])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Mandatory part 'Year' missing/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     '=~ /Could not convert Perl value.+ date\b.+parameter/',
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #date_sp\s+\@d\s*=\s*'HASH\(/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Mandatory part 'Year' missing/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => '=~ /Could not convert Perl value.+ date\b.+parameter/',
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 184, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#time_sp", [{Hour => 10, Second => 17}])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Mandatory part 'Minute' missing/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     '=~ /Could not convert Perl value.+ time\b.+parameter/',
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #time_sp\s+\@d\s*=\s*'HASH\(/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Mandatory part 'Minute' missing/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => '=~ /Could not convert Perl value.+ time\b.+parameter/',
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 187, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#datetime2_sp", [{Year => 1078, Month => 10}])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Mandatory part 'Day' missing/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     '=~ /Could not convert Perl value.+ datetime2\b.+parameter/',
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #datetime2_sp\s+\@d\s*=\s*'HASH\(/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Mandatory part 'Day' missing/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => '=~ /Could not convert Perl value.+ datetime2\b.+parameter/',
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 190, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$sql_call = '$X->sql_sp("#dtoffset_sp", [{Year => 2341, Day => 17,
+                                          Hour => 12, Minute => 12, Second => 34,
+                                          TZHour => 0, TZMinute => 0}])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     "=~ /Mandatory part 'Month' missing/",
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     '=~ /Could not convert Perl value.+ datetimeoffset\b.+parameter/',
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+     q!=~ / 1> EXEC #dtoffset_sp\s+\@d\s*=\s*'HASH\(/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => "=~ /Mandatory part 'Month' missing/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => '=~ /Could not convert Perl value.+ datetimeoffset\b.+parameter/',
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 193, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+# A single test with OpenSqlFilestream.
+delete $X->{ErrInfo}{Messages};
+$X->{BinaryAsStr} = 'x';
+$sql_call = '$X->OpenSqlFilestream("Garbage", 0, "0x47114711")';
+$expect_print =
+    ['=~ /^Message -87.+OpenSqlFilestream.+Severity:? 16/',
+     '=~ /The parameter is incorrect/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '== -87',
+                 Severity => '== 16',
+                 Line     => '== 0',
+                 Text     => "=~ /The parameter is incorrect/",
+                 Source   => "eq 'OpenSqlFilestream'"}];
+do_test($sql_call, 196, 1, $expect_print, $expect_msgs, undef, PROVIDER_SQLNCLI10);
+
+# Let's test table-valued parameters. First some setup.
+if ($sqlver >= 10) {
+   $X->sql(<<'SQLEND');
+IF EXISTS (SELECT * FROM sys.table_types WHERE name = 'olle$tvptest')
+   DROP TYPE olle$tvptest
+
+CREATE TYPE olle$tvptest AS TABLE (a int  NULL,
+                                   b date NULL,
+                                   c int  NULL,
+                                   d int  IDENTITY)
+
+CREATE TABLE #target (a int  NULL,
+                      b date NULL,
+                      c int NULL)
+SQLEND
+   $X->sql(<<'SQLEND');
+CREATE PROCEDURE #tvptest @t olle$tvptest READONLY AS
+   INSERT #target (a, b, c) SELECT a, b, c FROM @t
+SQLEND
+}
+
+# The first test is for what happens # with a legacy provider.
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = '$X->sql_sp("#tvptest", [[[1, "1989-01-01", 1]]])';
+if ($X->{Provider} <= Win32::SqlServer::PROVIDER_SQLNCLI) {
+   $expect_print =
+      ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+       '=~ /need SQL( Server)? 2008.*Native Client 10/',
+       '=~ /1> EXEC #tvptest \@t = \@t/',
+       '=~ /Message from Win32::SqlServer at/'];
+   $expect_msgs = [{State    => '== 1',
+                    Errno    => '== -1',
+                    Severity => '== 16',
+                    Line     => '== 0',
+                    Source   => 'eq "Win32::SqlServer"',
+                    Text     => '=~ /need SQL( Server)? 2008.*Native Client 10/'}];
+}
+else {
+   $expect_print = [];
+   $expect_msgs = undef;
+}
+do_test($sql_call, 199, 0, $expect_print, $expect_msgs, 10);
+
+# Also with paramsql.
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = '$X->sql("SELECT * FROM ?", [["table", [[1, "1989-01-01", 1]], "olle\$tvptest"]])';
+if ($X->{Provider} <= Win32::SqlServer::PROVIDER_SQLNCLI) {
+   $expect_print =
+      ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+       '=~ /need SQL( Server)? 2008.*Native Client 10/',
+       '=~ /1> +EXEC sp_executesql/',
+      q!=~ /2> +N\'\@P1 +olle/!,
+       '=~ /3> +\@P1 *= *\@P1/',
+       '=~ /Message from Win32::SqlServer at/'];
+   $expect_msgs = [{State    => '== 1',
+                    Errno    => '== -1',
+                    Severity => '== 16',
+                    Line     => '== 0',
+                    Source   => 'eq "Win32::SqlServer"',
+                    Text     => '=~ /need SQL( Server)? 2008.*Native Client 10/'}];
+}
+else {
+   $expect_print = [];
+   $expect_msgs = undef;
+}
+do_test($sql_call, 202, 0, $expect_print, $expect_msgs, 10);
+
+# Now for the real tests with errors with the table type.
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = '$X->sql("SELECT * FROM ?", [["table", [[1, "1989-01-01", 1]]]])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+    q!=~ /No actual user type .+ table .+ '\@P1'/!,
+    '=~ /Message from Win32::SqlServer at/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => q!=~ /No actual user type .+ table .+ '\@P1'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 205, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = '$X->sql("SELECT * FROM ?", [["table(nosuchtype)", [[1, "1989-01-01", 1]]]])';
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+    q!=~ /Not.*table type 'nosuchtype'/!,
+    '=~ /Message from Win32::SqlServer at/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => q!=~ /Not.*table type 'nosuchtype'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 208, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = <<'PERLEND';
+  $X->sql("SELECT * FROM ?", [['table(olle$tvptest)', 12]]);
+PERLEND
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+    q!=~ /value '12'.*table parameter '\@P1'/!,
+     '=~ /1> +EXEC sp_executesql/',
+    q!=~ /2> +N\'\@P1 +olle/!,
+     '=~ /3> +\@P1 *= *\@P1/',
+     '=~ /Message from Win32::SqlServer at/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => q!=~ /value '12'.*table parameter '\@P1'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 211, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = <<'PERLEND';
+  $X->sql_sp('#tvptest', [12]);
+PERLEND
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+    q!=~ /value '12'.*table parameter '\@t'/!,
+     '=~ /1> +EXEC #tvptest/',
+     '=~ /Message from Win32::SqlServer at/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => q!=~ /value '12'.*table parameter '\@t'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 214, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = <<'PERLEND';
+  $X->sql("SELECT * FROM ?", [['table(olle$tvptest)', [1, '1989-01-01', 1]]]);
+PERLEND
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+    q!=~ /value '1' for row.*table parameter '\@P1'/!,
+     '=~ /1> +EXEC sp_executesql/',
+    q!=~ /2> +N\'\@P1 +olle/!,
+     '=~ /3> +\@P1 *= *\@P1/',
+     '=~ /Message from Win32::SqlServer at/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => q!=~ /value '1' for row.*table parameter '\@P1'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 217, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = <<'PERLEND';
+  $X->sql_sp('#tvptest', [[1, '1989-01-01', 1]]);
+PERLEND
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+    q!=~ /value '1' for row.*table parameter '\@t'/!,
+     '=~ /1> +EXEC #tvptest/',
+     '=~ /Message from Win32::SqlServer at/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => q!=~ /value '1' for row.*table parameter '\@t'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 220, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = <<'PERLEND';
+  $X->sql_sp('#tvptest', [{'a' => 1, 'b' => '1989-01-01', 'c' => 23}]);
+PERLEND
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+    q!=~ /Illegal value 'HASH\(.*'.*table parameter '\@t'/!,
+     '=~ /1> +EXEC #tvptest /',
+     '=~ /Message from Win32::SqlServer at/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => q!=~ /Illegal value 'HASH\(.*'.*table parameter '\@t'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 223, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = <<'PERLEND';
+  $X->sql_sp('#tvptest', [[{'a' => 1, 'b' => '1989-01-01', 'c' => 23},
+                           {'a' => 1, 'b' => '1989-01-01', 'e' => 23},
+                           [1, '1989-01-01', 1, 1, 9]]]);
+PERLEND
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+    q!=~ /Warning: input hash.*includes key 'e'.*no such column/!,
+     '=~ /Message from Win32::SqlServer at/',
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+    q!=~ /Warning: input array.*5 elements.*only 4 columns/!,
+    '=~ /Message from Win32::SqlServer at/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => q!=~ /Warning: input hash.*includes key 'e'.*no such column/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => q!=~ /Warning: input array.*5 elements.*only 4 columns/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 226, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = <<'PERLEND';
+  $X->sql_sp('#tvptest', [[{'a' => 1, 'b' => '1989-13-01', 'c' => 23},
+                           {'a' => 1, 'b' => '1989-01-01', 'd' => 23},
+                           [1, '1989-01-32', 1]]]);
+PERLEND
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+    q!=~ /Part 'Month'.*illegal value 13/!,
+     '=~ /Message from Win32::SqlServer at/',
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+    q!=~ /convert.*value '1989-13-01'.*type date.*column '\[b\]'/!,
+     '=~ /Message from Win32::SqlServer at/',
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+    q!=~ /Warning: input hash.*includes key 'd'.*usedefault=1.*ignored/!,
+     '=~ /Message from Win32::SqlServer at/',
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+    q!=~ /Part 'Day'.*illegal value 32/!,
+     '=~ /Message from Win32::SqlServer at/',
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+    q!=~ /convert.*value '1989-01-32'.*type date.*column '\[b\]'/!,
+     '=~ /Message from Win32::SqlServer at/',
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+     "=~ /One or more parameters .+ Cannot execute/",
+    q!=~ /1> +DECLARE \@t tempdb.\[dbo\].\[olle\$tvptest\]/!,
+    q!=~ /2> +INSERT +\@t *\(\[a\], *\[b\], *\[c\]\) +VALUES/!,
+    q!=~ /3> +\(1, *'1989-13-01', *23\ *\),/!,
+    q!=~ /4> +\(1, *'1989-01-01', *NULL\ *\),/!,
+    q!=~ /5> +\(1, *'1989-01-32', *1 *\)/!,
+    q!=~ /6> +EXEC #tvptest +\@t *= *\@t/!,
+     '=~ /Message from Win32::SqlServer at/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => q!=~ /Part 'Month'.*illegal value 13/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => q!=~ /convert.*value '1989-13-01'.*type date.*column '\[b\]'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => q!=~ /Warning: input hash.*includes key 'd'.*usedefault=1.*ignored/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => q!=~ /Part 'Day'.*illegal value 32/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => q!=~ /convert.*value '1989-01-32'.*type date.*column '\[b\]'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => "=~ /One or more parameters .+ Cannot execute/",
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 229, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+
+delete $X->{ErrInfo}{Messages};
+$X->{ErrInfo}{SaveMessages} = 1;
+$X->{ErrInfo}{MaxSeverity} = 17;
+$sql_call = <<'PERLEND';
+  $X->sql("SELECT * FROM ?",
+         [['table(tempdb.dbo.olle$tvptest)',
+           [[1, '1989-01-01', 1]]]]);
+PERLEND
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+    q!=~ /Type name 'tempdb\.dbo\.olle\$tvptest'.*database.*ad-hoc/!,
+     '=~ /Message from Win32::SqlServer at/',
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+    q!=~ /Not.*table type 'tempdb\.dbo\.olle\$tvptest'/!,
+     '=~ /Message from Win32::SqlServer at/'];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => q!=~ /Type name 'tempdb\.dbo\.olle\$tvptest'.*database.*ad-hoc/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => q!=~ /Not.*table type 'tempdb\.dbo\.olle\$tvptest'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 232, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 
 # That's enough!
@@ -1014,11 +2160,14 @@ exit;
 
 
 sub do_test{
-   my($test, $test_no, $expect_die, $expect_print, $expect_msgs, $skip65) = @_;
+   my($test, $test_no, $expect_die, $expect_print, $expect_msgs,
+      $minsqlversion, $minprovider) = @_;
 
    my($savestderr, $errfile, $fh, $evalout, @carpmsgs);
 
-   if ($sqlver == 6 and $skip65) {
+   # If the test only runs on a certain version of SQL Server or provider, skip.
+   if (defined $minsqlversion and $sqlver < $minsqlversion or
+       defined $minprovider and $X->{Provider} < $minprovider) {
       print "ok " . $test_no++ . " # skip\n";
       print "ok " . $test_no++ . " # skip\n";
       print "ok " . $test_no++ . " # skip\n";
@@ -1140,6 +2289,7 @@ sub compare {
       }
    }
    elsif ($refx ne $refy) {
+       warn "Left is '$refx' reference. Right is '$refy' reference";
       return 0;
    }
    elsif ($refx eq "ARRAY") {

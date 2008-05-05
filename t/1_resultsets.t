@@ -1,8 +1,28 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/1_resultsets.t 9     07-07-07 21:37 Sommar $
+# $Header: /Perl/OlleDB/t/1_resultsets.t 13    08-05-04 20:52 Sommar $
 #
 # $History: 1_resultsets.t $
 # 
+# *****************  Version 13  *****************
+# User: Sommar       Date: 08-05-04   Time: 20:52
+# Updated in $/Perl/OlleDB/t
+# It was somewhat more sublime: cannot use the ambiguous column alias.
+#
+# *****************  Version 12  *****************
+# User: Sommar       Date: 08-05-04   Time: 20:48
+# Updated in $/Perl/OlleDB/t
+# Needed ORDER BY in SQL statement for test of duplicate columns.
+#
+# *****************  Version 11  *****************
+# User: Sommar       Date: 08-03-16   Time: 21:28
+# Updated in $/Perl/OlleDB/t
+# Added tests for empty command batches.
+#
+# *****************  Version 10  *****************
+# User: Sommar       Date: 08-01-07   Time: 0:22
+# Updated in $/Perl/OlleDB/t
+# Added tests for handling of duplicate column names.
+#
 # *****************  Version 9  *****************
 # User: Sommar       Date: 07-07-07   Time: 21:37
 # Updated in $/Perl/OlleDB/t
@@ -67,7 +87,8 @@ $^W = 1;
 $| = 1;
 
 my($X, $sql, $sql1, $sql_empty, $sql_error, $sql_null, $sql_key1,
-   $sql_print, $sql_counts, $sql_nocount, $sql_key_many, $no_of_tests);
+   $sql_print, $sql_counts, $sql_nocount, $sql_key_many, $sql_dupnames,
+   $no_of_tests);
 
 $X = testsqllogin();
 
@@ -164,6 +185,14 @@ $sql_error = 'SELECT FROM';
 # Test code for keyed access.
 $sql_key1     = "SELECT * FROM #a";
 sql("CREATE PROCEDURE #sql_key_many AS SELECT * FROM #c");
+
+# Test code for duplicate column names in result set.
+$sql_dupnames = <<SQLEND;
+SELECT a = 11, "Col 4A" = 12, "Col 3" = 13, "Col 3" = 14, a = 15, a = 16, 17
+UNION
+SELECT -11, -12, -13, -14, -15, -16, -17
+ORDER BY 1 DESC
+SQLEND
 
 #==================================================================
 #========================= MULTISET ===============================
@@ -3159,6 +3188,84 @@ EVALEND
    $no_of_tests += 4;
 }
 
+#==================================================================
+#==================== Name duplicates in result set ===============
+#==================================================================
+{
+   &blurb("Duplicate column names in result set.");
+   my (@warnings, $result, @expect);
+   @expect = ({a        => 11,
+               'Col 4A' => 12,
+               'Col 3'  => 13,
+               'Col 4B' => 14,
+               'Col 5A' => 15,
+               'Col 6A' => 16,
+               'Col 7'  => 17},
+               {a        => -11,
+                'Col 4A' => -12,
+                'Col 3'  => -13,
+                'Col 4B' => -14,
+                'Col 5A' => -15,
+                'Col 6A' => -16,
+                'Col 7'  => -17});
+   eval(<<'EVALEND');
+       local $SIG{__WARN__} = sub {push(@warnings, $_[0])};
+       $result = sql($sql_dupnames, HASH, SINGLESET, COLINFO_NONE);
+EVALEND
+   push(@testres, $warnings[0] =~ /Column name 'Col 3' appears twice/i ? 1 : 0);
+   push(@testres, $warnings[1] =~ /Column name 'Col 4A' appears twice/i ? 1 : 0);
+   push(@testres, $warnings[2] =~ /Column name 'a' appears twice/i ? 1 : 0);
+   push(@testres, $warnings[3] =~ /Column name 'a' appears twice/i ? 1 : 0);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("Duplicate column names in result set, COLINFO_POS.");
+   @warnings = ();
+   @expect = ({a        => 1,
+               'Col 4A' => 2,
+               'Col 3'  => 3,
+               'Col 4B' => 4,
+               'Col 5A' => 5,
+               'Col 6A' => 6,
+               'Col 7'  => 7},
+              {a        => 11,
+               'Col 4A' => 12,
+               'Col 3'  => 13,
+               'Col 4B' => 14,
+               'Col 5A' => 15,
+               'Col 6A' => 16,
+               'Col 7'  => 17},
+               {a        => -11,
+                'Col 4A' => -12,
+                'Col 3'  => -13,
+                'Col 4B' => -14,
+                'Col 5A' => -15,
+                'Col 6A' => -16,
+                'Col 7'  => -17});
+   eval(<<'EVALEND');
+       local $SIG{__WARN__} = sub {push(@warnings, $_[0])};
+       $result = sql($sql_dupnames, HASH, SINGLESET, COLINFO_POS);
+EVALEND
+   push(@testres, $warnings[0] =~ /Column name 'Col 3' appears twice/i ? 1 : 0);
+   push(@testres, $warnings[1] =~ /Column name 'Col 4A' appears twice/i ? 1 : 0);
+   push(@testres, $warnings[2] =~ /Column name 'a' appears twice/i ? 1 : 0);
+   push(@testres, $warnings[3] =~ /Column name 'a' appears twice/i ? 1 : 0);
+   push(@testres, compare(\@expect, $result));
+
+   &blurb("Duplicate column names in result set, LIST, names.");
+   @warnings = ();
+   @expect = (['a', 'Col 4A', 'Col 3', 'Col 3', 'a', 'a', ''],
+              [11, 12, 13, 14, 15, 16, 17],
+              [-11, -12, -13, -14, -15, -16, -17]);
+   eval(<<'EVALEND');
+       local $SIG{__WARN__} = sub {push(@warnings, $_[0])};
+       $result = sql($sql_dupnames, LIST, SINGLESET, COLINFO_NAMES);
+EVALEND
+   push(@testres, $#warnings == -1 ? 1 : 0);
+   push(@testres, compare(\@expect, $result));
+
+   $no_of_tests += 2*5 + 2;
+
+}
 
 #==================================================================
 #========================= Style errors ===========================
@@ -3205,6 +3312,30 @@ EVALEND
    push(@testres, $@ =~ /Extraneous parameter.* at/i ? 1 : 0);
 
    $no_of_tests += 10;
+}
+
+#==================================================================
+#====================== Empty command batches =====================
+#==================================================================
+{  my $result;
+
+   &blurb("Command undef");
+   $result = $X->sql;
+   push(@testres, compare($result, []));
+
+   &blurb("Command undef2");
+   $result = $X->sql(undef);
+   push(@testres, compare($result, []));
+
+   &blurb("Command empty");
+   $result = $X->sql('');
+   push(@testres, compare($result, []));
+
+   &blurb("Command blank");
+   $result = $X->sql(' ');
+   push(@testres, compare($result, []));
+
+   $no_of_tests += 4;
 }
 
 print "1..$no_of_tests\n";

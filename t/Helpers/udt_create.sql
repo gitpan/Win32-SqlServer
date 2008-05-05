@@ -16,6 +16,10 @@ go
 CREATE ASSEMBLY OlleString FROM 'c:\test\udttest\Utf8string.dll'
 CREATE TYPE OlleString EXTERNAL NAME OlleString.[OlleDBtest.OlleString]
 go
+-- This fails on SQL 2005, since this is a large UDT.
+CREATE ASSEMBLY OlleStringMax FROM 'c:\test\udttest\Utf8stringmax.dll'
+CREATE TYPE OlleStringMax EXTERNAL NAME OlleStringMax.[OlleDBtest.OlleString]
+go
 SELECT * FROM sys.assemblies
 SELECT * FROM sys.assembly_files
 SELECT * FROM sys.assembly_types

@@ -1,11 +1,22 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/8_columnsinfo.t 2     07-07-07 22:26 Sommar $
+# $Header: /Perl/OlleDB/t/8_columninfo.t 4     07-11-11 19:10 Sommar $
 #
 # This test suite tests the data type information returned by
 # getcolumninfo.
 #
-# $History: 8_columnsinfo.t $
+# $History: 8_columninfo.t $
 # 
+# *****************  Version 4  *****************
+# User: Sommar       Date: 07-11-11   Time: 19:10
+# Updated in $/Perl/OlleDB/t
+# Added checks for the new data/time data types add modified the check
+# for datetime to adapt with reality.
+#
+# *****************  Version 3  *****************
+# User: Sommar       Date: 07-09-16   Time: 22:41
+# Updated in $/Perl/OlleDB/t
+# Added test with large UDT.
+#
 # *****************  Version 2  *****************
 # User: Sommar       Date: 07-07-07   Time: 22:26
 # Updated in $/Perl/OlleDB/t
@@ -36,7 +47,7 @@ $| = 1;
 my $X = testsqllogin();
 my ($sqlver) = split(/\./, $X->{SQL_version});
 
-print "1..31\n";
+print "1..36\n";
 
 # Start with integer data types.
 $sql = <<'SQLEND';
@@ -214,7 +225,9 @@ DROP TABLE #a
 SQLEND
 @result = $X->sql($sql, Win32::SqlServer::COLINFO_FULL);
 $type =  $result[0]->{'a'}{'Type'};
-if ($type eq 'datetime') {
+my $expect = ($sqlver >= 10 && $X->{Provider} >= PROVIDER_SQLNCLI10 ?
+             'datetime2' : 'datetime');
+if ($type eq $expect) {
    print "ok 12\n";
 }
 else {
@@ -547,7 +560,8 @@ SQLEND
 }
 
 if ($clr_enabled) {
-   create_the_udts($X, 'OlleComplexInteger', 'OllePoint', 'OlleString');
+   create_the_udts($X, 'OlleComplexInteger', 'OllePoint', 'OlleString',
+                       'OlleStringMax');
    $sql = <<'SQLEND';
    CREATE TABLE #a (a OlleComplexInteger NOT NULL)
    SELECT a FROM #a
@@ -561,11 +575,116 @@ SQLEND
    else {
       print "not ok 31 # <$type>\n";
    }
+
+   if ($sqlver >= 10) {
+      $sql = <<'SQLEND';
+      CREATE TABLE #a (a OlleStringMax NOT NULL)
+      SELECT a FROM #a
+      DROP TABLE #a
+SQLEND
+      @result = $X->sql($sql, Win32::SqlServer::COLINFO_FULL);
+      $type =  $result[0]->{'a'}{'Type'};
+      $len = $result[0]->{'a'}{'MaxLength'};
+      if ($type eq ($X->{Provider} >= PROVIDER_SQLNCLI10 ? 'UDT' : 'varbinary')
+          and not defined $len) {
+         print "ok 32\n";
+      }
+      else {
+         print "not ok 32 # <$type>  <$len>\n";
+      }
+   }
+   else {
+      print "ok 32 # skip\n";
+   }
    delete_the_udts($X);
 
 }
 else {
    print "ok 31 # skip\n";
+   print "ok 32 # skip\n";
+}
+
+# date, SQL 2008 + SQL Native Client 10.
+if ($sqlver >= 10  and $X->{Provider} >= PROVIDER_SQLNCLI10) {
+   $sql = <<'SQLEND';
+   CREATE TABLE #a (a date NOT NULL)
+   SELECT a FROM #a
+   DROP TABLE #a
+SQLEND
+   @result = $X->sql($sql, Win32::SqlServer::COLINFO_FULL);
+   $type =  $result[0]->{'a'}{'Type'};
+   if ($type eq 'date') {
+      print "ok 33\n";
+   }
+   else {
+      print "not ok 33 # <$type>\n";
+   }
+}
+else {
+   print "ok 33 # skip\n";
+}
+
+# time, SQL 2008 + SQL Native Client 10.
+if ($sqlver >= 10  and $X->{Provider} >= PROVIDER_SQLNCLI10) {
+   $sql = <<'SQLEND';
+   CREATE TABLE #a (a time NOT NULL)
+   SELECT a FROM #a
+   DROP TABLE #a
+SQLEND
+   @result = $X->sql($sql, Win32::SqlServer::COLINFO_FULL);
+   $type =  $result[0]->{'a'}{'Type'};
+   $scale = $result[0]->{'a'}{'Scale'};
+   if ($type eq 'time' or $scale != 7) {
+      print "ok 34\n";
+   }
+   else {
+      print "not ok 34 # <$type> <$scale>\n";
+   }
+}
+else {
+   print "ok 34 # skip\n";
+}
+
+# date, SQL 2008 + SQL Native Client 10.
+if ($sqlver >= 10  and $X->{Provider} >= PROVIDER_SQLNCLI10) {
+   $sql = <<'SQLEND';
+   CREATE TABLE #a (a datetime2(3) NOT NULL)
+   SELECT a FROM #a
+   DROP TABLE #a
+SQLEND
+   @result = $X->sql($sql, Win32::SqlServer::COLINFO_FULL);
+   $type =  $result[0]->{'a'}{'Type'};
+   $scale = $result[0]->{'a'}{'Scale'};
+   if ($type eq 'datetime2' or $scale != 3) {
+      print "ok 35\n";
+   }
+   else {
+      print "not ok 35 # <$type> <$scale>\n";
+   }
+}
+else {
+   print "ok 35 # skip\n";
+}
+
+# date, SQL 2008 + SQL Native Client 10.
+if ($sqlver >= 10  and $X->{Provider} >= PROVIDER_SQLNCLI10) {
+   $sql = <<'SQLEND';
+   CREATE TABLE #a (a datetimeoffset(0) NOT NULL)
+   SELECT a FROM #a
+   DROP TABLE #a
+SQLEND
+   @result = $X->sql($sql, Win32::SqlServer::COLINFO_FULL);
+   $type =  $result[0]->{'a'}{'Type'};
+   $scale = $result[0]->{'a'}{'Scale'};
+   if ($type eq 'datetimeoffset' or $scale != 0) {
+      print "ok 36\n";
+   }
+   else {
+      print "not ok 36 # <$type> <$scale>\n";
+   }
+}
+else {
+   print "ok 36 # skip\n";
 }
 
 

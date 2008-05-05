@@ -47,7 +47,7 @@ It also helps if your language setting in SQL Server is <B>us_english</B> and
 that you have US English version of the <NOBR><SMALL CLASS="allcaps">OLE DB</SMALL></NOBR>
 provider. (For SQL Native Client at least that is a separate .<SMALL CLASS="allcaps">RLL</SMALL>
 file.) If you have different settings, some tests may fail, because they look at
-the text from error message.</P>
+the text from error messages.</P>
 <H2>Running the Test Scripts</H2>
 <P>
 All test scripts looks at the environment variable <SMALL CLASS="allcaps">OLLEDBTEST.</SMALL>
@@ -74,8 +74,7 @@ server(s) the test scripts should access. <SMALL CLASS="allcaps">OLLEDBTEST</SMA
 <P>The last option in the string is Provider. Use this if you want to force a
 certain provider. Particularly, if you test from a machine that has SQL Native
 Client installed, and you want to test against SQL 6.5, you need to specify 1 to
-force the use of SQLOLEDB. 2 forces the use of SQLNCLI, but if this provider is
-installed it is the default anyway.</P>
+force the use of SQLOLEDB. 2 forces the use of SQLNCLI and 3 forces SQLNCLI10.</P>
 <H2>Reporting Errors from Tests</H2>
 <P>If you run a test script and one or more tests fail, please don't just tell
    me that test 324 in some script failed, put please send me the full output
@@ -89,7 +88,7 @@ installed it is the default anyway.</P>
 <A HREF="Win32-SqlServer.html#RowResultStyles">row, result and colinfo styles</A>.
 </P>
 <P>
-<B>Number of tests</B>: 398.</P>
+<B>Number of tests</B>: 414.</P>
 <P>
 <B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: Temporary tables only.</P>
 <H3>
@@ -103,8 +102,10 @@ sql_insert()</A></NOBR> and that the <A HREF="Win32-SqlServer.html#LogHandle">lo
 file</A> is correctly constructed.
 </P>
 <P>
-<B>Number of tests</B>: Many. From a little below 1100 on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5 to over 2700
-on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 when you have <SMALL CLASS="allcaps">SQL</SMALL> Native Client and the <SMALL CLASS="allcaps">CLR</SMALL> enabled.</P>
+<B>Number of tests</B>: Many. From a little below 1100 on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5 to over 
+4100
+on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008 when you use SQLNCLI10 and you 
+have the <SMALL CLASS="allcaps">CLR</SMALL> enabled.</P>
 <P>
 <B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: Tables and stored
 procedures in tempdb, and on <SMALL CLASS="allcaps">SQL</SMALL> 2005 also an <SMALL CLASS="allcaps">XML</SMALL> schema collection and three
@@ -117,7 +118,8 @@ procedures in tempdb, and on <SMALL CLASS="allcaps">SQL</SMALL> 2005 also an <SM
 procedures and user-defined functions for <A HREF="Win32-SqlServer.html#sql_sp">
 <NOBR>sql_sp()</NOBR></A>.</P>
 <P>
-<B>Number of tests</B>: 7 (on <SMALL CLASS="allcaps">SQL</SMALL> 6.5 and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;7), 33-43 (<SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005).</P>
+<B>Number of tests</B>: 7 (on <SMALL CLASS="allcaps">SQL</SMALL> 6.5 and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;7), 33-43 (<SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, 
+79 (SQL 2008).</P>
 <P>
 <B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: stored procedures and
 user-defined function in tempdb, and on <SMALL CLASS="allcaps">SQL</SMALL> 2005 also an <SMALL CLASS="allcaps">XML</SMALL> schema collection
@@ -137,34 +139,39 @@ not mean that Win32::SqlServer does not support conversions not involving other
 character sets, but it&#39;s difficult to set up test cases for any combination of
 charsets.</P>
 <P>
-<B>Number of tests</B>: 25.</P>
+<B>Number of tests</B>: 35. Some tests are skipped if the CLR is not enabled. 
+Tests for table-valued parameters are only performed if you have SQL 2008 and 
+SQLNCLI10.</P>
 <P>
-<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: temporary
-objects only.</P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: CLR user-defined 
+types and a table type, if these features are available. Else only temporary 
+objects.</P>
 <H3>
 <B>5_errors.t</B> </H3>
 <P>
 <B>Tests</B>: the error handling. </P>
 <P>
-<B>Number of tests</B>: 141. Some are skipped on <SMALL CLASS="allcaps">SQL</SMALL>
-6.5.</P>
+<B>Number of tests</B>: 234. Some are skipped depending on the SQL Server 
+version.</P>
 <P>
-<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: temporary
-objects only.</P>
+<B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: On SQL 2008 and 
+later the test creates a table type in tempdb. Else only temporary
+objects.</P>
 <H3>
 <B>6_paramsql.t</B> </H3>
 <P>
 <B>Tests:</B> passing parameters to <NOBR>
 <A HREF="Win32-SqlServer.html#sql">sql()</A></NOBR>.</P>
 <P>
-<B>Number of tests</B>: From 12 (on <SMALL CLASS="allcaps">SQL</SMALL> 6.5) to 47 (on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 with
-SQL Native
-Client and <SMALL CLASS="allcaps">CLR</SMALL> enabled).</P>
+<B>Number of tests</B>: From 12 (on <SMALL CLASS="allcaps">SQL</SMALL> 6.5) to 
+58 (on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008 with
+SQLNLI10 and <SMALL CLASS="allcaps">CLR</SMALL> enabled).</P>
 <P>
 <B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 and earlier, this
-script does not create any objects. On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, it creates an <SMALL CLASS="allcaps">XML</SMALL> schema
-collection in tempdb, as well as three <SMALL CLASS="allcaps">CLR</SMALL> user-defined types, if the <SMALL CLASS="allcaps">CLR</SMALL> is
-enabled.</P>
+script does not create any objects. On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 
+and later, it creates an <SMALL CLASS="allcaps">XML</SMALL> schema collection in 
+tempdb, as well as four <SMALL CLASS="allcaps">CLR</SMALL> user-defined types, if the <SMALL CLASS="allcaps">CLR</SMALL> is
+enabled. </P>
 <H3>
 <B>7_objectnames.t</B> </H3>
 <P>
@@ -175,7 +182,8 @@ how it parses the &quot;typeinfo&quot; argument for the <SMALL CLASS="allcaps">U
 2005. </P>
 <P>
 <B>Number of tests</B>: 52 (<SMALL CLASS="allcaps">SQL 6.5), 553 (SQL 7, SQL</SMALL>&nbsp;2000 and <SMALL CLASS="allcaps">SQL</SMALL> 2005 with
-<SMALL CLASS="allcaps">SQLOLEDB), 917 (SQL</SMALL> 2005 with <SMALL CLASS="allcaps">SQL</SMALL> Native Client).</P>
+<SMALL CLASS="allcaps">SQLOLEDB), 917 (SQL</SMALL> 2005 with <SMALL CLASS="allcaps">SQL</SMALL> 
+Native Client), 1526 (SQL 2008 with SQLNCLI10).</P>
 <P>
 <B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: This script creates no less than five
 <FONT COLOR="#FF0000"><I>databases</I></FONT> (two on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5). Four of
@@ -188,11 +196,11 @@ adds guest as user.</P>
 <B>Tests</B>: the type information returned when the colinfo style is
 <SMALL CLASS="allcaps">COLINFO_FULL</SMALL>.</P>
 <P>
-<B>Number of tests</B>: 31, of which some are skipped depending on the SQL
+<B>Number of tests</B>: 36, of which some are skipped depending on the SQL
 Server version, the OLE DB provider and the availability of the CLR.</P>
 <P>
-Creates in SQL Server: Temp tables. On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, it creates an <SMALL CLASS="allcaps">XML</SMALL> schema
-collection in tempdb, as well as three <SMALL CLASS="allcaps">CLR</SMALL> user-defined types, if the <SMALL CLASS="allcaps">CLR</SMALL> is
+<B>Creates in SQL Server</B>: Temp tables. On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, it creates an <SMALL CLASS="allcaps">XML</SMALL> 
+schema collection in tempdb, as well as four <SMALL CLASS="allcaps">CLR</SMALL> user-defined types, if the <SMALL CLASS="allcaps">CLR</SMALL> is
 enabled.</P>
 <H3>
 <B>9_loginproperties.t</B> </H3>
@@ -204,22 +212,56 @@ other connection routines. </P>
 <B>Notes</B>: to perform all tests, this script requires that you have defined a
 second test server with the <SMALL CLASS="allcaps">OLLEDBTEST</SMALL> environment variable.</P>
 <P>
-<B>Number of tests</B>: 33, whereof three will be skipped if no second server
+<B>Number of tests</B>: 35, whereof three will be skipped if no second server
 is defined. Some tests are skipped depending on the <SMALL CLASS="allcaps">SQL</SMALL> Server and the provider.
-Only with <SMALL CLASS="allcaps">SQL</SMALL> 2005 and <SMALL CLASS="allcaps">SQL</SMALL> Native Client and a second server all tests will be
-performed. And even then two tests will be skipped if <SMALL CLASS="allcaps">SQL</SMALL>
+Only with <SMALL CLASS="allcaps">SQL</SMALL> 2005 or later and <SMALL CLASS="allcaps">SQL</SMALL> Native Client and a second server all tests will be
+performed. And even in that case, two tests will be skipped if <SMALL CLASS="allcaps">SQL</SMALL>
 Server is configured for Windows authentication only.</P>
 <P>
 <B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: Creates a <FONT COLOR="#FF0000"><I>database</I></FONT> which it detaches and
-then reattaches with a different names. Both names start with &quot;OlleDB&quot;. On
-<SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, if <SMALL CLASS="allcaps">SQL</SMALL> Server authentication is enabled, the script creates a
+then reattaches with a different name. Both names start with &quot;OlleDB&quot;. On
+<SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 and later, if SQL Server authentication is enabled, the script creates a
 <FONT COLOR="#FF0000"><I>login</I></FONT>
 with the name starting in &quot;Olle&quot; followed by random digits. The script creates the
 login with <SMALL CLASS="allcaps">CHECK_POLICY = OFF</SMALL>. As all other objects the test script creates, the
 login is dropped if the script terminates normally. No objects are created in
 the second server.</P>
 <H3>
-<B>A_rowsetprops.t</B> </H3>
+A_tableparam.t</H3>
+<P>
+<B>Tests</B>: table-valued parameters in general (some aspects of TVPs are 
+tested in other scripts).</P>
+<P>
+<B>Notes</B>: this test is skipped entirely unless you have SQL 2008 or later 
+and the provider is SQLNCLI10 or later.</P>
+<P>
+<B>Number of tests</B>: 1554 (somewhat fewer if the CLR is disabled).</P>
+<P>
+<B>Creates in SQL Server</B>: various table types, a XML schema collection and 
+four CLR UDTs if the CLR is enabled.</P>
+<H3>
+B_filestream.t</H3>
+<P>
+<B>Tests</B>: the OpenSqlFilestream method.</P>
+<P>
+<B>Notes</B>: this test is skipped entirely, if any these are true: 1) The 
+version is SQL 2005 or earlier. 2) The provider is SQLOLEDB or SQLNCLI. 3) Filestream is not enabled for remote access 
+according to sys.configurations. 
+4) You run the test suite with SQL authentication. Note that the Filestream 
+feature is configured in two places. In SQL Server with sp_configure and on 
+Windows level through the SQL Server Configuration Manager. I have not been able 
+to find out how to check for the latter reliably, so in case sys.configurations 
+says that Filestream is enabled for remote access, but this is not the fact on 
+Windows level, the test will fail big time.</P>
+<P>
+<B>Number of tests</B>: 8</P>
+<P>
+<B>Creates in SQL Server</B>: the scripts creates a <I><FONT COLOR="#FF0000">
+database</FONT></I>, Olle$DB, with a FILESTREAM file group. It creates a table 
+with filestream data in that database. The database is dropped at the end of the 
+script.</P>
+<H3>
+Y<B>_rowsetprops.t</B> </H3>
 <P>
 <B>Tests</B> the properties <B>
 <A HREF="Win32-SqlServer.html#CommandTimeout">CommandTimeout</A></B> and <B>
@@ -227,17 +269,19 @@ the second server.</P>
 <P>
 <B>Notes</B>: This
 script runs for almost a minute, because of a 45-second <SMALL CLASS="allcaps">WAITFOR</SMALL> to test <B>
-<A HREF="Win32-SqlServer.html#CommandTimeout">CommandTimeout</A></B>. </P>
+<A HREF="Win32-SqlServer.html#CommandTimeout">CommandTimeout</A></B>. That&#39;s why 
+it is demoted to always be next-to-last in the test suite.</P>
 <P>
 <B>Number of tests</B>: 11 (With <SMALL CLASS="allcaps">SQLOLEDB), 9 (SQL</SMALL> Native Client and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 or
-earlier), 16 (With <SMALL CLASS="allcaps">SQL</SMALL> Native Client and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005).</P>
+earlier), 18 (With <SMALL CLASS="allcaps">SQL</SMALL> Native Client and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 
+or later).</P>
 <P>
 <B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005
 when you have <SMALL CLASS="allcaps">SQL</SMALL> Native Client.
 the script creates a <FONT COLOR="#FF0000"><I>database</I></FONT>, OlleQN, in which it creates a broker service
 service and a queue. In the other test cases, no objects are created.</P>
 <H3>
-B<B>_threads.t</B> </H3>
+Z<B>_threads.t</B> </H3>
 <P>
 <B>Tests</B>: Win32::SqlServer with Perl threads. </P>
 <P>
@@ -245,25 +289,31 @@ B<B>_threads.t</B> </H3>
 <P><B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: nothing.</P>
 <P><B>Note</B>: this script often hangs, due to a bug in the Perl threads
 package. See <A HREF="http://rt.perl.org/rt3//Public/Bug/Display.html?id=39839">
-http://rt.perl.org/rt3//Public/Bug/Display.html?id=39839</A> for details.</P>
+http://rt.perl.org/rt3//Public/Bug/Display.html?id=39839</A> for details. This 
+is why it has a name to make sure it&#39;s the last in the test suite. According 
+to the link, the issue has been fixed, but since the poster don&#39;t know why, and 
+this apparently is some race condition, I don&#39;t take that for granted.</P>
 <H2>Subdirectories to t</H2>
 <P>
 There are two subdirectories in the t directory:
 </P>
 <P>
-<B>Helpers</B> - Here you find the source code for the three <SMALL CLASS="allcaps">CLR</SMALL> types that are
+<B>Helpers</B> - Here you find the source code for the four <SMALL CLASS="allcaps">CLR</SMALL> types that are
 used in the test, and a Perl script to create them. Here is also a short program
 in VB6 which is used to generate and interpret date in regional settings for the
-<A HREF="Win32-SqlServer.html#DATETIME_REGIONAL"><SMALL CLASS="allcaps">DATETIME_REGIONAL</SMALL></A> setting.</P>
+<A HREF="Win32-SqlServer.html#DATETIME_REGIONAL"><SMALL CLASS="allcaps">DATETIME_REGIONAL</SMALL></A> setting. 
+There is also test data for the spatial data types geometry and geography and 
+the queries to generate that data.</P>
 <P>
 <B>Output</B> - This directory holds output files from some of the test scripts.
-Most of them comes from <B>5_errors.t</B>, but also <B>2_datatypes.t</B> and <B>8_threads.t</B>
+Most of them comes from <B>5_errors.t</B>, but also <B>2_datatypes.t,</B> <B>
+A_tableparam.t</B> and <B>Z_threads.t</B>
 generate output files.
 </P>
 <P>
 <HR />
 <I>
-Last updated <!--$$Modtime:--> 07-07-11 12:07 <!-- $-->
+Last updated <!--$$Modtime:--> 08-05-04 18:40 <!-- $-->
 </I>
 </P>
 </BODY>

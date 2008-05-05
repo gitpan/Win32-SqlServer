@@ -1,10 +1,57 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/6_paramsql.t 8     07-06-10 21:50 Sommar $
+# $Header: /Perl/OlleDB/t/6_paramsql.t 17    08-05-04 22:41 Sommar $
 #
 # This test suite concerns sql with parameterised SQL statements.
 #
 # $History: 6_paramsql.t $
 # 
+# *****************  Version 17  *****************
+# User: Sommar       Date: 08-05-04   Time: 22:41
+# Updated in $/Perl/OlleDB/t
+# We get different dates back depending the provider.
+#
+# *****************  Version 16  *****************
+# User: Sommar       Date: 08-05-04   Time: 22:08
+# Updated in $/Perl/OlleDB/t
+# Don't test the spatial data types with SQLNCLI (because it doesn't
+# work.)
+#
+# *****************  Version 15  *****************
+# User: Sommar       Date: 08-05-04   Time: 21:19
+# Updated in $/Perl/OlleDB/t
+# We can't test rowversion on SQL 7 and earlier!
+#
+# *****************  Version 14  *****************
+# User: Sommar       Date: 08-02-17   Time: 0:35
+# Updated in $/Perl/OlleDB/t
+# Restored funny names, now that SQL Native Client handles them properly
+# again.
+#
+# *****************  Version 13  *****************
+# User: Sommar       Date: 08-02-10   Time: 17:16
+# Updated in $/Perl/OlleDB/t
+# Added test for rowversion and timestamp.
+#
+# *****************  Version 12  *****************
+# User: Sommar       Date: 07-12-01   Time: 23:48
+# Updated in $/Perl/OlleDB/t
+#
+# *****************  Version 11  *****************
+# User: Sommar       Date: 07-11-20   Time: 22:08
+# Updated in $/Perl/OlleDB/t
+# Added tests for spatial.
+#
+# *****************  Version 10  *****************
+# User: Sommar       Date: 07-11-11   Time: 18:57
+# Updated in $/Perl/OlleDB/t
+# Added tests for the new date/time data types.
+#
+# *****************  Version 9  *****************
+# User: Sommar       Date: 07-09-16   Time: 22:42
+# Updated in $/Perl/OlleDB/t
+# Added tests for large UDTs and hierarchyid. Temporary disabled funny
+# names for SQL Native Client 10, since it can't cope with them.
+#
 # *****************  Version 8  *****************
 # User: Sommar       Date: 07-06-10   Time: 21:50
 # Updated in $/Perl/OlleDB/t
@@ -50,7 +97,7 @@ use File::Basename qw(dirname);
 require &dirname($0) . '\testsqllogin.pl';
 require '..\helpers\assemblies.pl';
 
-use vars qw(@testres $verbose $retvalue $no_of_tests);
+use vars qw(@testres $verbose $retvalue $no_of_tests $clr_enabled);
 
 sub blurb{
     push (@testres, "#------ Testing @_ ------\n");
@@ -376,7 +423,7 @@ push (@testres, compare($expect, $result));
 
 blurb("Expanding of '???' only");
 if ($sqlver >= 10) {
-   $expect = qr/Must declare the scalar variable ['"]\@P1\@P2(\@P3)?['"]/;
+   $expect = qr/Must declare the scalar variable ['"]\@P1\@P2(\@P3)?["']/;
 }
 else {
    $expect = qr/Incorrect syntax near ['"]\@P1\@P2(\@P3)?["']/;
@@ -460,7 +507,31 @@ $result = $X->sql_one('SELECT a = ?, b = @x + @y, c = ? + @x',
                         y    => ['int', 43]}, HASH);
 push (@testres, compare($expect, $result));
 
-$no_of_tests = 31;
+blurb("timestamp and rowversion");
+{
+   $X->{BinaryAsStr} = 1;
+   $expect = [{'a' => "ABCDEF8800000000", 'b' => "1234567800000000"}];
+   my $params = {'@b1' => ['timestamp', 'ABCDEF88'],
+                 '@b2' => ['rowversion', '123456780']};
+   if ($sqlver <= 7) {
+      $$params{'@b2'}[0] = 'timestamp';
+   }
+   $result = $X->sql('SELECT a = @b1, b = @b2', $params);
+   push (@testres, compare($expect, $result));
+
+   blurb("timestamp and rowversion, 0x");
+   $X->{BinaryAsStr} = 'x';
+   $params = {'@b1' => ['timestamp', 'ABCDEF88'],
+              '@b2' => ['rowversion', '123456780']};
+   if ($sqlver <= 7) {
+      $$params{'@b2'}[0] = 'timestamp';
+   }
+   $expect = [{'a' => "0xABCDEF8800000000", 'b' => "0x1234567800000000"}];
+   $result = $X->sql('SELECT a = @b1, b = @b2', $params);
+   push (@testres, compare($expect, $result));
+}
+
+$no_of_tests = 33;
 
 if ($sqlver <= 8) {
    goto finally;
@@ -624,7 +695,7 @@ push (@testres, compare($expect, $result));
 $X->sql("DROP XML SCHEMA COLLECTION OlleSC");
 $no_of_tests += 5;
 
-my $clr_enabled = sql_one(<<SQLEND, Win32::SqlServer::SCALAR);
+$clr_enabled = sql_one(<<SQLEND, Win32::SqlServer::SCALAR);
 SELECT value
 FROM   sys.configurations
 WHERE  name = 'clr enabled'
@@ -632,7 +703,8 @@ SQLEND
 
 goto finally if not $clr_enabled;
 
-create_the_udts($X, 'OlleComplexInteger', 'OllePoint', 'Olle-String');
+create_the_udts($X, 'OlleComplexInteger', 'OllePoint', 'Olle-String',
+                    'OlleString MAX');
 
 blurb("UDT with BinAsStr");
 $X->{BinaryAsStr} = 1;
@@ -645,7 +717,7 @@ SELECT p = @p, s = @s
 SQLEND
 $result = $X->sql_one($sqltext,
             {'@p' => ['UDT(OllePoint)', '0x01800000098000000480000005'],
-             '@s' => ['UDT', '0x0005000000657373694E', '[Olle-String]']},
+             '@s' => ['UDT', '0x0005000000657373694E', "[Olle-String]"]},
             HASH);
 push (@testres, compare($expect, $result));
 
@@ -660,7 +732,7 @@ SELECT p = @p, s = @s
 SQLEND
 $result = $X->sql_one($sqltext,
             {'@p' => ['UDT(OllePoint)', '0x01800000098000000480000005', 'OllePoint'],
-             '@s' => ['udt(dbo.[Olle-String] )', '0x0005000000657373694E']},
+             '@s' => ["udt(dbo.[Olle-String] )", '0x0005000000657373694E']},
             HASH);
 push (@testres, compare($expect, $result));
 
@@ -677,7 +749,7 @@ $result = $X->sql_one($sqltext,
             {'@p' => ['UDT(dbo.OllePoint)',
                        pack('H*', '01800000098000000480000005')],
              '@s' => ['UDT',
-                       pack('H*', '0005000000657373694E'), '  [Olle-String]  ']},
+                       pack('H*', '0005000000657373694E'), "  [Olle-String]  "]},
             HASH);
 push (@testres, compare($expect, $result));
 
@@ -693,16 +765,98 @@ SELECT p = @p, s = @s
 SQLEND
 $result = $X->sql_one($sqltext,
             {'@p' => ['UDT(tempdb.dbo.OllePoint)', '0x01800000098000000480000005'],
-             '@s' => ['UDT', '0x0005000000657373694E', 'tempdb..[Olle-String]']},
+             '@s' => ['UDT', '0x0005000000657373694E', "tempdb..[Olle-String]"]},
             HASH);
 push (@testres, compare($expect, $result));
-
 $X->sql("USE tempdb");
-delete_the_udts($X);
 
 $no_of_tests += 4;
 
+goto finally if $sqlver <= 9;
+
+blurb("Large UDT");
+$sqltext = 'SELECT datalength(?)';
+$result = $X->sql_one($sqltext,
+                      [['UDT',
+                       '00C8320000' . ('73C3A56772C3B66D736BC3A452' x 1000),
+                       '[OlleString MAX]']],
+                      SCALAR);
+push(@testres, compare(13005, $result));
+
+blurb("Large UDT (but short)");
+$sqltext = 'SELECT datalength(?)';
+$result = $X->sql($sqltext,
+                      [['UDT(MAX)',
+                       '000D00000073C3A56772C3B66D736BC3A452',
+                       '[OlleString MAX]']],
+                      SCALAR, SINGLEROW);
+push(@testres, compare(18, $result));
+
+blurb("hierarchyid");
+$sqltext = 'SELECT cast(@a as varchar(50)), cast(@b as varchar(50));';
+$expect = ['/7/1/23/980/', '/1/7/980/'];
+$result = $X->sql_one($sqltext, {'@a' => ['hierarchyid', '0x9D783FDC0C80'],
+                                 '@b' => ['UDT', '0x5CFDC0C8', 'hierarchyid']},
+                                LIST);
+push(@testres, compare($expect, $result));
+
+blurb("date");
+$X->{DatetimeOption} = DATETIME_ISO;
+$sqltext = 'SELECT dateadd(DAY, 1, ?)';
+$expect = ['1998-12-11'];
+$result = $X->sql_one($sqltext, [['date', '1998-12-10']], LIST);
+push(@testres, compare($expect, $result));
+
+blurb("time");
+$sqltext = 'SELECT dateadd(HOUR, 1, ?), dateadd(MINUTE, 1, ?), dateadd(MS, 8, ?)';
+$expect = ['14:12:21', '17:23:23.1234567', '00:12:12.123'];
+$result = $X->sql_one($sqltext, [['time(0)', '13:12:21'],
+                                 ['time',    '17:22:23.1234567'],
+                                 ['time(3)', '00:12:12.115']], LIST);
+push(@testres, compare($expect, $result));
+
+{
+   blurb("datetime2");
+   my $date = ($X->{Provider} >= PROVIDER_SQLNCLI10 ? '1899-12-30' : '1900-01-01');
+   $sqltext = 'SELECT dateadd(HOUR, 1, ?), dateadd(MINUTE, 1, ?), dateadd(MS, 8, ?)';
+   $expect = ["$date 14:12:21", "$date 17:23:23.1234567",
+              "$date 00:12:12.1230000"];
+   $result = $X->sql_one($sqltext, [['datetime2(0)', '13:12:21'],
+                                    ['datetime2',    '17:22:23.1234567'],
+                                    ['datetime2(7)', '00:12:12.115']], LIST);
+   push(@testres, compare($expect, $result));
+}
+
+blurb("datetimeoffset");
+$sqltext = "SELECT switchoffset(?, '+08:00'), dateadd(YEAR, 1, ?)";
+$expect = ['2005-09-30 20:12:21.00 +08:00', '1454-08-11 17:23:23.0000000 +00:00'];
+$result = $X->sql_one($sqltext, [['datetimeoffset(2)', '2005-09-30 14:12:21 +02:00'],
+                                 ['datetimeoffset',    '1453-08-11 17:23:23']],
+                                 LIST);
+push(@testres, compare($expect, $result));
+$no_of_tests += 7;
+
+if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+   blurb("spatial");
+   $sqltext = 'SELECT @geom.STAsText(), @geog.STAsText();';
+   $expect = ['POINT (98 12)', 'POINT (59.656 18.36)'];
+   $result = $X->sql_one($sqltext, {'@geom' => ['geometry', '0x0A000000010C00000000008058400000000000002840'],
+                                    '@geog' => ['geography', '0xE6100000010C8716D9CEF7D34D405C8FC2F5285C3240']},
+                                   LIST);
+   push(@testres, compare($expect, $result));
+
+   blurb("spatial2");
+   $result = $X->sql_one($sqltext, {'@geom' => ['UDT', '0x0A000000010C00000000008058400000000000002840', 'geometry'],
+                                    '@geog' => ['UDT', '0xE6100000010C8716D9CEF7D34D405C8FC2F5285C3240', 'geography']},
+                                   LIST);
+   push(@testres, compare($expect, $result));
+   $no_of_tests += 2;
+}
+
+
 finally:
+
+delete_the_udts($X) if $clr_enabled;
 
 my $ix = 1;
 my $blurb = "";
@@ -738,19 +892,25 @@ sub compare {
          return ($x eq $y);
       }
       else {
-         return (not defined $x and not defined $y);
+         my $ret = (not defined $x and not defined $y);
+         warn "undef ne <$y>" if not $ret and not defined $x;
+         warn "<$x> ne undef" if not $ret and not defined $y;
+         return $ret;
       }
    }
    elsif ($refx ne $refy) {
+      warn "<$x> ne <$y>";
       return 0;
    }
    elsif ($refx eq "ARRAY") {
       if ($#$x != $#$y) {
+         warn "Different array lengths: $#$x and $#$y";
          return 0;
       }
       elsif ($#$x >= 0) {
          foreach $ix (0..$#$x) {
             $result = compare($$x[$ix], $$y[$ix]);
+            warn "Diff at index $ix" if not $result;
             last if not $result;
          }
          return $result;
@@ -760,17 +920,25 @@ sub compare {
       }
    }
    elsif ($refx eq "HASH") {
-      my $nokeys_x = scalar(keys %$x);
-      my $nokeys_y = scalar(keys %$y);
+      # Filter some colinfo properties that are not relevant for this test.
+      my @keysx = keys %$x;
+      my @keysy = grep($_ !~ /^(Maybenull|Maxlength|Scale|Precision|Readonly)$/,
+                       keys %$y);
+
+      my $nokeys_x = scalar(@keysx);
+      my $nokeys_y = scalar(@keysy);
       if ($nokeys_x != $nokeys_y) {
+         warn "$nokeys_x keys != $nokeys_y keys";
          return 0;
       }
       elsif ($nokeys_x > 0) {
-         foreach $key (keys %$x) {
+         foreach $key (@keysx) {
             if (not exists $$y{$key}) {
+                warn "Key <$key> only on left side";
                 return 0;
             }
             $result = compare($$x{$key}, $$y{$key});
+            warn "Diff at key '$key'" if not $result;
             last if not $result;
          }
          return $result;
@@ -783,6 +951,7 @@ sub compare {
       return compare($$x, $$y);
    }
    else {
+      warn "<$x> ne <$y>" if $x ne $y;
       return ($x eq $y);
    }
 }

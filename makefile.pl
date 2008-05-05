@@ -1,11 +1,49 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/makefile.pl 11    07-07-10 21:14 Sommar $
+# $Header: /Perl/OlleDB/makefile.pl 18    08-05-04 18:36 Sommar $
 #
 # Makefile.pl for MSSQL::OlleDB. Note that you may need to specify where
 # you ave the include files for OLE DB.
 #
 # $History: makefile.pl $
 # 
+# *****************  Version 18  *****************
+# User: Sommar       Date: 08-05-04   Time: 18:36
+# Updated in $/Perl/OlleDB
+# Must use delayed inmport for SQLNCLI.DLL so that Win32::SqlServer can
+# run on machines without it.
+#
+# *****************  Version 17  *****************
+# User: Sommar       Date: 08-04-28   Time: 23:10
+# Updated in $/Perl/OlleDB
+# Need to cater for the 64-bit version of the link library for SQL Native
+# Client.
+#
+# *****************  Version 16  *****************
+# User: Sommar       Date: 08-03-23   Time: 19:30
+# Updated in $/Perl/OlleDB
+# Added common debug flag. Sometimes needed when testing...
+#
+# *****************  Version 15  *****************
+# User: Sommar       Date: 08-01-05   Time: 0:24
+# Updated in $/Perl/OlleDB
+# New file tableparam.obj
+#
+# *****************  Version 14  *****************
+# User: Sommar       Date: 07-12-24   Time: 21:38
+# Updated in $/Perl/OlleDB
+# The big explosion: split the single source file for XS into a whole
+# bunch.
+#
+# *****************  Version 13  *****************
+# User: Sommar       Date: 07-11-26   Time: 22:46
+# Updated in $/Perl/OlleDB
+# Added a libfile, since we now need to link against sqlnlic10.lib.
+#
+# *****************  Version 12  *****************
+# User: Sommar       Date: 07-09-09   Time: 0:11
+# Updated in $/Perl/OlleDB
+# Get SQLNCLI from 100/SDK, so that we can suppor Katmai.
+#
 # *****************  Version 11  *****************
 # User: Sommar       Date: 07-07-10   Time: 21:14
 # Updated in $/Perl/OlleDB
@@ -80,7 +118,7 @@ elsif ($clversion < 13) {
    die  "No MAKEFILE generated.\n";
 }
 
-my $SQLDIR  = '\Program Files\Microsoft SQL Server\90\SDK';
+my $SQLDIR  = '\Program Files\Microsoft SQL Server\100\SDK';
 my $sqlnclih = "$SQLDIR\\INCLUDE\\SQLNCLI.H";
 foreach my $device ('C'..'Z') {
    if (-r "$device:$sqlnclih") {
@@ -94,19 +132,24 @@ if ($SQLDIR !~ /^[C-Z]:/) {
     die  "No MAKEFILE generated.\n";
 }
 
-
+my $archlibdir = ($ENV{PROCESSOR_ARCHITECTURE} eq 'AMD64' ? 'x64' : $ENV{PROCESSOR_ARCHITECTURE});
+my $libfile = qq!"$SQLDIR\\LIB\\$archlibdir\\sqlncli10.lib"!;
 
 WriteMakefile(
     'INC'          => ($SQLDIR ? qq!-I"$SQLDIR\\INCLUDE"! : ""),
     'NAME'         => 'Win32::SqlServer',
-    'CCFLAGS'     => '/MT',
+    'CCFLAGS'     => '/MT', # Debug-flag: '/Zi',
     'OPTIMIZE'     => '/O2',
-    'LIBS'         => [":nosearch :nodefault kernel32.lib user32.lib ole32.lib oleaut32.lib uuid.lib libcmt.lib"],
+    'OBJECT'       => 'SqlServer.obj handleattributes.obj convenience.obj ' .
+                      'datatypemap.obj init.obj internaldata.obj ' .
+                      'errcheck.obj connect.obj utils.obj datetime.obj ' .
+                      'tableparam.obj senddata.obj getdata.obj',
+    'LIBS'         => [":nosearch :nodefault $libfile delayimp.lib kernel32.lib user32.lib ole32.lib oleaut32.lib uuid.lib libcmt.lib"],
     'VERSION_FROM' => 'SqlServer.pm',
     'XS'           => { 'SqlServer.xs' => 'SqlServer.cpp' },
     'dist'         => {ZIP => '"C:\Program Files (x86)\Winzip\wzzip"',
                        ZIPFLAGS => '-r -P'},
-    'dynamic_lib'  => { OTHERLDFLAGS => '/base:"0x19860000"'}
+    'dynamic_lib'  => { OTHERLDFLAGS => '/base:"0x19860000" /DELAYLOAD:sqlncli10.dll'}
     # Set base address to avoid DLL collision, makes startup speedier. Remove
     # if your compiler don't have this option.
 );

@@ -1,11 +1,48 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/3_retvalues.t 6     05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/t/3_retvalues.t 13    08-05-04 22:35 Sommar $
 #
 # This test suite tests return values from sql_sp. Most of the tests
 # concerns UDFs.
 #
 # $History: 3_retvalues.t $
 # 
+# *****************  Version 13  *****************
+# User: Sommar       Date: 08-05-04   Time: 22:35
+# Updated in $/Perl/OlleDB/t
+# Incorrect number of tests fixed.
+#
+# *****************  Version 12  *****************
+# User: Sommar       Date: 08-05-04   Time: 22:01
+# Updated in $/Perl/OlleDB/t
+# Don't run the umpteen TZOffset tests with SQLOLEDB and SQLNCLI.
+#
+# *****************  Version 11  *****************
+# User: Sommar       Date: 08-02-17   Time: 0:35
+# Updated in $/Perl/OlleDB/t
+# Restored funny names, now that SQL Native Client handles them properly
+# again.
+#
+# *****************  Version 10  *****************
+# User: Sommar       Date: 07-11-20   Time: 21:56
+# Updated in $/Perl/OlleDB/t
+# Added tests for spatial data types.
+#
+# *****************  Version 9  *****************
+# User: Sommar       Date: 07-11-10   Time: 23:38
+# Updated in $/Perl/OlleDB/t
+# Added tests for the new date/time data types.
+#
+# *****************  Version 8  *****************
+# User: Sommar       Date: 07-09-16   Time: 22:42
+# Updated in $/Perl/OlleDB/t
+# Added tests for large UDTs and hierarchyid. Temporary disabled funny
+# names for SQL Native Client 10, since it can't cope with them.
+#
+# *****************  Version 7  *****************
+# User: Sommar       Date: 07-09-08   Time: 23:18
+# Updated in $/Perl/OlleDB/t
+# Correct test on provider version.
+#
 # *****************  Version 6  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB/t
@@ -41,7 +78,7 @@ use File::Basename qw(dirname);
 require &dirname($0) . '\testsqllogin.pl';
 require '..\helpers\assemblies.pl';
 
-use vars qw(@testres $verbose $retvalue $no_of_tests);
+use vars qw(@testres $verbose $retvalue $no_of_tests $clr_enabled);
 use constant TESTUDF => 'olledb_testudf';
 
 sub blurb{
@@ -69,10 +106,22 @@ sub datehash_compare {
     my($val, $expect) = @_;
 
     foreach my $part (keys %$expect) {
-       return 0 if not defined $$val{$part} or $$expect{$part} != $$val{$part};
+       if (not defined $$val{$part} or $$expect{$part} != $$val{$part}) {
+          warn "Expected $part=$$expect{$part}, got $$val{$part}.\n";
+          return 0;
+       }
     }
+
+    foreach my $part (keys %$val) {
+       if (not defined $$expect{$part}) {
+          warn "Unexpected part '$part'\n";
+          return 0;
+       }
+    }
+
     return 1;
 }
+
 
 $verbose = shift @ARGV;
 
@@ -272,7 +321,7 @@ $X->sql_sp(TESTUDF, \$retvalue);
 push(@testres, $retvalue eq '2005-02-06 18:17:11.043');
 
 $X->{DatetimeOption} = DATETIME_STRFMT;
-blurb('UDF datetime iso');
+blurb('UDF datetime strfmt');
 $X->sql_sp(TESTUDF, \$retvalue);
 push(@testres, $retvalue eq '20050206 18:17:11.043');
 
@@ -311,7 +360,7 @@ if ($sqlver <= 8) {
    goto finally;
 }
 
-if ($X->{Provider} != PROVIDER_SQLNCLI) {
+if ($X->{Provider} < PROVIDER_SQLNCLI) {
     goto finally;
 }
 
@@ -384,29 +433,295 @@ SQLEND
 $no_of_tests += 8;
 
 
-my $clr_enabled = sql_one(<<SQLEND, Win32::SqlServer::SCALAR);
+$clr_enabled = sql_one(<<SQLEND, Win32::SqlServer::SCALAR);
 SELECT value
 FROM   sys.configurations
 WHERE  name = 'clr enabled'
 SQLEND
 
-goto finally if not $clr_enabled;
+if ($clr_enabled) {
+   create_the_udts($X, 'OlleComplexInteger', 'Olle.Point', 'OlleString',
+                       'OlleStringMax');
+   $X->{BinaryAsStr} = 'x';
+   blurb('UDT1, bin0x');
+   create_udf($X, '[Olle.Point]', '@p [Olle.Point]', '@p', 'SET @p.Transpose()');
+   $X->sql_sp(TESTUDF, \$retvalue, ['0x01800000098000000480000005']);
+   push(@testres, $retvalue eq      '0x01800000048000000580000009');
 
-create_the_udts($X, 'OlleComplexInteger', 'Olle.Point', 'OlleString');
-$X->{BinaryAsStr} = 'x';
-blurb('UDT1, bin0x');
-create_udf($X, '[Olle.Point]', '@p [Olle.Point]', '@p', 'SET @p.Transpose()');
-$X->sql_sp(TESTUDF, \$retvalue, ['0x01800000098000000480000005']);
-push(@testres, $retvalue eq      '0x01800000048000000580000009');
+   $X->{BinaryAsStr} = 0;
+   blurb('UDT3, binary as binary');
+   create_udf($X, 'OlleString', '@s OlleString', 'upper(@s.ToString())');
+   $X->sql_sp(TESTUDF, \$retvalue, [pack('H*', '0005000000657373694E')]);
+   push(@testres, $retvalue eq pack('H*', '0005000000455353494E'));
 
-$X->{BinaryAsStr} = 0;
-blurb('UDT3, binary as binary');
-create_udf($X, 'OlleString', '@s OlleString', 'upper(@s.ToString())');
-$X->sql_sp(TESTUDF, \$retvalue, [pack('H*', '0005000000657373694E')]);
-push(@testres, $retvalue eq pack('H*', '0005000000455353494E'));
+   $no_of_tests += 2;
+}
+
+# From here it's only SQL 2008 and up.
+goto finally if $sqlver < 10;
+
+blurb('hierarchyid');
+create_udf($X, 'hierarchyid', '@s hierarchyid', '@s.GetAncestor(1)');
+$X->sql_sp(TESTUDF, \$retvalue, [pack('H*', '9D783FDC0C80')]);
+push(@testres, $retvalue eq pack('H*', '9D783E'));
+
+blurb('geometry');
+create_udf($X, 'geometry', '@g geometry', '@g.STConvexHull()');
+$X->sql_sp(TESTUDF, \$retvalue, [pack('H*', '000000000114000000000000F03F000000000000F03F00000000000000400000000000001040')]);
+push(@testres, $retvalue eq pack('H*', '00000000011400000000000000400000000000001040000000000000F03F000000000000F03F'));
+
+blurb('geography');
+create_udf($X, 'geography', '@g geography', '@g.STPointN(1)');
+# geography::STLineFromText('LINESTRING(47.656 -122.360, 47.656 -122.343)', 4326);
+$X->sql_sp(TESTUDF, \$retvalue, [pack('H*', 'E610000001148716D9CEF7D34740D7A3703D0A975EC08716D9CEF7D34740CBA145B6F3955EC0')]);
+push(@testres, $retvalue eq pack('H*', 'E6100000010F8716D9CEF7D34740D7A3703D0A975EC0000000000000F8FF000000000000F8FF'));
 
 
-$no_of_tests += 2;
+blurb('date');
+$X->{DatetimeOption} = DATETIME_ISO;
+create_udf($X, 'date', '', "'2007-10-11'");
+$X->sql_sp(TESTUDF, \$retvalue);
+push(@testres, $retvalue eq '2007-10-11');
+
+blurb('date, hash');
+$X->{DatetimeOption} = DATETIME_HASH;
+$X->sql_sp(TESTUDF, \$retvalue);
+if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+   push(@testres, datehash_compare($retvalue,
+                                   {Year => 2007, Month => 10,  Day => 11}));
+}
+else {
+   push(@testres, $retvalue eq '2007-10-11');
+}
+undef $retvalue;
+
+blurb('time');
+$X->{DatetimeOption} = DATETIME_ISO;
+create_udf($X, 'time(0)', '', "'12:23:59'");
+$X->sql_sp(TESTUDF, \$retvalue);
+push(@testres, $retvalue eq '12:23:59');
+
+blurb('time, hash');
+$X->{DatetimeOption} = DATETIME_HASH;
+$X->sql_sp(TESTUDF, \$retvalue);
+if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+   push(@testres, datehash_compare($retvalue,
+                                   {Hour => 12, Minute => 23, Second => 59,
+                                   Fraction => 0}));
+}
+else {
+   push(@testres, $retvalue eq '12:23:59');
+}
+undef $retvalue;
+
+blurb('datetime2');
+$X->{DatetimeOption} = DATETIME_ISO;
+create_udf($X, 'datetime2(2)', '', "'1066-04-12 12:23:59.45'");
+$X->sql_sp(TESTUDF, \$retvalue);
+push(@testres, $retvalue eq '1066-04-12 12:23:59.45');
+
+blurb('datetime2, hash');
+$X->{DatetimeOption} = DATETIME_HASH;
+$X->sql_sp(TESTUDF, \$retvalue);
+if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+   push(@testres, datehash_compare($retvalue,
+                                   {Year => 1066, Month => 4, Day => 12,
+                                   Hour => 12, Minute => 23, Second => 59,
+                                   Fraction => 450}));
+}
+else {
+   push(@testres, $retvalue eq '1066-04-12 12:23:59.45');
+}
+undef $retvalue;
+
+blurb('datetimeoffset');
+$X->{DatetimeOption} = DATETIME_ISO;
+create_udf($X, 'datetimeoffset', '', "'1632-11-06 12:23:59.1239892 +01:00'");
+$X->sql_sp(TESTUDF, \$retvalue);
+push(@testres, $retvalue eq '1632-11-06 12:23:59.1239892 +01:00');
+
+blurb('datetimeoffset, hash');
+$X->{DatetimeOption} = DATETIME_HASH;
+$X->sql_sp(TESTUDF, \$retvalue);
+if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+   push(@testres, datehash_compare($retvalue,
+                                   {Year => 1632, Month => 11, Day => 6,
+                                   Hour => 12, Minute => 23, Second => 59,
+                                   Fraction => 123.9892, TZHour => 1,
+                                   TZMinute => 0}));
+}
+else {
+   push(@testres, $retvalue eq '1632-11-06 12:23:59.1239892 +01:00');
+}
+undef $retvalue;
+
+$no_of_tests += 11;
+
+
+# Here follows many tests with datetimeoffset and tzoffset to make sure
+# that we always apply the offset correctly.
+if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
+   $X->{DatetimeOption} = DATETIME_ISO;
+   blurb('datetimeoffset, tzoffset1');
+   $X->{TZOffset} = '-02:30';
+   create_udf($X, 'datetimeoffset(0)', '', "'1632-11-06 12:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1632-11-06 08:53:00'));
+
+   blurb('datetimeoffset, tzoffset2');
+   $X->{TZOffset} = '+06:30';
+   create_udf($X, 'datetimeoffset(0)', '', "'1632-11-06 12:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1632-11-06 17:53:00'));
+
+   blurb('datetimeoffset, tzoffset3');
+   $X->{TZOffset} = '+05:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1632-11-06 23:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1632-11-07 03:23:00'));
+
+   blurb('datetimeoffset, tzoffset4');
+   $X->{TZOffset} = '-05:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1632-11-06 01:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1632-11-05 19:23:00'));
+
+   blurb('datetimeoffset, tzoffset5');
+   $X->{TZOffset} = '-13:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1632-11-06 00:23:00 +12:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1632-11-04 23:23:00'));
+
+   blurb('datetimeoffset, tzoffset6');
+   $X->{TZOffset} = '+13:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1632-11-06 23:12:00 -12:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1632-11-08 00:12:00'));
+
+
+   blurb('datetimeoffset, tzoffset7');
+   $X->{TZOffset} = '-02:30';
+   create_udf($X, 'datetimeoffset(0)', '', "'1958-11-06 12:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1958-11-06 08:53:00'));
+
+   blurb('datetimeoffset, tzoffset8');
+   $X->{TZOffset} = '+06:30';
+   create_udf($X, 'datetimeoffset(0)', '', "'1958-11-06 12:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1958-11-06 17:53:00'));
+
+   blurb('datetimeoffset, tzoffset9');
+   $X->{TZOffset} = '+05:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1958-11-06 23:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1958-11-07 03:23:00'));
+
+   blurb('datetimeoffset, tzoffset10');
+   $X->{TZOffset} = '-05:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1958-11-06 01:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1958-11-05 19:23:00'));
+
+   blurb('datetimeoffset, tzoffset11');
+   $X->{TZOffset} = '-13:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1958-11-06 00:23:00 +12:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1958-11-04 23:23:00'));
+
+   blurb('datetimeoffset, tzoffset12');
+   $X->{TZOffset} = '+13:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1958-11-06 23:12:00 -12:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1958-11-08 00:12:00'));
+
+
+   blurb('datetimeoffset, tzoffset13');
+   $X->{TZOffset} = '-02:30';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-30 12:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-30 08:53:00'));
+
+   blurb('datetimeoffset, tzoffset14');
+   $X->{TZOffset} = '+06:30';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-30 12:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-30 17:53:00'));
+
+   blurb('datetimeoffset, tzoffset15');
+   $X->{TZOffset} = '+05:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-30 23:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-31 03:23:00'));
+
+   blurb('datetimeoffset, tzoffset16');
+   $X->{TZOffset} = '-05:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-30 01:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-29 19:23:00'));
+
+   blurb('datetimeoffset, tzoffset17');
+   $X->{TZOffset} = '-13:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-30 00:23:00 +12:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-28 23:23:00'));
+
+   blurb('datetimeoffset, tzoffset18');
+   $X->{TZOffset} = '+13:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-30 23:12:00 -12:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1900-01-01 00:12:00'));
+
+
+   blurb('datetimeoffset, tzoffset19');
+   $X->{TZOffset} = '-02:30';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-29 12:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-29 08:53:00'));
+
+   blurb('datetimeoffset, tzoffset20');
+   $X->{TZOffset} = '+06:30';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-29 12:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-29 17:53:00'));
+
+   blurb('datetimeoffset, tzoffset21');
+   $X->{TZOffset} = '+05:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-29 23:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-30 03:23:00'));
+
+   blurb('datetimeoffset, tzoffset22');
+   $X->{TZOffset} = '-05:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-29 01:23:00 +01:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-28 19:23:00'));
+
+   blurb('datetimeoffset, tzoffset23');
+   $X->{TZOffset} = '-13:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-29 00:23:00 +12:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-27 23:23:00'));
+
+   blurb('datetimeoffset, tzoffset24');
+   $X->{TZOffset} = '+13:00';
+   create_udf($X, 'datetimeoffset(0)', '', "'1899-12-29 23:12:00 -12:00'");
+   $X->sql_sp(TESTUDF, \$retvalue);
+   push(@testres, ($retvalue eq '1899-12-31 00:12:00'));
+
+   $no_of_tests += 24;
+}
+
+if ($clr_enabled) {
+      blurb('UDTLarge, binary as binary');
+      create_udf($X, 'OlleStringMax', '@s OlleStringMax',
+                     'reverse(convert(nvarchar(MAX), @s))');
+      $X->sql_sp(TESTUDF, \$retvalue,
+                [pack('H*', '00C8320000' . ('52C3A46B736DC3B67267C3A573' x 1000))]);
+      push(@testres, $retvalue eq pack('H*', '00C8320000' .
+                                             ('73C3A56772C3B66D736BC3A452' x 1000)));
+     $no_of_tests += 1;
+}
 
 
 finally:
@@ -418,6 +733,8 @@ if ($sqlver >= 8) {
       DROP FUNCTION $testudf
 SQLEND
 }
+
+delete_the_udts($X) if $clr_enabled;
 
 my $ix = 1;
 my $blurb = "";

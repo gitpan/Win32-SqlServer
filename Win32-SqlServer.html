@@ -38,7 +38,6 @@ td.extrapad {padding-right: 20px;}
 
 th {background-color: #CCCCCC;}
 
-
 .allcaps {font-size: 90%;}
 -->
 </STYLE>
@@ -66,16 +65,16 @@ complete list of what is importable, including description of export tags, pleas
 section <A HREF="#EXPORTTAGS">Exported Names and Export Tags</A>.</P>
 <H1>Contents</H1>
 <UL STYLE="list-style-type: none;">
-<LI><B><A HREF="#OVERVIEW">Overview and Introduction</A></B></LI>
+<LI><B><A HREF="#OVERVIEW">Overview and Introduction</A></B>
 <UL STYLE="list-style-type: none;">
 <LI><A HREF="#docstructure">Structure of this Document</A></LI>
 <LI><A HREF="#Prerequisites">Prerequisites and Supported Platforms</A></LI>
 <LI><A HREF="#functionsummary">Summary of Functions</A></LI>
 <LI><A HREF="#introerrorhandling">Error Handling</A></LI>
 <LI><A HREF="#quickexamples">Quick Examples</A></LI>
-</UL>
+</UL></LI>
 <LI><B><A HREF="#datatypes">Data-Type Representation</A></B></LI>
- <LI><B><A HREF="#Initroutines">Connection Routines</A></B></LI>
+ <LI><B><A HREF="#Initroutines">Connection Routines</A></B>
 <UL STYLE="list-style-type: none;">
  <LI><A HREF="#sql_init"><NOBR>sql_init()</NOBR></A></LI>
  <LI><A HREF="#new">new</A></LI>
@@ -83,19 +82,22 @@ section <A HREF="#EXPORTTAGS">Exported Names and Export Tags</A>.</P>
  <LI><A HREF="#connect"><NOBR>connect()</NOBR></A></LI>
  <LI><A HREF="#disconnect"><NOBR>disconnect()</NOBR></A></LI>
  <LI><A HREF="#isconnected"><NOBR>isconnected()</NOBR></A></LI>
-</UL>
- <LI><B><A HREF="#High-level">High-Level Query Functions</A></B></LI>
+</UL></LI>
+ <LI><B><A HREF="#High-level">High-Level Query Functions</A></B>
 <UL STYLE="list-style-type: none;">
  <LI><A HREF="#sql"><NOBR>sql()</NOBR></A></LI>
  <LI><A HREF="#sql_one"><NOBR>sql_one()</NOBR></A></LI>
  <LI><A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A></LI>
- <LI><A HREF="#sql_insert"><NOBR>sql_insert()</NOBR></A></LI>
-</UL>
- <LI><B><A HREF="#Mid-level">Mid-Level Query Functions</A></B></LI>
+ <LI><NOBR><A HREF="#sql_insert">sql_insert()</A></NOBR></LI>
+ <LI><A HREF="#TVP">Working with Table Parameters</A></LI>
+</UL></LI>
+ <LI><B><A HREF="#Mid-level">Mid-Level Query Functions</A></B>
 <UL STYLE="list-style-type: none;">
  <LI><A HREF="#initbatch"><NOBR>initbatch()</NOBR></A></LI>
  <LI><A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A></LI>
- <LI><A HREF="#executebatch"><NOBR>executebatch()</NOBR></A></LI>
+ <LI><NOBR><A HREF="#executebatch">executebatch()</A></NOBR></LI>
+ <LI><A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A></LI>
+ <LI><A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A></LI>
  <LI><A HREF="#nextresultset"><NOBR>nextresultset()</NOBR></A></LI>
  <LI><NOBR><A HREF="#nextrow">nextrow()</A></NOBR><BR />
    <A HREF="#getcolumninfo">getcolumnninfo()</A></LI>
@@ -105,39 +107,40 @@ section <A HREF="#EXPORTTAGS">Exported Names and Export Tags</A>.</P>
  <LI><A HREF="#cancelbatch"><NOBR>cancelbatch()</NOBR></A></LI>
  <LI><A HREF="#getcmdstate"><NOBR>getcmdstate()</NOBR></A></LI>
  <LI><A HREF="#midlevelexamples">Mid-Level Functions Examples</A></LI>
-</UL>
- <LI><B><A HREF="#Conversion_Routines">Character-Set Conversion Routines</A></B></LI>
+</UL></LI>
+<LI><B><A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A></B></LI>
+ <LI><B><A HREF="#Conversion_Routines">Character-Set Conversion Routines</A></B>
 <UL STYLE="list-style-type: none;">
  <LI><A HREF="#sql_set_conversion"><NOBR>sql_set_conversion()</NOBR></A> </LI>
  <LI><A HREF="#sql_unset_conversion"><NOBR>sql_unset_conversion()</NOBR></A> </LI>
  <LI><A HREF="#codpage_convert"><NOBR>codepage_convert()</NOBR></A> </LI>
-</UL>
- <LI><B><A HREF="#Utility_Routines">Utility Routines</A></B></LI>
+</UL></LI>
+ <LI><B><A HREF="#Utility_Routines">Utility Routines</A></B>
 <UL STYLE="list-style-type: none;">
  <LI><A HREF="#sql_has_errors"><NOBR>sql_has_errors()</NOBR></A></LI>
  <LI><A HREF="#sql_get_command_text"><NOBR>sql_get_command_text()</NOBR></A></LI>
  <LI><A HREF="#sql_string"><NOBR>sql_string()</NOBR></A></LI>
  <LI><A HREF="#sql_begin_trans"><NOBR>sql_begin_trans(), sql_commit(), sql_rollback()</NOBR></A></LI>
-</UL>
+</UL></LI>
  <LI><B><A HREF="#OBJECT_PROPERTIES">Object Properties</A></B></LI>
  <LI><B><A HREF="#ErrorHandling">Error Handling</A></B></LI>
- <LI><B><A HREF="#Misctopics">Miscellaneous Topics</A></B></LI>
+ <LI><B><A HREF="#Misctopics">Miscellaneous Topics</A></B>
 <UL STYLE="list-style-type: none;">
  <LI><A HREF="#EXPORTTAGS">Exported Names and Export Tags</A></LI>
+   <LI><A HREF="#Versionnumbers">Getting the Win32::SqlServer Version</A></LI>
  <LI><A HREF="#SQLLIB">Notes on Migration from <NOMEDDLE>MSSQL::Sqllib</NOMEDDLE></A></LI>
  <LI><A HREF="#QueryNotification">Using Query Notifications with Win32::SqlServer</A></LI>
  <LI><A HREF="#Threads">Using Win32::SqlServer in Threaded Scripts</A></LI>
  <LI><A HREF="#BUGS">Bugs and Known Restrictions</A></LI>
-</UL>
+</UL></LI>
  <LI><B><A HREF="#ACKNOWLEDGEMENTS">Acknowledgements</A></B></LI>
  <LI><B><A HREF="#AUTHOR">Author, Copyright and Licence</A></B></LI>
 </UL>
 
 <H1><A NAME="OVERVIEW">Overview and Introduction</A></H1>
 <P>Win32::SqlServer is a module that permits you to access Microsoft <SMALL CLASS="allcaps">SQL</SMALL> Server
-   from Perl with full access to all (well, almost) features of <SMALL CLASS="allcaps">MS SQL</SMALL> Server. The
-   module can use any of the two <SMALL CLASS="allcaps">OLE DB</SMALL> providers <SMALL CLASS="allcaps">SQLOLEDB</SMALL> and <SMALL CLASS="allcaps">SQLNCLI (SQL</SMALL>
-   Native Client). Win32::SqlServer has a high-level interface that permits you to submit an
+   from Perl with full access to all (well, almost) features of <SMALL CLASS="allcaps">MS SQL</SMALL>
+Server using <SMALL CLASS="allcaps">OLE DB</SMALL> as the underlying <SMALL CLASS="allcaps">API</SMALL>. Win32::SqlServer has a high-level interface that permits you to submit an
    <SMALL CLASS="allcaps">SQL</SMALL> statement or call a stored procedure and retrieve the result in one
    single function call. There are several options that you can use to specify the
    structure of the result set(s) &#8211; arrays of rows that are hashes,
@@ -158,20 +161,13 @@ result set(s).</P>
  <A HREF="http://www.sommarskog.se/mssqlperl/mssql-dblib.html"><SMALL CLASS="allcaps">MSSQL</SMALL>::DBlib</A>,
    your modules should port with only minor modifications, see the section
  <A HREF="#SQLLIB">Notes on Migration from <SMALL CLASS="allcaps">MSSQL</SMALL>::Sqllib</A>. </P>
-<P><SMALL>Originally, I released Win32::SqlServer as <SMALL CLASS="allcaps">
-   MSSQL</SMALL>::OlleDB. However, the friendly people that maintains the Perl
-   module list, convinced me that the module should be in the Win32 space.
-   OlleDB was originally an internal working name, but I was not able to think
-   of anything better. The Olle name still appears in some corners, and if you
-   work with the <A HREF="Tests.html">test suite</A> or venture into the code,
-   you may see it in a few places.</SMALL></P>
-<P><SMALL>And, oh, a terminology note: <I>method</I> is a popular word in
+<P><SMALL>A terminology note: <I>method</I> is a popular word in
    object-oriented terminology. But being of the old school, having learnt the
    object-oriented paradigm though Simula, I prefer to use <I>functions</I> or
    simply <I>routines</I>, and those are the words you will mainly see in this
    document. </SMALL> </P>
 <H2>Note on Documented vs. Undocumented</H2>
-<P>While this a long and extensive manual, you will find more routines and
+<P>While this a long and extensive manual, you will find even more routines and
  properties if you read the source code. Given the nature of Perl, these will be
  accessible to your script if you like. However, <B>any use of undocumented
  routines is entirely unsupported</B>, and particularly I feel <B>no obligation
@@ -189,9 +185,10 @@ result set(s).</P>
    demonstrating how to access data with Win32::SqlServer&#39;s high-level functions.</P>
 <P>Next chapter discusses how Win32::SqlServer represents the <A HREF="#datatypes"><SMALL CLASS="allcaps">SQL</SMALL> Server data
    types</A> in Perl. This is followed by descriptions of the functions in
-   Win32::SqlServer. These are split up over no less than five chapters. <A HREF="#Initroutines">Connection functions</A>,
+   Win32::SqlServer. These are split up over no less than six chapters. <A HREF="#Initroutines">Connection functions</A>,
    <A HREF="#High-level">High-level query functions</A>. <A HREF="#Mid-level">Mid-level query functions</A>,
-   <A HREF="#Conversion_Routines">Character-set conversion routines</A> and
+   <A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A>,
+<A HREF="#Conversion_Routines">Character-set conversion routines</A> and
    <A HREF="#Utility_Routines">Utility
    routines</A>. After the function descriptions, there is a section that
    describes all <A HREF="#OBJECT_PROPERTIES">properties</A> of the
@@ -214,37 +211,43 @@ result set(s).</P>
    to verify this.</DD>
    <DT>&nbsp;</DT>
    <DT><B>Perl</B></DT>
-   <DD>Perl 5.8.3 or later is required. (This is ActivePerl build 809).</DD>
+   <DD>Perl 5.8.3 or later is required. (This is ActivePerl build 809). </DD>
    <DT>&nbsp;</DT>
    <DT><B>Operating Systems</B></DT>
-   <DD>Windows NT4 SP6a, Windows 2000, Windows XP, Windows 2003 and Windows
-   Vista. The module <I>may</I> run on Windows 95/98/ME, but I am not supporting these platforms. As for
-   Windows &quot;Longhorn&quot;, this will be a supported platform, once it is released. This
-   module does <I>not</I> run on non-Windows platforms.</DD>
+   <DD>Windows NT4 SP6a, Windows 2000, Windows XP, Windows 2003, Windows
+   Vista and Windows 2008. The module <I>may</I> run on Windows 95/98/ME, but I
+   am not supporting these platforms. </DD>
    <DT>&nbsp;</DT>
-   <DT><B>MDAC/SQL Native Client </B></DT>
-   <DD>Win32::SqlServer can use any of the two providers <SMALL CLASS="allcaps">SQLOLEDB</SMALL> and <SMALL CLASS="allcaps">SQLNCLI</SMALL>. See the
-   object property <B> <A HREF="#Provider">Provider</A></B> for a discussion of which to
-   use.
-   <P>
-   For <SMALL CLASS="allcaps">SQLOLEDB</SMALL> you need <SMALL CLASS="allcaps">MDAC</SMALL> 2.6 or later. Note that if you have
-      Windows&nbsp;2000 without <SMALL CLASS="allcaps">SQL</SMALL> Server, you are likely to have <SMALL CLASS="allcaps">MDAC</SMALL>&nbsp;2.5 only.
-      (<SMALL CLASS="allcaps">MDAC</SMALL> 2.6 was released with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000.) Windows&nbsp;NT does not come
-      with <SMALL CLASS="allcaps">MDAC</SMALL> at all. You can download the <SMALL CLASS="allcaps">MDAC</SMALL> from
-   <A HREF="http://www.microsoft.com/downloads/search.aspx">http://download.microsoft.com/</A>.</P>
-   <P>To use <SMALL CLASS="allcaps">SQLNCLI</SMALL>, you need <SMALL CLASS="allcaps">SQL</SMALL> Native Client which comes with the <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005
-   as a separate install, which is redistributable. Your <SMALL CLASS="allcaps">MDAC</SMALL> version does not
-      matter when you use <SMALL CLASS="allcaps">SQLNCLI</SMALL>.</P></DD>
+   <DT><B>MDAC/SQL Server Native Client </B></DT>
+   <DD>To connect to <SMALL CLASS="allcaps">SQL</SMALL> Server you need a <SMALL CLASS="allcaps">OLE DB</SMALL> Provider for <SMALL CLASS="allcaps">SQL</SMALL> Server. There
+   are several of them, or at least there are several names (they can been seen as
+   different versions of the same provider).<UL>
+   <LI><SMALL CLASS="allcaps">SQLOLEDB</SMALL> - Ships with Windows as part of the <SMALL CLASS="allcaps">MDAC</SMALL>, and supports all features of <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000.
+   The only provider that supports connections to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5. You need at least
+   version 2.6 of the <SMALL CLASS="allcaps">MDAC</SMALL>. Note that Windows 2000 shipped with <SMALL CLASS="allcaps">MDAC</SMALL> 2.5 and
+   Windows NT did not include the <SMALL CLASS="allcaps">MDAC</SMALL> at all. You can download the <SMALL CLASS="allcaps">MDAC</SMALL> from
+   microsoft.com. A computer on which you have
+   installed any components of <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 is likely to have <SMALL CLASS="allcaps">MDAC</SMALL> 2.6.</LI>
+   <LI><SMALL CLASS="allcaps">SQLNCLI - SQL</SMALL> (Server) Native Client. The provider that ships with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, and
+   you need at least <SMALL CLASS="allcaps">SQLNCLI</SMALL> to have full access to all features in <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005.</LI>
+   <LI><SMALL CLASS="allcaps">SQLNCLI10</SMALL> - The provider that
+   ships with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008, and you need <SMALL CLASS="allcaps">SQLNCLI10</SMALL> for support of <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008
+   features.</LI>
+   </UL>
+   </DD>
+   <DT></DT>
    <DT><B>SQL Server</B></DT>
    <DD>All versions from <SMALL CLASS="allcaps">SQL</SMALL> Server 6.5 and on
    are supported. </DD>
    <DT>&nbsp;</DT>
    <DT><B>Compiler</B></DT>
-   <DD>If you want to compile Win32::SqlServer on your own, you need Visual Studio 2002 or
-   later. You will also need the include file for <SMALL CLASS="allcaps">SQL</SMALL> Native Client, <I>sqlncli.h</I>.
-   This file comes with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005. (If you use any other compiler than
-   Visual C++, feel free to try. I have not tested that though.)
-   <P>If you have downloaded a binary, you do not need any compiler.</P></DD>
+   <DD>If you want to compile Win32::SqlServer on your own, you need Visual Studio 2005 or
+   later. You will also need the <SMALL CLASS="allcaps">SDK</SMALL> file for <SMALL CLASS="allcaps">SQL</SMALL> Native Client
+   that comes with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008. Note that the
+   <SMALL CLASS="allcaps">SDK</SMALL> comes with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 will not do. (If you use any other compiler than
+   Visual C++, feel free to try. I have not tested that, nor do I support it.)
+   If you have downloaded a binary, you do not need any compiler.
+   </DD>
 </DL>
 <H2><A NAME="functionsummary">Summary of Functions</A></H2>
 <P>The functions of Win32::SqlServer fall into five groups: 1) connection
@@ -327,6 +330,21 @@ information <NOBR>set through <A HREF="#setloginproperty">setloginproperty()</A>
    parameter. You must call <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A> once for each parameter in
    the command batch.</DD>
    <DT>&nbsp;</DT>
+   <DT><CODE><B>$status = $sqlsrv-&gt;definetablecolumn($tblname, $colname,
+   $nameoftype, <BR />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+   $maxlen, $prec, $scale,<BR />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+   $usedefault, $typeinfo);</B></CODE></DT>
+   <DD>Describes a column for a table-valued parameter. When pass a table as a
+   parameter, you need to call <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A> once for each column in the
+   table.</DD>
+   <DT>&nbsp;</DT>
+   <DT><CODE><B>$status = $sqlsrv-&gt;inserttableparam($tblname, $inputref);</B></CODE></DT>
+   <DD>Inserts a single row into a table-valued parameter. Call it once for
+   every row you want to pass.</DD>
+
+   <DT>&nbsp;</DT>
    <DT><CODE><B>$status = $sqlsrv-&gt;executebatch(\$rows_affected);</B></CODE></DT>
 
    <DD>Executes the command batch you defined with <A HREF="#initbatch"><NOBR>initbatch()</NOBR></A>,
@@ -366,6 +384,12 @@ information <NOBR>set through <A HREF="#setloginproperty">setloginproperty()</A>
    <A HREF="#nextresultset"><NOBR>nextresultset()</NOBR></A> to move to the
    next resultset.</DD>
    </DL>
+<H3><NOBR>OpenSqlFilestream()</NOBR></H3>
+<DL>
+<DT><B><CODE>$fh = $sqlsrv-&gt;OpenSqlFilestream($path, $access, $context [, $options [,
+$alloclen]])</CODE></B></DT>
+<DD>Makes a <SMALL CLASS="allcaps">FILESTREAM</SMALL> column available for access through Win32::<SMALL CLASS="allcaps">API</SMALL>.</DD>
+</DL>
 <H3>Character-set Conversion Routines</H3>
 <DL>
 <DT><CODE><B>$sqlsrv-&gt;sql_set_conversion($client_cs, $server_cs, $direction);</B></CODE></DT>
@@ -421,8 +445,9 @@ information <NOBR>set through <A HREF="#setloginproperty">setloginproperty()</A>
    <A HREF="#DATETIME_STRFMT"><SMALL CLASS="allcaps">DATETIME_STRFMT</SMALL></A>. </DD>
    <DT>&nbsp;</DT>
    <DT><B>DatetimeOption</B></DT>
-   <DD>Controls how <CODE><B>datetime</B></CODE> values returned from <SMALL CLASS="allcaps">SQL</SMALL> Server are represented in Perl.
-   Default is <SMALL CLASS="allcaps">ISO</SMALL> format, <FONT COLOR="#FF0000"> <I><CODE>YYYY-MM-DD HH:MM:SS.fff</CODE></I></FONT>. </DD>
+   <DD>Controls how date and time values returned from <SMALL CLASS="allcaps">SQL</SMALL> Server are represented in Perl.
+   Default is <SMALL CLASS="allcaps">ISO</SMALL> format, <FONT COLOR="#FF0000"> <I><CODE>
+   <NOBR>YYYY-MM-DD hh:mm:ss.fffffff ±hh:mm</NOBR></CODE></I></FONT>. </DD>
    <DT>&nbsp;</DT>
    <DT><B>DecimalAsStr</B></DT>
    <DD>Controls how <CODE><B>bigint</B></CODE> (on x86 only), <CODE><B>decimal</B></CODE> and
@@ -432,7 +457,7 @@ information <NOBR>set through <A HREF="#setloginproperty">setloginproperty()</A>
    <DT>&nbsp;</DT>
    <DT><B>ErrInfo</B></DT>
    <DD>A complex structure that controls how Win32::SqlServer reacts on (error) messages
-   from <SMALL CLASS="allcaps">SQL</SMALL> error. See next section for a little more introduction.</DD>
+   from <SMALL CLASS="allcaps">SQL</SMALL> error. See next section for an introduction.</DD>
    <DT>&nbsp;</DT>
    <DT><B>LogHandle</B></DT>
    <DD>A file handle to which Win32::SqlServer writes the commands it passes to <SMALL CLASS="allcaps">SQL</SMALL>
@@ -463,12 +488,14 @@ information <NOBR>set through <A HREF="#setloginproperty">setloginproperty()</A>
    an unhandled error at login.</DD>
    <DT>&nbsp;</DT>
    <DT><B>Provider</B></DT>
-   <DD>Selects which provider to use, <SMALL CLASS="allcaps">SQLOLEDB</SMALL> or <SMALL CLASS="allcaps">SQLNCLI</SMALL>. The default is
-   <SMALL CLASS="allcaps">SQLNCLI</SMALL>, if <SMALL CLASS="allcaps">SQL</SMALL> Native Client is installed, else it&#39;s <SMALL CLASS="allcaps">SQLOLEDB</SMALL>.</DD>
+   <DD>Selects which <SMALL CLASS="allcaps">OLE DB</SMALL> provider to use, <SMALL CLASS="allcaps">SQLOLEDB, SQLNCLI</SMALL>
+   or <SMALL CLASS="allcaps">SQLNCLI10</SMALL>. By default, Win32::SqlServer uses the most recent provider
+   that is installed.That is, if <SMALL CLASS="allcaps">SQLNCLI10</SMALL> is available this is the default.</DD>
    <DT>&nbsp;</DT>
    <DT><B>QueryNotification</B></DT>
-   <DD>A hash that specifies parameters for query notification. This feature is
-   only available with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 and <SMALL CLASS="allcaps">SQL</SMALL> Native Client.</DD>
+   <DD>A hash that specifies parameters for query notification. This feature
+   <SMALL CLASS="allcaps">requires SQL</SMALL>&nbsp;2005 or later and <SMALL CLASS="allcaps">SQL</SMALL>
+   Server Native Client.</DD>
    <DT>&nbsp;</DT>
    <DT><B>RowsAtATime</B></DT>
    <DD>Controls how many rows at a time <A HREF="#nextrow"><NOBR>nextrow()</NOBR></A> requests from the <SMALL CLASS="allcaps">OLE DB</SMALL>
@@ -480,7 +507,14 @@ information <NOBR>set through <A HREF="#setloginproperty">setloginproperty()</A>
    <DT>&nbsp;</DT>
    <DT><B>tables</B></DT>
    <DD>A hash with table definitions, used as a cache by <A HREF="#sql_insert"><NOBR>sql_insert()</NOBR></A>.</DD>
+   <DT></DT>
+   <DT><B>tabletypes</B></DT>
+   <DD>A hash with definition of table types, used as a cache by the
+   <A HREF="#High-level">high-level routines</A> for table-valued parameters.</DD>
    <DT>&nbsp;</DT>
+   <DT><B>TZOption</B></DT>
+   <DD>Sets a default time-zone offset for the <B><CODE>datetimeoffset</CODE></B> data type.</DD>
+   <DT></DT>
    <DT><B>UserData</B></DT>
    <DD>An entry where you can save you own data in a Win32::SqlServer object.</DD>
 </DL>
@@ -549,7 +583,7 @@ if ($sqlsrv-&gt;sql_has_errors()) {
    I&#39;m leaving that for
    the description of the functions.</P>
 <P>The most of these examples runs in the Northwind database. This database does
-   not ship with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, but you can download it
+   not ship with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 or later, but you can download it
    <A HREF="http://www.microsoft.com/downloads/details.aspx?FamilyId=06616212-0356-46A0-8DA2-EEBC53A68034&displaylang=en">here</A>.
    Alas, Northwind will not install on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5.</P>
 <H3>Example 1</H3>
@@ -749,9 +783,9 @@ use Win32::SqlServer;
 my $sqlsrv = Win32::SqlServer::sql_init();
 
 # Run sp_helpdb for tempdb. Note that here we don&#39;t specify the data type
-# for the parameter; sql_sp looks that up. sp_helpdb returns two result
-# set, with different structures. We therefore get the results as an array
-# of result sets. Each result set is an array of rows, and rows are hashes,
+# for the parameter; sql_sp looks it up. sp_helpdb returns two result sets,
+# with different structures. We therefore get the results as an array of
+# result sets. Each result set is an array of rows, and rows are hashes,
 # keyed by column name.
 my $result = $sqlsrv-&gt;sql_sp(&#39;sp_helpdb&#39;, [&#39;tempdb&#39;],
                               Win32::SqlServer::MULTISET);
@@ -810,10 +844,11 @@ $sqlsrv-&gt;sql_sp(&#39;#ordercnt&#39;, [&#39;VINET&#39;, &#39;1997-06-01&#39;],
                              {&#39;@no_of_orders&#39; =&gt; \$no_of_orders});
 print &quot;There are $no_of_orders orders for VINET later than 1997-06-01.\n&quot;;</PRE>
 <H3>More Examples</H3>
-<P>There are some more examples this document. Under the description of
+<P>There are more examples this document. Under the description of
    <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A>, there is <A HREF="#sqlsp_examples">one more example</A> of using this
-   function. The chapter of the mid-level query functions closes with
-   <A HREF="#midlevelexamples">two examples</A> of using these functions. And
+   function. The section <A HREF="#TVP">Working with table parameters</A>, has a
+whole slew of examples to show how to use table-valued parameters. The chapter of the mid-level query functions closes with
+   <A HREF="#midlevelexamples">three examples</A> of using these functions. And
    the chapter on error handling has <A HREF="#errorhandlingexamples">two
    examples</A> of loading stored procedures with Win32::SqlServer.</P>
 
@@ -886,7 +921,7 @@ see below.</P>
 
 <H2><A NAME="bignumbers">decimal, numeric, <NOBR>(small)mone</NOBR></A>y</H2>
 <P>What is said here, also applies to the <CODE><B>bigint</B></CODE> data type
-on 32-bit Perl, but not 64-bit.</P>
+on 32-bit Perl, but not on 64-bit, see above.</P>
 <H3>Output</H3>
 <P>You get back the value as a floating-point value or a string, depending on the
    boolean property <B>
@@ -913,8 +948,9 @@ on 32-bit Perl, but not 64-bit.</P>
 <P>If the value is a string, the string is converted to the target data type,
    using <I>IDataConvert</I>. This interface is different from Perl, and the conversion fails if the string
    cannot be converted to the target type. <SMALL>
-   (Curiously though, while a string like <CODE>&#39;9E&#39;</CODE> gives an error for <B>decimal</B> and
-   <B>money</B>, for <B>bigint</B> <I>IDataConvert</I> converts this
+   (Curiously though, while a string like <CODE>&#39;9E&#39;</CODE> gives an error for <B>
+<CODE>decimal</CODE></B> and
+   <B><CODE>money</CODE></B>, for <B><CODE>bigint</CODE></B> <I>IDataConvert</I> converts this
     value without any error to&nbsp;–&nbsp;0.)</SMALL> </P>
 <P>As for the format of the string, well, the short story is: use decimal point
    as delimiter and no thousands separators. The longer story is that for <B><CODE>
@@ -929,36 +965,78 @@ on 32-bit Perl, but not 64-bit.</P>
    hundred and eleven point 999), where as &quot;<CODE>1.111.999</CODE>&quot;
    is 1111999 (one million one hundred eleven thousand) and &quot;<CODE>€&nbsp;111.999</CODE>&quot; is 111999
    (one hundred eleven thousand). You are now warned.</P>
-<H2><A NAME="datetime">(small)datetime</A></H2>
+<H2><A NAME="datetime">Date and time data types</A></H2>
+<P><B>Note</B>: <SMALL CLASS="allcaps">SQL</SMALL> 2008 introduces no less that four new data types for date and time:
+<B><CODE>date</CODE></B> (date only), <B><CODE>time</CODE></B> (time only), <B><CODE>datetime2</CODE></B> (wider range and higher
+precision than <B><CODE>datetime</CODE></B>) and <B><CODE>datetimeoffset</CODE></B> (date and time with a time-zone
+offset). For the rest of this document, I will assume that you are familiar with
+these data types. If you are not, this short introduction will have to do.</P>
 <H3>Output</H3>
 <P>The property <B><A HREF="#datetime">DatetimeOption</A></B> determines how
    Win32::SqlServer converts the
-   value returned by <SMALL CLASS="allcaps">SQL</SMALL> Server. This option can have five different values:</P>
+   value returned by <SMALL CLASS="allcaps">SQL</SMALL> Server. The property
+<B><A HREF="#datetime">TZOffset</A></B> can be used to shift the time-zone of a <B><CODE>datetimeoffset</CODE></B> value.</P>
+<P><B>Note</B>: if you use a legacy provider, <SMALL CLASS="allcaps">SQLOLEDB</SMALL> or <SMALL CLASS="allcaps">SQLNCLI, SQL</SMALL> Server will
+return values of the new data types as strings in <SMALL CLASS="allcaps">ISO</SMALL> format, and the properties
+<B><A HREF="#datetime">DatetimeOption</A></B> and <B><A HREF="#datetime">TZOffset</A></B> will never apply. They only apply
+to the new data types if you use
+<SMALL CLASS="allcaps">SQLNCLI10</SMALL> or later. <B><A HREF="#datetime">DatetimeOption</A></B> always
+applies to <B><CODE>datetime</CODE></B> and <B><CODE>smalldatetime</CODE></B> values.</P>
+<P>The property <B><A HREF="#datetime">DatetimeOption</A></B> can have five different values:</P>
 <DL>
    <DT><B><A NAME="DATETIME_ISO">DATETIME_ISO</A></B></DT>
    <DD>You get a string on the form <NOBR>
-   <CODE> <FONT COLOR="#DD0000"><I>YYYY-MM-DD HH:MM:SS.fff</I></FONT></CODE></NOBR>.
-   (For <CODE><B>smalldatetime</B></CODE>, seconds and milliseconds are not
-   included.) This is the default setting. </DD>
+   <CODE> <FONT COLOR="#DD0000"><I>YYYY-MM-DD hh:mm:ss.fffffff ±hh.mm</I></FONT></CODE></NOBR>.
+   You only get the parts and decimals that are applicable to the data type in
+   question. So for <B><CODE>date</CODE></B> you get <NOBR>
+   <CODE> <FONT COLOR="#DD0000"><I>YYYY-MM-DD</I></FONT></CODE></NOBR>. For
+   <B><CODE>time(0)</CODE></B> you get <NOBR>
+   <CODE> <FONT COLOR="#DD0000"><I>hh:mm:ss</I></FONT></CODE></NOBR>, and for
+   <B><CODE>datetime2(2)</CODE></B> you get <NOBR>
+   <CODE> <FONT COLOR="#DD0000"><I>YYYY-MM-DD hh:mm:ss.ff</I></FONT></CODE></NOBR>. Only for
+   <B><CODE>datetimeoffset(7)</CODE></B> you get the full <NOBR>
+   <CODE> <FONT COLOR="#DD0000"><I>YYYY-MM-DD hh:mm:ss.fffffff ±hh.mm</I></FONT></CODE>
+   &#8211;</NOBR> and only if the property <B><A HREF="#datetime">TZOffset</A></B> has not been set, see below.</DD>
    <DT>&nbsp;</DT>
    <DT><B><A NAME="DATETIME_REGIONAL">DATETIME_REGIONAL</A></B></DT>
    <DD>You get a string that is formatted according to the user&#39;s regional
-   settings. Notice that milliseconds are never included with this format.
-   Win32::SqlServer uses the Automation routine <I>VarBstrFromDate</I> for the conversion,
-   and it appears that this function does not include the time portion if this
-   is 00:00:00.</DD>
+   settings. For <B><CODE>date</CODE></B> values, the string will include the date portion only.
+   Likewise for <B><CODE>time</CODE></B> values, the string will only include the time
+   portion. For <B><CODE>datetime</CODE></B>, <B><CODE>smalldatetime</CODE></B>, <B><CODE>datetime2</CODE></B> and <B><CODE>datetimeoffset</CODE></B>,
+   the time
+   portion is not included if it&#39;s 00:00:00, or so it seems.
+   (Win32::SqlServer uses the Automation routine <I>VarBstrFromDate </I>the for
+   the conversion and really has no control over this.) Note that with
+   regional settings, fractions are never included in the output. For
+   <B><CODE>datetimeoffset</CODE></B> values, the time-zone offset is included in the string,
+   unless <B><A HREF="#datetime">TZOffset</A></B> is set, see below. The time-zone offsets is added by
+   Win32::SqlServer itself, and is always formatted in the one and same way.</DD>
    <DT>&nbsp;</DT>
    <DT><B><A NAME="DATETIME_HASH">DATETIME_HASH</A></B></DT>
-   <DD>You get a reference to hash with seven keys: <B>Year</B>, <B>Month</B>,
-   <B>Day</B>, <B>Hour</B>, <B>Minute</B>, <B>Second</B> and <B>Fraction</B>,
-   each containing that part of the datetime value.</DD>
-   <DT>&nbsp;</DT>
+   <DD>You get a reference to hash with up to nine keys: <B>Year</B>, <B>Month</B>,
+   <B>Day</B>, <B>Hour</B>, <B>Minute</B>, <B>Second</B>, <B>Fraction</B>,
+   <B>TZHour</B> and <B>TZMinute</B>, each containing that part of the datetime value.
+   For <B><CODE>date</CODE></B>, only <B>Year</B>, <B>Month</B> and <B>Day</B> are present in the
+   hash. For <B><CODE>time</CODE></B>, the only keys to appear are <B>Hour</B>, <B>Minute</B>, <B>
+   Second</B> and <B>Fraction</B>. For <B><CODE>datetime</CODE></B>, <B><CODE>datetime2</CODE></B> and <B><CODE>smalldatetime</CODE></B>,
+   the first seven appear. Only for <B><CODE>datetimeoffset</CODE></B>, all nine are present, and only
+   if the property <B><A HREF="#datetime">TZOffset</A></B> has not been set.
+   <P>Note that the value for the <B>Fraction</B> key is in milliseconds. That is, a fractional value of 123456700 nanoseconds
+   appears as 123.4567.</P>
+   <P>The sign of <B>TZMinute</B> follows the sign of <B>TZHour</B>. Thus, if
+   the value returned from <SMALL CLASS="allcaps">SQL</SMALL> Server is <NOBR>2007-11-11 20:11:21 -03:30</NOBR>, <B>TZHour</B>
+   will be -3 and <B>TZMinute</B> is -30.</P></DD>
    <DT><B><A NAME="DATETIME_FLOAT">DATETIME_FLOAT</A></B></DT>
    <DD>You get a floating-point number that represents the number of fractional
-   days since 1899-12-30 00:00:00.000. This format can be useful if you need to
-   pass the datetime value to other <SMALL CLASS="allcaps">COM</SMALL> methods that use this form
+   days since <NOBR>1899-12-30 00:00:00.000.</NOBR> This format can be useful if
+   you need to pass the datetime value to <SMALL CLASS="allcaps">COM</SMALL> methods that use this form
    to represent datetime values. (Note that down in <SMALL CLASS="allcaps">SQL</SMALL> Server a float value of 0 converts
-   to 1900-01-01 00:00:00.000.)</DD>
+   to <NOBR>1900-01-01 00:00:00.000</NOBR>.) Obviously, the time-zone offset for a <B><CODE>datetimeoffset</CODE></B>
+   value will disappear with this representation. Beware that for dates before
+   <NOBR>1899-12-30</NOBR>, the values are discontiguous, since the sign
+   applies only to the integer part. For instance, -2.25 is <NOBR>1899-12-28
+   06:00</NOBR> and not <NOBR>1899-12-27 18:00</NOBR> as a strict mathematical
+   definition would give.</DD>
    <DT>&nbsp;</DT>
    <DT><B><A NAME="DATETIME_STRFMT">DATETIME_STRFMT</A></B></DT>
    <DD>You get a string formatted according to the properties <B>
@@ -1001,7 +1079,10 @@ on 32-bit Perl, but not 64-bit.</P>
    <P>
    The main purpose of <A HREF="#DATETIME_STRFMT"><SMALL CLASS="allcaps">DATETIME_STRFMT</SMALL></A> is
    to provide compatibility with
-   <A HREF="http://www.sommarskog.se/mssqlperl/mssql-sqllib.html"><SMALL CLASS="allcaps">MSSQL</SMALL>::Sqllib</A>.</P></DD>
+   <A HREF="http://www.sommarskog.se/mssqlperl/mssql-sqllib.html"><SMALL CLASS="allcaps">MSSQL</SMALL>::Sqllib</A>
+   and this format has not been enhanced for the new data types. Specifically,
+   you will not get any time-zone offset with this format for <B><CODE>datetimeoffset</CODE></B>
+   values.</P></DD>
 </DL>
 <P>
 These constants are not imported by default. To refer to them, you need
@@ -1009,39 +1090,126 @@ to say e.g. <CODE><NOBR>Win32::SqlServer::DATETIME_ISO</NOBR></CODE> or
 import them when you <CODE>use Win32::SqlServer</CODE>, explicitly or with an
 <A HREF="#EXPORTTAGS">export tag</A>.
 </P>
+<H4><A NAME="TZOffset">The TZOffset property</A></H4>
+<P>You can set this property to a time-zone offset on the format <I><CODE>
+<FONT COLOR="#DD0000">±hh:mm</FONT></CODE></I>. Win32::SqlServer will then shift
+the value returned from <SMALL CLASS="allcaps">SQL</SMALL> Server to the time zone you have specified, and not
+include the time-zone offset in the value. That is, if the value returned from
+<SMALL CLASS="allcaps">SQL</SMALL> Server is <NOBR>2007-11-11 18:00:00 +01:00</NOBR> and you have set <B><A HREF="#datetime">TZOffset</A></B>
+to -08:00, Win32::SqlServer will return <CODE><NOBR>2007-11-11 09:00:00</NOBR></CODE>
+for <SMALL CLASS="allcaps">ISO</SMALL> format. <CODE>{Year =&gt; 2007, Month =&gt; 11, Day =&gt; 11, Hour =&gt; 9, Minute
+=&gt; 0, Second =&gt; 0, Fraction =&gt; 0)</CODE> for <A HREF="#DATETIME_HASH"><SMALL CLASS="allcaps">DATETIME_HASH</SMALL></A> and 39397.375 for
+<A HREF="#DATETIME_FLOAT"><SMALL CLASS="allcaps">DATETIME_FLOAT</SMALL></A>. The property is also in force for <A HREF="#DATETIME_REGIONAL"><SMALL CLASS="allcaps">DATETIME_REGIONAL</SMALL></A> and
+<A HREF="#DATETIME_STRFMT"><SMALL CLASS="allcaps">DATETIME_STRFMT</SMALL></A>.</P>
+<P>A second choice for <B><A HREF="#datetime">TZOffset</A></B> is the string &quot;<CODE>local</CODE>&quot;. With this value,
+Win32::SqlServer will look up the current time-zone offset (on the client, not
+on the server) and use this offset. This lookup is performed every time, to permit for
+<SMALL CLASS="allcaps">DST</SMALL> changes while the script is running.</P>
 <H3>Input</H3>
-<P>On input, Win32::SqlServer looks at the Perl data type only, and does not consider <B><A HREF="#datetime">DatetimeOption</A></B>.</P>
+<P>On input, Win32::SqlServer looks at the Perl data type only, and does not consider
+<B><A HREF="#datetime">DatetimeOption</A></B>. It
+does however consider the <B><A HREF="#datetime">TZOffset</A></B> property for <B><CODE>datetimeoffset</CODE></B> values. Please
+see note at the end if you are using the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> or <SMALL CLASS="allcaps">SQLNCLI</SMALL> provider with the
+new date/time data types in <SMALL CLASS="allcaps">SQL</SMALL> 2008.</P>
 <DL>
    <DT><B>string value</B></DT>
-   <DD>If the Perl value is a string, Win32::SqlServer first attempts to interpret it as a
-   date formatted according to <SMALL CLASS="allcaps">ISO</SMALL> 8601. The date part can be formatted as with
-   delimiters as <FONT COLOR="#DD0000"><CODE><NOBR>YYYY-MM-DD</NOBR></CODE></FONT>
-   or undelimited <FONT COLOR="#DD0000"><CODE>YYYYMMDD</CODE></FONT>. The date
-   and time portion can be separated with space or with a T. (The format with T
-   is produced with format 126 to the <SMALL CLASS="allcaps">T-SQL</SMALL> function <SMALL CLASS="allcaps"><NOBR>CONVERT()</NOBR></SMALL>, and is the
-   format used in <SMALL CLASS="allcaps">XML</SMALL> documents.) Thus all these formats are legal: <NOBR>
-   <CODE>&quot;20050730 20:30&quot;</CODE></NOBR>, <NOBR><CODE>&quot;2005-07-30 20:30&quot;</CODE></NOBR>, <NOBR>
-   <CODE>&quot;2005-07-30T20:30&quot;</CODE></NOBR>.
-   You can also use Z to terminate a date value without a time portion, for
-   instance <CODE>&quot;2005-07-30Z&quot;</CODE>. (This also comes from <SMALL>XML</SMALL>.)<P>
-   If the string does not conform to <SMALL CLASS="allcaps">ISO</SMALL> format,
-   Win32::SqlServer attempts to interpret
-   the strings according to regional settings. Note that conversion to regional
-   settings will fail if the time portion has milliseconds specified.</P>
-   <P>If the string can neither be interpreted according to regional settings fails, the conversion fails and the
+   <DD>If the Perl value is a string, Win32::SqlServer performs these steps:
+   <OL>
+   <LI>Reads the string from the back, and if there is a time-zone offset on the form
+   <CODE><I><FONT COLOR="DD0000">±hh:mm</FONT></I></CODE>,
+       Win32::SqlServer saves this value and strips it from the string.</LI>
+   <LI>Win32::SqlServer tries to interpret the string as an <SMALL CLASS="allcaps">ISO</SMALL>-formatted date,
+   according to the rules detailed below.</LI>
+   <LI>If the <SMALL CLASS="allcaps">ISO</SMALL> interpretation fails, Win32::SqlServer hands the string over
+   to the Automation routine <I>VarDateFromStr</I> that will interpret the string
+   according to regional settings. Note that this step is likely to fail if the
+   string includes fractional seconds.</LI>
+   <LI>If the string neither can be interpreted according to regional settings, the conversion fails and the
       <A HREF="#MsgHandler">current
       message handler</A> is invoked. Thus, Win32::SqlServer never considers the
       format defined by <B><A HREF="#datetime">DateFormat</A></B> and <B><A HREF="#datetime">MsecFormat</A></B>.
-   </P></DD>
-   <DT><B>hash reference</B></DT>
+      </LI>
+   </OL>
+   <P>When examing whether a string may be an <SMALL CLASS="allcaps">ISO</SMALL> string, Win32::SqlServer
+   considers these variations:</P>
+   <UL>
+   <LI><I><CODE><FONT COLOR="#DD0000">YYYY-MM-DD hh:mm:ss.ffffff</FONT></CODE></I>,
+   where year-month-day is mandatory. The time portion may be left out
+   entirely, but if the hour appears in the string, minutes must also be
+   included. Seconds and fractions are always optional. The default for all
+   time parts is 0.</LI>
+   <LI><I><CODE><FONT COLOR="#DD0000">YYYYMMDD hh:mm:ss.ffffff</FONT></CODE></I>,
+   with the same rules as above.</LI>
+   <LI><I><CODE><FONT COLOR="#DD0000">YYYY-MM-DDThh:mm:ss.ffffff</FONT></CODE></I>,
+   where the year, month, day, time and minute hour are mandatory. Seconds and fractions are
+   optional with a default of 0. The T represents itself, and appears in
+   <SMALL CLASS="allcaps">T-SQL</SMALL> in <B>convert</B> style 126.</LI>
+   <LI><I><CODE><FONT COLOR="#DD0000">YYYY-MM-DDZ</FONT></CODE></I>, where the
+   date is mandatory, and no time portion is not permitted. This date format
+   was introduced in <SMALL CLASS="allcaps">SQL</SMALL> 2005.</LI>
+   <LI><I><CODE><FONT COLOR="#DD0000">hh:mm:ss.ffffff</FONT></CODE></I>, where
+   hours and minutes are mandatory. For the date there is a default of
+   <NOBR>1899-12-30</NOBR> and for seconds and fractions there is a default of 0. Obviously,
+   this format is mainly intended for the <B><CODE>time</CODE></B> data type.</LI>
+   </UL>
+   <P>There are no restrictions on what portions you may supply depending on
+   the data type. Non-applicable portions are simply thrown away. That is,
+   hours are truncated from <B><CODE>date</CODE></B> values, seconds are truncated from
+   <B><CODE>smalldatetime</CODE></B> values and superfluous decimals are truncated from fractions. Note that this behaviour is different from <SMALL CLASS="allcaps">SQL</SMALL> Server which rounds
+   in the latter two cases.</P>
+   <P>If there was a time-zone offset in the string,
+   Win32::SqlServer will supply that when it passes a <B><CODE>datetimeoffset</CODE></B> value, and
+   ignore it for other data types. If there never was any time-zone offset in the string, Win32::SqlServer
+   will use the time-zone specified in <B><A HREF="#datetime">TZOffset</A></B>. If neither <B><A HREF="#datetime">TZOffset</A></B> is
+   supplied, Win32::SqlServer uses a default of +00:00, that is <SMALL CLASS="allcaps">UTC</SMALL>.</P>
+   <P><B>Note</B>:
+   earlier versions of Win32::SqlServer accepted strings that started with an
+   <SMALL CLASS="allcaps">ISO</SMALL>-formatted string and had junk at the end, for instance &quot;2007-09-09
+   12:12:00 +0200&quot; or &quot;2008-01-20 15:23:12 foo&quot;. This has been changed with Win32::SqlServer 2.004 to avoid
+   that incorrectly formatted time-zone offsets as in the example are accepted
+   but silently ignored.</P>
+   <P><B>Note</B>: if you experiment, you may find more
+   variations that are accepted. However, the only formats that are officially
+   supported are those listed above, and those interpreted as regional settings
+   by Windows. Anything else is occasional, and may yield a different result with a
+   later version of
+   Win32::SqlServer. This does not the least apply to two-digit years, I
+   strongly recommed that you always use four-digit years.</P></DD>
+<DT><B>hash reference</B></DT>
    <DD>As a hash produced by Win32::SqlServer when <B><A HREF="#datetime">DatetimeOption</A></B> is <A HREF="#DATETIME_HASH"><SMALL CLASS="allcaps">DATETIME_HASH</SMALL></A>, see
-   above. <B>Year</B>, <B>Month</B> and <B>Day</B> must be present in the hash,
+   above.For all types but <B><CODE>time</CODE></B>, <B>Year</B>, <B>Month</B> and <B>Day</B> must be present in the hash,
    or else conversion will fail.
-   The other parts are optional.</DD>
-   <DT>&nbsp;</DT>
-   <DT><B>numeric value</B> (integer or floating-point)</DT>
-   <DD>Number of (fractional) days since 1899-12-30, thus the reverse of <A HREF="#DATETIME_FLOAT"><SMALL CLASS="allcaps">DATETIME_FLOAT</SMALL></A>.</DD>
+   For <B><CODE>time</CODE></B>, you must supply <B>Hour</B> and <B>Minute</B>. As on output, <B>Fraction</B> is in
+   milliseconds, and to supply a fraction of 123456700 nanoseconds, you need to specify
+   123.4567. As on string input, parts or decimals not relevant to the type are
+   always discarded and truncated.
+   <P>You can supply <B>TZHour</B> and <B>TZMinute</B> for any type, but they will only be
+   considered for <B><CODE>datetimeoffset</CODE></B>. It&#39;s legal to supply <B>TZHour</B> only, in which
+   case <B>TZMinute</B> will assumed to be 0. The reverse is not permitted; if
+   <B>TZMinute</B> is defined and <B>TZHour</B> is missing, this is an error. Note that the
+   sign of <B>TZMinute</B> follows <B>TZHour</B>; to specify the time zone offset
+   <NOBR>-03:30</NOBR>, set
+   <B>TZHour</B> to -3 and <B>TZMinute</B> to -30.</P>
+   <P>If you do not supply a time-zone offset for <B><CODE>datetimeoffset</CODE></B> values,
+   Win32::SqlServer will use the time zone defined by <B><A HREF="#datetime">TZOffset</A></B>, or
+   <NOBR>+00:00</NOBR> if
+   <B><A HREF="#datetime">TZOffset</A></B> has not been set.</P></DD>
+<DT><B>numeric value</B> (integer or floating-point)</DT>
+   <DD>Number of (fractional) days since <NOBR>1899-12-30</NOBR>, thus the reverse of <A HREF="#DATETIME_FLOAT"><SMALL CLASS="allcaps">DATETIME_FLOAT</SMALL></A>.
+   For <B><CODE>datetimeoffset</CODE></B> values, Win32::SqlServer will use the time-zone offset
+   defined by the <B><A HREF="#datetime">TZOffset</A></B> property, and if property is not defined, the
+   time-zone offset will be <NOBR>+00:00</NOBR>.</DD>
 </DL>
+<P><B>Note</B>: If you use the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> or <SMALL CLASS="allcaps">SQLNCLI</SMALL> provider, the rules above
+apply only to <B><CODE>datetime</CODE></B> and <B><CODE>smalldatetime</CODE></B>. For the types <B><CODE>date</CODE></B>, <B><CODE>time</CODE></B>,
+<B><CODE>datetime2</CODE></B> and <B><CODE>datetimeoffset</CODE></B> that are not supported by these providers,
+Win32::SqlServer will pass the value you send in as <B><CODE>nvarchar</CODE></B>, and this string
+will be interpreted by <SMALL CLASS="allcaps">SQL</SMALL> Server. This means that strings formatted according
+to regional settings will not work, nor will hash references, nor will numeric
+values. Only <SMALL CLASS="allcaps">ISO</SMALL> strings will work. And even with <SMALL CLASS="allcaps">ISO</SMALL> strings, you may get
+different results with a legacy provider than with <SMALL CLASS="allcaps">SQLNCLI10</SMALL>, since
+Win32::SqlServer has somewhat different conversion rules than <SMALL CLASS="allcaps">SQL</SMALL> Server. (Truncation
+instead of rounding, using <NOBR>1899-12-30</NOBR> as the default date etc.)</P>
 <H2>(n)<A NAME="char">char, (n)varchar, (n)text</A></H2>
 <P>For <B><CODE>(n)varchar(MAX)</CODE></B> and <B><CODE>(n)text</CODE></B>, see
    also note about <A HREF="#largetypes">large data types</A> below.</P>
@@ -1051,7 +1219,8 @@ import them when you <CODE>use Win32::SqlServer</CODE>, explicitly or with an
    <CODE>ntext</CODE></B>), the return string will always have the <NOBR><SMALL CLASS="allcaps">UTF</SMALL>-8</NOBR> bit set,
    even if the string contains <SMALL CLASS="allcaps">ASCII</SMALL> characters only. (But this will not matter
    to you, as long as you are programming in Perl only. At least, if my understanding of Perl&#39;s handling of Unicode is correct.)</P>
-<P><B>Note</B>: if you are using the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> provider and <NOBR>connect</NOBR> to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005,
+<P><B>Note</B>: if you are using the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> provider and <NOBR>connect</NOBR> to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005
+or later,
    be aware of that output parameters of the types <B><CODE>varchar(MAX)</CODE></B>
    and
    <CODE><B>nvachar(MAX)</B></CODE>
@@ -1090,7 +1259,8 @@ import them when you <CODE>use Win32::SqlServer</CODE>, explicitly or with an
    <DT><B><CODE>&#39;x&#39;</CODE></B></DT>
    <DD>A hex string preceded by 0x.</DD>
 </DL>
-<P><B>Note</B>: if you are using the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> provider and <NOBR>connect</NOBR> to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005,
+<P><B>Note</B>: if you are using the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> provider and <NOBR>connect</NOBR> to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005
+or later,
    be aware of that output parameters of the type <B><CODE><CODE></CODE>varbinary(MAX)</CODE></B>
    will be truncated at 8000 bytes. You cannot call user-defined functions with
    a return value of this data type from <SMALL CLASS="allcaps">SQLOLEDB</SMALL>.
@@ -1123,14 +1293,36 @@ import them when you <CODE>use Win32::SqlServer</CODE>, explicitly or with an
 <P>On input, Win32::SqlServer only supports conversion to some possible base types for the
    <SMALL CLASS="allcaps">SQL</SMALL> variant value, more precisely <B><CODE>int</CODE></B>,
    <B><CODE>bigint</CODE></B>, <B><CODE>float</CODE></B>,
-   <B>datetime</B>, <B><CODE>varchar</CODE></B> and <B><CODE>nvarchar</CODE></B>.
+   <B>datetime</B>, <B><CODE>date</CODE></B>, <B><CODE>time</CODE></B>, <B><CODE>datetime2</CODE></B>, <B><CODE>datetimeoffset</CODE></B>, <B><CODE>varchar</CODE></B> and <B><CODE>nvarchar</CODE></B>.
    The conversion depends on the Perl data type of the input value:</P>
 <DL>
    <DT><B>hash reference</B></DT>
-   <DD>If the value is a reference to a <A HREF="#DATETIME_HASH">hash</A> that can be
-   converted to <CODE><B>datetime</B></CODE>, Win32::SqlServer passes this <B><CODE>datetime</CODE></B>
-   value to <SMALL CLASS="allcaps">SQL</SMALL> Server.</DD>
-   <DT>&nbsp;</DT>
+   <DD>If the value is a reference to a hash, Win32::SqlServer will examine if
+   the hash is a <A HREF="#DATETIME_HASH">datetime hash</A>, and in
+   such case pass the value to a date/time data type in <SMALL CLASS="allcaps">SQL</SMALL> Server. If the <SMALL CLASS="allcaps">SQL</SMALL> Server version is <SMALL CLASS="allcaps">SQL</SMALL> 2008
+   or later, and the provider is <SMALL CLASS="allcaps">SQLNCLI10</SMALL> or later, Win32::SqlServer will select a
+   type according to this scheme:
+   <UL>
+         <LI>If <B>Year</B>, <B>Month</B> and <B>Date</B> an no other element is present in the hash, the data type will be <B><CODE>date</CODE></B>.
+         </LI>
+         <LI>If <B>Year</B>, <B>Month</B> and <B>Date</B> are present in the hash as well as
+         <B>TZHour</B>, the
+   type will be <B><CODE>datetimeoffset(7)</CODE></B>.</LI>
+         <LI>If <B>Year</B>, <B>Month</B> and <B>Date</B> are present as well as any of the
+         elements <B>Hour</B>, <B>Minute</B>, <B>Second</B> or <B>Fraction</B>,
+         but <B>TZHour</B> and <B>TZMinute</B> are absent, the type will be <B><CODE>datetime2(7)</CODE></B>.</LI>
+         <LI>If <B>Year</B>, <B>Month</B> and <B>Date</B> are all missing, but
+         <B>Hour</B> and <B>Minute</B> are
+   present, the time will be <B><CODE>time(7)</CODE></B>.</LI>
+   </UL>
+   <P>If the <SMALL CLASS="allcaps">SQL</SMALL> Server version is <SMALL CLASS="allcaps">SQL</SMALL> 2005 or earlier,or the provider is
+   <SMALL CLASS="allcaps">SQLNCLI</SMALL> or earlier, Win32::SqlServer will pass the value as <B><CODE>datetime</CODE></B>, if
+   the keys <B>Year</B>, <B>Month</B> and <B>Day</B> are present in the hash.</P>
+   <P>For any other hash rereference, an incomplete datetime hash or something
+   completely different, Win32::SqlServer will pass the value as a string with
+   regular Perl string represenation of a hash reference, e.g. <CODE>HASH(0x01234abcd)</CODE>.
+   If the required keys are present, but the values are incorrect, you may get
+   an error message or the reference may silently be passed as a string.</P></DD>
    <DT><B>integer number</B></DT>
    <DD>Win32::SqlServer passes the value as an <B><CODE>int</CODE></B>. On
    64-bit Perl, if the value falls outside the boundary of <B><CODE>int</CODE></B>, Win32::SqlServer
@@ -1158,7 +1350,7 @@ import them when you <CODE>use Win32::SqlServer</CODE>, explicitly or with an
    data, and you will get a binary string or a hex string depending on the
    setting of <B>
  <A HREF="#binary">BinaryAsStr</A></B>. No, I am not pulling your legs. This is
-   how <SMALL CLASS="allcaps">SQLOLEDB</SMALL> and <SMALL CLASS="allcaps">SQLNCLI</SMALL> relay <SMALL CLASS="allcaps">FOR XML</SMALL> data. A future version
+   how <SMALL CLASS="allcaps">OLE DB</SMALL> relay <SMALL CLASS="allcaps">FOR XML</SMALL> data. A future version
    of Win32::SqlServer may have some setting to handle <SMALL CLASS="allcaps">FOR XML</SMALL> better.</P>
 <P><B>Note</B>: when using the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> provider you cannot call a procedure
    through <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A>, that has an <SMALL CLASS="allcaps">OUTPUT</SMALL>
@@ -1198,6 +1390,9 @@ import them when you <CODE>use Win32::SqlServer</CODE>, explicitly or with an
       and thus as <NOBR><SMALL CLASS="allcaps">UCS-2</SMALL></NOBR>.</LI>
 </UL>
 <H2><A NAME="CLR_UDTs">CLR UDTs</A></H2>
+<P>What is said here, applies both to built-in <SMALL CLASS="allcaps">CLR</SMALL> types such as <B><CODE>hierarchyid</CODE></B>
+and user-defined <SMALL CLASS="allcaps">CLR</SMALL> types. To muddle the waters, Win32::SqlServer tend to refer
+to both kinds as UDTs.</P>
 <H3>Output</H3>
 <P>The value is handled as a binary value, according to the setting of <B>
    <A HREF="#binary">BinaryAsStr</A></B>.</P>
@@ -1211,12 +1406,42 @@ import them when you <CODE>use Win32::SqlServer</CODE>, explicitly or with an
    proper serialisation of the <SMALL CLASS="allcaps">UDT</SMALL>. See the description of the functions
  <A HREF="#sql"><NOBR>sql()</NOBR></A> and <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A> for how
    to actually specify the name of a <SMALL CLASS="allcaps">CLR UDT</SMALL>.</P>
+<H3>Large CLR UDTs</H3>
+<P>Large <SMALL CLASS="allcaps">CLR</SMALL> UDTs are types that are defined with MaxByteSize&nbsp;=&nbsp;-1, and thus can
+exceed 8000 bytes. Large UDTs were added in <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008, and as long as you are
+using <SMALL CLASS="allcaps">SQLNCLI10</SMALL>, Win32::SqlServer handles large UDTs in the same way as regular
+UDTs. (But see the general caveats on large types below).</P>
+<P>If you use <SMALL CLASS="allcaps">SQLNCLI</SMALL>, you cannot receive <SMALL CLASS="allcaps">OUTPUT</SMALL> parameters of large UDTs, but
+you can still pass values to input parameters of large UDTs. If you use
+<SMALL CLASS="allcaps">SQLOLEDB</SMALL>, you cannot use parameters of large UDTs at all, neither for input nor
+for output. You can still recieve large <SMALL CLASS="allcaps">UDT</SMALL> data in result sets with any
+provider.</P>
+<H2><A NAME="table">table</A></H2>
+<P><SMALL CLASS="allcaps">SQL</SMALL> 2008 adds the possibility to pass data in table-valued parameters; only
+for input, you cannot retrieve data this way. The way you pass a table-valued
+parameter is quite different between the high-level routines and the mid-level
+routines. </P>
+<P>With the <A HREF="#High-level">high-level routines</A>, you pass an array of
+rows and each row is represented by a hash or an array of column values. You don&#39;t have to
+provide any definitions of the table type, as Win32::SqlServer will retrieve the
+table-types definitions from the server on first reference, and cache the
+definitions. See further the section <A HREF="#TVP">Working with Table
+Parameters</A>.</P>
+<P>With the <A HREF="#Mid-level">mid-level routines</A> you first need to define
+the columns of the table type with <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A>, and you need do it every
+time you pass a table-valued parameter. You then pass each row with a call to
+<A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A>. As with the high-level routines, a row is a hash or an array
+of columns values. See further the description of these routines, as well as the
+description of <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>.</P>
+<P>You can only use table-valued parameters if you use the <SMALL CLASS="allcaps">SQLNCLI10</SMALL> provider or
+later; you cannot use table parameters with older providers.</P>
 <H2><A NAME="largetypes">Large Data Types</A></H2>
 <P>Large data types are types that may exceed 8000 bytes, that is <B><CODE>text</CODE></B>,
    <B><CODE>ntext</CODE></B>,
  <B><CODE>image</CODE></B>, <B><CODE>varchar(MAX)</CODE></B>, <CODE><NOBR><B>
    nvarchar(MAX)</B></NOBR></CODE>,
-   <CODE><NOBR><B>varbinary(MAX)</B></NOBR></CODE> and <B><CODE>xml</CODE></B>.</P>
+   <CODE><NOBR><B>varbinary(MAX)</B></NOBR></CODE>, <B><CODE>xml</CODE></B> and
+<SMALL CLASS="allcaps">CLR</SMALL> types with MaxByteSize&nbsp;=&nbsp;-1.</P>
 <P>Win32::SqlServer has no particular support for these data types, but these are handled
    as just as any other types. This should be OK for values of moderate size.
    However, with values of several megabytes, the performance becomes
@@ -1224,6 +1449,8 @@ import them when you <CODE>use Win32::SqlServer</CODE>, explicitly or with an
 <P>I hope that a future version of Win32::SqlServer will
    provide better options to deal with large
    values.</P>
+<P>If you work with <SMALL CLASS="allcaps">FILESTREAM</SMALL> data, you can use the <A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A> interface
+which Win32::SqlServer exposes.</P>
 <H1><A NAME="Initroutines">Connection Routines</A></H1>
 <P>There are two ways to create a Win32::SqlServer object. One is to use
    <A HREF="#sql_init"><NOBR>sql_init()</NOBR></A>, which creates an object and connects to the
@@ -1272,7 +1499,8 @@ only, you need to specify <CODE>undef</CODE> for the first three.</P>
    failures in a <A HREF="#MsgHandler">message handler</A>, create the
    Win32::SqlServer object
    with <A HREF="#new"><NOBR>new()</NOBR></A> and set <B><A HREF="#ErrInfo">ErrInfo</A></B> elements (or
-   define <A HREF="#MsgHandler">your own message handler</A>).</P>
+   define <A HREF="#MsgHandler">your own message handler</A>) and then use
+<A HREF="#setloginproperty"><NOBR>setloginproperty()</NOBR></A> and connect described below.</P>
 <P>Win32::SqlServer saves the first object you create with <A HREF="#sql_init"><NOBR>sql_init()</NOBR></A>, and then uses this a
    default handle, so you when say things like:</P>
 <PRE>sql(&#39;SET NOUCOUNT ON&#39;);</PRE>
@@ -1314,20 +1542,32 @@ only, you need to specify <CODE>undef</CODE> for the first three.</P>
    admit that for some of these, I have only a vague notion of what they are
    good for. So I will have to refer you to Books Online for complete
    description in several cases. </P>
-<P>In Books Online for <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000, you find these properties at <BR />
-   <I>Building <SMALL CLASS="allcaps">SQL</SMALL> Server Applications <BR />
-&nbsp;&nbsp; <SMALL CLASS="allcaps">OLE DB</SMALL> and <SMALL CLASS="allcaps">SQL</SMALL> Server <BR />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Programming <SMALL CLASS="allcaps">OLE DB SQL</SMALL> Server Applications <BR />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Data Source Objects <BR />
+<P>In Books Online for <SMALL CLASS="allcaps">SQL</SMALL> 2008, you find these properties at:<BR />
+<I>Database Engine<BR />
+&nbsp;&nbsp;&nbsp;&nbsp; Development<BR />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Developer&#39;s Guide<BR />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-   Initialization and Authorization Properties</I></P>
-<P>In the Books Online for <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 the location is<BR />
+<SMALL CLASS="allcaps">SQL</SMALL> Server Native Client Concepts<BR />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<SMALL CLASS="allcaps">SQL</SMALL> Server Native Client (<SMALL CLASS="allcaps">OLE DB</SMALL>)<BR />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Data Source Objects (<SMALL CLASS="allcaps">OLE DB</SMALL>)<BR />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Initialization and Authorization Properties </I></P>
+<P>In Books Online for <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 the location is<BR />
    <I><SMALL CLASS="allcaps">SQL</SMALL> Server Programming Reference<BR />
 &nbsp;&nbsp;&nbsp; <SMALL CLASS="allcaps">SQL</SMALL> Native Client Programming<BR />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <SMALL CLASS="allcaps">SQL</SMALL> Native Client (<SMALL CLASS="allcaps">OLE DB</SMALL>)<BR />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
    Data Source Objects <BR />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+   Initialization and Authorization Properties</I></P>
+<P>And in Books Online for <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000:<BR />
+   <I>Building <SMALL CLASS="allcaps">SQL</SMALL> Server Applications <BR />
+&nbsp;&nbsp; <SMALL CLASS="allcaps">OLE DB</SMALL> and <SMALL CLASS="allcaps">SQL</SMALL> Server <BR />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Programming <SMALL CLASS="allcaps">OLE DB SQL</SMALL> Server Applications <BR />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Data Source Objects <BR />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
    Initialization and Authorization Properties</I></P>
 <P>You can also find information about general properties (those starting with
    <SMALL CLASS="allcaps">DBPROP)</SMALL> in the <SMALL CLASS="allcaps">MDAC</SMALL> Books Online, which also is included in <SMALL CLASS="allcaps">MSDN</SMALL> Library.</P>
@@ -1441,8 +1681,9 @@ giving up when trying to connect to <SMALL CLASS="allcaps">SQL</SMALL> Server. (
 </TABLE>
 </P>
 <P>Failover partner for database mirroring. Please see Books Online for a
-   further discussion. This property is available only with
-   the <SMALL CLASS="allcaps">SQLNCLI</SMALL> provider and applies to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 only.</P>
+   further discussion. This property is unavailable with
+   the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> provider and applies only to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005
+and later.</P>
 
 <H3><A NAME="Hostname">Hostname</A></H3>
 <P>
@@ -1455,13 +1696,14 @@ giving up when trying to connect to <SMALL CLASS="allcaps">SQL</SMALL> Server. (
 resurfaces in the <SMALL CLASS="allcaps">SQL</SMALL> function <NOBR><SMALL CLASS="allcaps">HOST_NAME</SMALL>()</NOBR>. </P>
 
 <H3><A NAME="IntegratedSecurity">IntegratedSecurity</A></H3>
-4<P>
+<P>
 <TABLE BORDER=1 CELLSPACING=0 CELLPADDING=0>
 <TR><TH>Data type</TH><TD CLASS="extrapad">string</TD><TH>Default</TH><TD CLASS="extrapad"><CODE>&quot;SSPI&quot;</CODE>
 </TD><TH><SMALL CLASS="allcaps">OLE DB</SMALL> Property</TH><TD CLASS="extrapad"><SMALL CLASS="allcaps">DBPROP_AUTH_INTEGRATED</SMALL></TD></TR>
 </TABLE>
 </P>
-<P>Specifies whether Windows Authentication is enabled. As far as I know, &quot;<SMALL CLASS="allcaps">SSPI</SMALL>&quot; is the only
+<P>Specifies whether Win32::SqlServer should connect with Windows Authentication
+and this is the default. As far as I know, &quot;<SMALL CLASS="allcaps">SSPI</SMALL>&quot; is the only
    available value. <A HREF="#setloginproperty"><NOBR>setloginproperty()</NOBR></A> accepts the number 1 as the equivalent to
    &quot;<SMALL CLASS="allcaps">SSPI</SMALL>&quot;. Note that if you set the login
 property <B><A HREF="#LogPropUsername">Username</A></B>, Win32::SqlServer automatically
@@ -1521,8 +1763,10 @@ should be the <I>current</I> password for the <SMALL CLASS="allcaps">SQL</SMALL>
 <A HREF="#LogPropUsername">Username</A></B> login property. The <B>
 <A HREF="#LogpropPassword">Password</A></B> property should in this case the hold the <I>new</I>
    password for the <SMALL CLASS="allcaps">SQL</SMALL> login. Thus, you can use this property to change the
-   password for an <SMALL CLASS="allcaps">SQL</SMALL> login when connecting. This property is available only
-   with the <SMALL CLASS="allcaps">SQLNCLI</SMALL> provider, and only if you connect to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005. </P>
+   password for an <SMALL CLASS="allcaps">SQL</SMALL> login when connecting.
+This property is unavailable with
+   the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> provider and applies only to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005
+and later.</P>
 
 <H3><A NAME="PacketSize">PacketSize</A></H3>
 <P>
@@ -1565,8 +1809,8 @@ normally 60 seconds, <SMALL CLASS="allcaps">OLE DB</SMALL> disconnects. (You can
    Win32::SqlServer, as it is a registry setting. Please refer to the <I>Resource Pooling</I>
 topic in the <SMALL CLASS="allcaps">MDAC</SMALL> Books Online. Also in <SMALL CLASS="allcaps">MSDN</SMALL> Library.)</P>
 <P>
-When this setting is false, connection is actually severed when you call <A HREF="#disconnect"><NOBR>disconnect()</NOBR></A>,
-or the Win32::SqlServer object goes out of scope.</P>
+When this setting is false, connection is physically disconnected when you call <A HREF="#disconnect"><NOBR>disconnect()</NOBR></A>,
+as well as when the Win32::SqlServer object goes out of scope.</P>
 <P>
 The advantage of connection pooling is that if you connect and disconnect
 frequently, for instance because you use the
@@ -1576,7 +1820,7 @@ have poor transaction handling, any outstanding transaction on the pooled
 connection is not rolled back until the connection is reused or physically
 disconnected. This can lead to blocking scenarios. Also, be aware that if you
 are using application roles, you <I>cannot</I> use connection pooling on <SMALL CLASS="allcaps">SQL</SMALL>
-2000. On <SMALL CLASS="allcaps">SQL</SMALL> 2005, it is possible, but you need to take some precautions, as
+2000. On <SMALL CLASS="allcaps">SQL</SMALL> 2005 and later, it is possible, but you need to take some precautions, as
 discussed in Books Online.</P>
 <P> (Readers well versed <SMALL CLASS="allcaps">in OLE DB</SMALL> may know that <SMALL CLASS="allcaps">DBPROP_INIT_OLEDBSERVICES</SMALL> is in fact a bit mask that controls other <SMALL CLASS="allcaps">OLE DB</SMALL>
     services as well. Currently Win32::SqlServer always turns off these services.)
@@ -1607,7 +1851,7 @@ from the <SMALL CLASS="allcaps">MDAC</SMALL> Books Online):</P>
       <LI><SMALL CLASS="allcaps">DBPROMPT_NOPROMPT</SMALL> (4) – Do not prompt the user. </LI>
    </UL>
 <P>Win32::SqlServer does not declare these constants for you, so you will have to declare
-   them yourself, or use the numbers.</P>
+   them yourself or use the numbers.</P>
 
 <H3><A NAME="LogPropServer">Server</A></H3>
 <P>
@@ -1616,7 +1860,7 @@ from the <SMALL CLASS="allcaps">MDAC</SMALL> Books Online):</P>
     <TH><SMALL CLASS="allcaps">OLE DB</SMALL> Property</TH><TD CLASS="extrapad"><SMALL CLASS="allcaps">DBPROP_INIT_DATASOURCE</SMALL></TD></TR>
 </TABLE>
 </P>
-<P>Which <SMALL CLASS="allcaps">SQL</SMALL> Server instance to connect to. </P>
+<P>Which <SMALL CLASS="allcaps">SQL</SMALL> Server instance to connect to.</P>
 
 <H3><A NAME="TrustServerCert">TrustServerCert</A></H3>
 <P>
@@ -1626,8 +1870,9 @@ from the <SMALL CLASS="allcaps">MDAC</SMALL> Books Online):</P>
 </TABLE>
 </P>
 <P>Whether you trust the server certificate when you use encryption. Please
-   refer to Books Online for further details. This property is only available
-   when you use the <SMALL CLASS="allcaps">SQLNCLI</SMALL> provider, and you connect to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005. </P>
+refer to Books Online for further details. This property is unavailable with
+   the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> provider and applies only to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005
+and later.</P>
 
 <H3><A NAME="LogPropUsername">Username</A></H3>
 <P>
@@ -1652,7 +1897,7 @@ from the <SMALL CLASS="allcaps">MDAC</SMALL> Books Online):</P>
 <P>It&#39;s an error to call this function, if you are already connected. You
    can use <A HREF="#isconnected"><NOBR>isconnected()</NOBR></A> to check whether you are connected.</P>
 <P>If the login to <SMALL CLASS="allcaps">SQL</SMALL> Server as such fails, <A HREF="#connect"><NOBR>connect()</NOBR></A> invokes the <A HREF="#MsgHandler">current
-   message handler</A> is invoked. If an error occurs when Win32::SqlServer
+   message handler</A>. If an error occurs when Win32::SqlServer
    calls the <SMALL CLASS="allcaps">OLE DB</SMALL> provider to submit the login properties,
    Win32::SqlServer aborts and
    prints the error message from the <SMALL CLASS="allcaps">OLE DB</SMALL> provider, but this message may be
@@ -1701,7 +1946,9 @@ from the <SMALL CLASS="allcaps">MDAC</SMALL> Books Online):</P>
    <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> retrieves the parameter profile from <SMALL CLASS="allcaps">SQL</SMALL> Server about this (but only
    once per procedure as it caches this information). This chapter also includes
    <A HREF="#sql_one"><NOBR>sql_one()</NOBR></A> which is for queries that should return exactly one row and
-   <A HREF="#sql_insert"><NOBR>sql_insert()</NOBR></A> that inserts into a table from hash.</P>
+   <A HREF="#sql_insert"><NOBR>sql_insert()</NOBR></A> that inserts into a table from hash.There
+is also a special section <A HREF="#TVP">Working with Table Parameters</A>, that
+details how to use this new feature in <SMALL CLASS="allcaps">SQL</SMALL> 2008.</P>
 <P>The high-level query functions makes use of Perl&#39;s flexible nature, and
    permits you leave out most parameters, even in the middle of the
    parameter list.</P>
@@ -1732,8 +1979,9 @@ from the <SMALL CLASS="allcaps">MDAC</SMALL> Books Online):</P>
    parameters appears as <CODE>?</CODE> in <CODE>$batch</CODE>. Each entry in the array is an
    inner array with two or three entries. The first entry is the data type of the
    parameter, the second is the value for the parameter. The third is used only
-   when the data type is <B><CODE>xml</CODE></B> or <B><CODE>UDT</CODE></B>, in
-   which case it specifies an <SMALL CLASS="allcaps">XML</SMALL> schema collection or the name of the <SMALL CLASS="allcaps">UDT</SMALL>. Ser
+   when the data type is <B><CODE>xml, table</CODE></B> or <B><CODE>UDT</CODE></B>, in
+   which case it specifies an <SMALL CLASS="allcaps">XML</SMALL> schema collection or the name of the <SMALL CLASS="allcaps">
+   table type or the UDT</SMALL>. Ser
    further the section <A HREF="#parameterspecdetails">Details on the Parameter
    Specification</A>.</DD>
    <DT>&nbsp;</DT>
@@ -1793,7 +2041,8 @@ from the <SMALL CLASS="allcaps">MDAC</SMALL> Books Online):</P>
     WHERE  CompanyName LIKE &#39;$userentry%&#39;
 SQLEND
 $result = $sqlsrv-&gt;sql($batch, Win32::SqlServer::SCALAR);</PRE>
-<P>Quick testing indicates that this appears to work. But then a poor user enters <I>Let&#39;s</I>. Now the query
+<P>Quick testing indicates that this appears to work. But then a poor user enters <I>Let&#39;s</I>
+whereupon the query
    dies with a syntax error because of the odd number of single quotes, instead
    of returning <I>Let&#39;s stop N shop</I>. That was
    the poor and innocent user. Next user is outright malicious, and he enters:</P>
@@ -1868,14 +2117,15 @@ interpretation.</P>
    earlier. On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 and later, you are told
    that <CODE><NOBR>@P1</NOBR></CODE> is not declared. This is because you can only use parameters where variables are permitted in the <SMALL CLASS="allcaps">T-SQL</SMALL>
    syntax, and <SMALL CLASS="allcaps">T-SQL</SMALL> does not permit you to use a variable for a table
-   name. (In
-   fact that would be a table variable, but you cannot pass these as
-   parameters.)</P>
+   name. (In fact that would be a table-valued parameter, but then you need to
+specify the parameter different..)</P>
 <H4><A NAME="unnamednamed">Unnamed and Named Parameters</A></H4>
 <P>There are two ways to specify a parameter in a command batch: by using <CODE>?</CODE>
    as
-   a parameter placeholders and by using a standard <SMALL CLASS="allcaps">T-SQL</SMALL> parameter name starting with
-   <CODE>@</CODE>. The former I refer to as unnamed parameters, the latter as
+   a parameter placeholders and by using a standard <SMALL CLASS="allcaps">
+<NOBR>T-SQL</NOBR></SMALL> parameter name starting with
+   <CODE>@</CODE>. I refer to the former as unnamed parameters, and the latter I
+call
    named parameters. Note that if you are on <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5, you can only use unnamed
    parameters. </P>
 <P>Win32::SqlServer expands the <CODE>?</CODE> to <CODE><NOBR>@P1</NOBR></CODE>, <CODE><NOBR>@P2</NOBR></CODE>, <CODE><NOBR>@P3</NOBR></CODE> etc.
@@ -1919,7 +2169,7 @@ interpretation.</P>
    the value for the parameter. But this is only meaningful in one case: you
    want to pass <CODE>undef</CODE> (that is <SMALL CLASS="allcaps">NULL</SMALL>)
    for the parameter. If you supply any other value, Win32::SqlServer applies a default data type of <CODE>
-   <B>char</B></CODE> and at the same time issue a warning through the <A HREF="#MsgHandler">current message handler</A>
+   <B>varchar</B></CODE> and at the same time issues a warning through the <A HREF="#MsgHandler">current message handler</A>
    if Perl warnings are enabled.</P>
 <P>From this follows that in the normal case you will need to pass the short arrays. Here are the entries.</P>
 <DL>
@@ -1939,54 +2189,69 @@ interpretation.</P>
    types.</DD>
    <DT>&nbsp;</DT>
    <DT><B>Index 2 – extra type info</B></DT>
-   <DD>Applies only if the data type is <B><CODE>xml</CODE></B> or <B><CODE>UDT</CODE></B>.
+   <DD>Applies only if the data type is <B><CODE>xml</CODE></B>, <B><CODE>UDT</CODE></B>
+   or <B><CODE>table</CODE></B>.
    See further under these data types below.</DD>
 </DL>
 <P>Here are remarks for specific data types that may require extra information
    beside the type name.</P>
 <DL>
-   <DT><B><CODE>char</CODE>, <CODE>varchar</CODE>, <CODE>nchar</CODE>, <CODE>
-   nvarchar</CODE>, <CODE>binary</CODE>, <CODE>varbinary</CODE></B></DT>
+   <DT><B><CODE>varchar</CODE>, <CODE>
+   nvarchar</CODE>, <CODE>varbinary</CODE></B></DT>
    <DD>You can enter a complete specification, e.g. <B><CODE><NOBR>varchar(20)</NOBR></CODE></B>,
    or just the type name, e.g. <B><CODE>varchar</CODE></B>. In the latter case,
-   Win32::SqlServer will infer the length from the actual value. Thus if you say <B><CODE>
-   nchar</CODE></B> and the value is <SMALL CLASS="allcaps">ALFKI</SMALL>,
-   Win32::SqlServer will use <B>
-   <CODE><NOBR>nchar(5)</NOBR></CODE></B>. (If the value is an empty string,
-   Win32::SqlServer will use a length of 1.)
-   <P>If the length of the value exceeds what the <SMALL CLASS="allcaps">SQL</SMALL> Server version supports,
-      Win32::SqlServer
-   uses the appropriate max value. That is, 255 for <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5, 4000/8000 for <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;7 and
-   <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000. On <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005,
-      Win32::SqlServer will infer <B>
-   <CODE>(MAX)</CODE></B>.</P>
-   <P><B>Note:</B> While this is convenient, each new length of the type will
-      result in a new entry in the <SMALL CLASS="allcaps">SQL</SMALL> Server cache. So best practice is to
-      specify the length, particularly if you run this from a loop.</P></DD>
-
+   Win32::SqlServer applies a default which is equal to the maximum length for
+   the data type and the <SMALL CLASS="allcaps">SQL</SMALL> Server version, that is
+   8000 for <B><CODE>varchar</CODE></B> and <B><CODE>varbinary</CODE></B> (255 on <SMALL CLASS="allcaps">SQL</SMALL> 6.5), and 4000 for <B><CODE>nvarchar</CODE></B>. If you are on
+   <SMALL CLASS="allcaps">SQL</SMALL> 2005 or later, and the value exceeds the
+   max length for the type, Win32::SqlServer will apply <B><NOBR><CODE>MAX</CODE></NOBR></B>.</DD>
+<DT>&nbsp;</DT>
+   <DT><B><CODE>char</CODE>, <CODE>nchar</CODE>,&nbsp; <CODE>binary</CODE></B></DT>
+   <DD>As with <CODE><B>varchar</B></CODE> etc, you can enter a complete specification, e.g. <B>
+   <CODE><NOBR>char(20)</NOBR></CODE></B>,
+   or just the type name, e.g. <B><CODE>char</CODE></B>. In difference to the
+   variable-length types, Win32::SqlServer will use the actual length of the string as the
+   default, as using the max length for the type could yield unexpected
+   behaviour. However, this has the disctinct disadvantage that calls to the
+   same query with parameters of different length will yield different cache
+   entries (as the parameter list is part of the cache entry). For this reason,
+   leaving out the length with fixed-length string and binary types is
+   deprecated, and Win32::SqlServer will emit a warning if warnings are enabled
+   when this happens.</DD>
+<DT>&nbsp;</DT>
    <DT><B><CODE>decimal</CODE></B>, <B><CODE>numeric</CODE></B></DT>
    <DD>If you leave out precision and/or scale, Win32::SqlServer will apply the defaults
    18 and 0, respectively and at the same time pass a warning through the
    <A HREF="#MsgHandler">current message handler</A> unless the value is <CODE>undef</CODE>. That
    is, best practice is to always supply precision and scale.</DD>
    <DT>&nbsp;</DT>
-   <DT><CODE><B>UDT</B></CODE></DT>
-   <DD>You must specify the name of actual <SMALL CLASS="allcaps">UDT</SMALL> in one of these two ways:
+   <DT><CODE><B>CLR UDTs</B></CODE></DT>
+   <DD>For user-defined <SMALL CLASS="allcaps">CLR</SMALL> types, you must specify the name of actual
+   <SMALL CLASS="allcaps">UDT</SMALL> in one of these two ways:
    in parentheses after <SMALL CLASS="allcaps">UDT</SMALL> in the first array entry, or separately in
    the third entry (at index 2, &quot;extra type info&quot;). That is, your parameter entry
    can read any of:
-<PRE>[&#39;UDT(dbo.ComplexNumber)&#39;, $cmplx]
+   <PRE>[&#39;UDT(dbo.ComplexNumber)&#39;, $cmplx]
 [&#39;UDT&#39;, $cmplx, &#39;dbo.ComplexNumber&#39;]</PRE>
-   You must use the latter method, if the type name includes special characters,
-   notably then parentheses.
-   <P>Whatever the method, you need to quote any part of
+   You must use the latter method, if the type name includes very special
+   characters, notably then parentheses.
+   Whatever the method, you need to quote any part of
    the name that is not a regular <SMALL CLASS="allcaps">T-SQL</SMALL> identifier
-      with brackets or double quotes. For instance:: </P>
-<PRE>[&#39;UDT([My Database].MySchema.[Your UDT])&#39;, $value)]
+      with brackets or double quotes. For instance:
+   <PRE>[&#39;UDT([My Database].MySchema.[Your UDT])&#39;, $value)]
 [&#39;UDT&#39;, $value, &#39;[My Database].MySchema.[Your UDT]&#39;]
 [&#39;UDT&#39;, $value, &#39;[This-Type]&#39;]
 [&#39;UDT(&quot;This-Type&quot;)&#39;, $value] </PRE>
-   </DD>
+   <P>
+   For built-in <SMALL CLASS="allcaps">CLR</SMALL> types like <B><CODE>hierarchyid</CODE></B>, you can use the scheme above,
+   or you can specify the actual name of the type.</P>
+   <P>For large UDTs you can use <SMALL CLASS="allcaps">UDT(MAX)</SMALL> to indicate that the type is a large
+   <SMALL CLASS="allcaps">UDT</SMALL>. Obviously, if you do this, you must put the type name at index 2. Often
+   you get away without using (<SMALL CLASS="allcaps">MAX</SMALL>), but there is one situation when you must
+   use it: when you use <SMALL CLASS="allcaps">SQLNCLI</SMALL> as your provider, and the actual value does not
+   exceed 8000 bytes. (Funny exception, isn&#39;t it?) Since <B><CODE>geometry</CODE></B> 
+	and <B><CODE>geography</CODE></B> are large UDTs, this means that you cannot 
+	use these names with <SMALL CLASS="allcaps">SQLNCLI</SMALL>.</P></DD>
    <DT><B><CODE>xml</CODE></B></DT>
    <DD>For <B><CODE>xml</CODE></B>, you can specify an <SMALL CLASS="allcaps">XML</SMALL> schema collection.
    The mechanism is the same as for specifying a type name for <B><CODE>UDT</CODE></B>,
@@ -1997,6 +2262,11 @@ interpretation.</P>
 [&#39;xml&#39;, $myxmldoc, &#39;my_schema_collection&#39;] # Ditto
 [&#39;xml&#39;, $mydoc, &#39;[my-schema-collection]&#39;]  # Must quote this name.</PRE>
    </DD>
+   <DT><B><CODE>table</CODE></B></DT>
+   <DD>You use <B><CODE>table</CODE></B> to denote a table-value parameter. As for <SMALL CLASS="allcaps">UDT</SMALL>, you must
+   specify the name of the table type, and the mechanism for specifying the
+   type is the same. For details on how to pass the table, see the section
+   <A HREF="#TVP">Working with Table-Parameters</A>.</DD>
 </DL>
 <H4>Examples Anyone?</H4>
 <P>By now, I can hear the reader screaming for example of all this mess. OK, so
@@ -2110,7 +2380,7 @@ SQLEND</PRE>
 
    <DT><A NAME="MULTISET_RC"><B>MULTISET_RC</B></A></DT>
    <DD>This is very similar to <A HREF="#MULTISET"><SMALL CLASS="allcaps">MULTISET</SMALL></A>. The one difference is what happens
-   with <SMALL CLASS="allcaps">T-SQL</SMALL> statements that do not return a result set, but merely a row
+   with <SMALL CLASS="allcaps"><NOBR>T-SQL</NOBR></SMALL> statements that do not return a result set, but merely a row
    count. With <A HREF="#MULTISET"><SMALL CLASS="allcaps">MULTISET</SMALL></A> you get an empty array, with <A HREF="#MULTISET_RC"><SMALL CLASS="allcaps">MULTISET_RC</SMALL></A> you get the
    row count as a scalar value (and not as an element in an nested array). Say that
    you have:
@@ -2213,7 +2483,7 @@ $result = $sqlsrv-&gt;sql($batch, {orderid =&gt; [&#39;int&#39;, 11000]},
       key listed in <CODE><NOBR>\@keys</NOBR></CODE> does not appear in one of the rows, this
       is an error, and Win32::SqlServer will <CODE>croak</CODE>.
       If a key value appears more than once in the result, Win32::SqlServer emits a
-      warning if Perl warnings are activated. It is undefined which values that
+      warning if Perl warnings are activated. It is undefined which rows that
       end up in the result set. Finally, if there are <SMALL CLASS="allcaps">NULL</SMALL> values in your key
       columns, they wind up as <CODE>undef</CODE> on the Perl side, and Perl
       will give you warnings about this. You may prefer to use
@@ -2262,7 +2532,7 @@ $retstat = &amp;$callback($row,  $resultset_no); # SCALAR</PRE><CODE>$resultset_
    when something went wrong. <A HREF="#RETURN_ERROR"><SMALL CLASS="allcaps">RETURN_ERROR</SMALL></A> has the convenient value of 0.
       <P><B>Important</B>: when you call a stored procedure with <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A>, and
       cancel the query with <A HREF="#RETURN_CANCEL"><SMALL CLASS="allcaps">RETURN_CANCEL</SMALL></A> or <A HREF="#RETURN_ERROR"><SMALL CLASS="allcaps">RETURN_ERROR</SMALL></A>, you will not
-      receive return value or output parameters.</P>
+      receive the return value or the value of any output parameters.</P>
       </DD>
 
       <DT><B><A NAME="RETURN_ABORT">RETURN_ABORT</A></B></DT>
@@ -2312,7 +2582,7 @@ colinfo style is assumed to be <A HREF="#COLINFO_NONE"><SMALL CLASS="allcaps">CO
    cell is greyed, that combination is not useful or not applicable.</P>
 <P>
 <TABLE BORDER=1 CELLSPACING=0 CELLPADDING=2>
-<THEAD><TR><TD>&nbsp;</TD><TD>&nbsp;</TD><TH><A HREF="#HASH"><SMALL CLASS="allcaps">HASHASH</SMALL></A></TH><TH><A HREF="#LIST"><SMALL CLASS="allcaps">LIST</SMALL></A></TH><TH><A HREF="#SCALAR"><SMALL CLASS="allcaps">SCALAR</SMALL></A></TH></TR>
+<THEAD><TR><TD>&nbsp;</TD><TD>&nbsp;</TD><TH><A HREF="#HASH"><SMALL CLASS="allcaps">HASH</SMALL></A></TH><TH><A HREF="#LIST"><SMALL CLASS="allcaps">LIST</SMALL></A></TH><TH><A HREF="#SCALAR"><SMALL CLASS="allcaps">SCALAR</SMALL></A></TH></TR>
 </THEAD>
 <TR><TH ROWSPAN="3"><SMALL CLASS="allcaps"><A HREF="#MULTISET">MULTISET</A></SMALL><BR />
    <A HREF="#MULTISET_RC"><SMALL CLASS="allcaps">MULTISET_RC</SMALL></A></TH>
@@ -2368,6 +2638,7 @@ colinfo style is assumed to be <A HREF="#COLINFO_NONE"><SMALL CLASS="allcaps">CO
     <TD><CODE>$$res{&#39;key&#39;}[$colno]</CODE></TD>
     <TD><CODE>$$res{&#39;key&#39;}</CODE></TD></TR>
 </TABLE>
+<BR/>
 </P>
 <H3><A NAME="colinfostyles">Getting Column Information</A></H3>
 <BR />
@@ -2409,7 +2680,7 @@ There are four possible values for this parameter:</P>
    <A HREF="#SCALAR"><SMALL CLASS="allcaps">SCALAR</SMALL></A>. </DD>
 </DL>
 <P>To understand this a little better, let&#39;s look at this example:</P>
-<PRE>$orderid = 11000;00;
+<PRE>$orderid = 11000;
 $sqlstring = &lt;&lt;SQLEND;
    SELECT OrderDate, CustomerID, EmployeeID, ShippedDate
    FROM   Orders
@@ -2524,8 +2795,8 @@ for an example using <A HREF="#COLINFO_NAMES"><SMALL CLASS="allcaps">COLINFO_NAM
    <DT><CODE>\@positional_parameters</CODE></DT>
    <DD>A reference to an array that holds unnamed parameters. The parameters
    must appear in the order they appear in the declaration of the stored
-   procedure or <SMALL CLASS="allcaps">UDF</SMALL>. The entries in the array are scalar values, or reference to
-   scalar values. See further the section <A HREF="#SP_parameters">Passing Parameters to Stored
+   procedure or <SMALL CLASS="allcaps">UDF</SMALL>. The entries in the array are
+   scalar values, or reference to scalars. See further the section <A HREF="#SP_parameters">Passing Parameters to Stored
    Procedures</A> below. Note that parameters to stored procedures works differently from
    parameters to command batches with <A HREF="#sql"><NOBR>sql()</NOBR></A>.</DD>
    <DT>&nbsp;</DT>
@@ -2565,6 +2836,7 @@ for an example using <A HREF="#COLINFO_NAMES"><SMALL CLASS="allcaps">COLINFO_NAM
    <DT><CODE>$resultstyle</CODE></DT>
    <DD>Specifies how the result sets are structured. Possible values are
    <A HREF="#MULTISET"><SMALL CLASS="allcaps">MULTISET</SMALL></A> (an array of result sets),
+   <A HREF="#MULTISET_RC"><SMALL CLASS="allcaps">MULTISET_RC</SMALL></A> (an array of result sets and row counts for action statements),
    <A HREF="#SINGLESET"><SMALL CLASS="allcaps">SINGLESET</SMALL></A> (an array of rows),
    <A HREF="#SINGLEROW"><SMALL CLASS="allcaps">SINGLEROW</SMALL></A>
    (a single row according to <CODE>$rowstyle</CODE>), <A HREF="#KEYED"><SMALL CLASS="allcaps">KEYED</SMALL></A>
@@ -2596,7 +2868,7 @@ for an example using <A HREF="#COLINFO_NAMES"><SMALL CLASS="allcaps">COLINFO_NAM
 <P>If a stored procedure returns another value than zero, the default behaviour
    of <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> is to <CODE>croak</CODE>. The assumption is that a stored procedure
    returns 0 on successful execution, and any non-zero value indicates failure.
-   There is no requirement in <SMALL CLASS="allcaps">T-SQL</SMALL> that you must use return values this way,
+   There is no requirement in <SMALL CLASS="allcaps"><NOBR>T-SQL</NOBR></SMALL> that you must use return values this way,
    but it&#39;s definitely best practice to do so. To return actual data values from stored
    procedures, use output parameters instead.</P>
 <P>You can override this behaviour with the <B><A HREF="#CheckRetStat">CheckRetStat</A></B> and <B><A HREF="#RetStatOK">RetStatOK</A></B> elements
@@ -2652,8 +2924,9 @@ reference. Thus, in this case the warning is incorrect. But there is no way for
 <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> to tell whether you passed an anonymous or a real array, and I expect anonymous arrays to be used more
 often than real.)</P>
 <P>As for how to specify the actual values for different data types, see the
-   section <A HREF="#datatypes">Data-type Representation</A>.</P>
-
+   section <A HREF="#datatypes">Data-type Representation</A>. For table-valued
+parameters, see just below.</P>
+<H3>&nbsp;</H3>
 <H3><A NAME="sqlsp_examples">Examples</A></H3>
 <P><B>sp_helpdb</B> returns two result sets. Here is an example using a
    <A HREF="#Callbacks">callback</A>
@@ -2681,18 +2954,14 @@ $sqlsrv-&gt;sql_sp(&quot;sp_helpdb&quot;, [&#39;tempdb&#39;], HASH, \&amp;print_
                           @no_of_rec int      OUTPUT AS</PRE>
 
 <P>Say we want to know how many records there are from 1997 and on, of all
-   flavours, and we also want the return value. In <SMALL CLASS="allcaps">T-SQL</SMALL> the call would be:</P>
-<PRE>EXEC @ret = putte_sp &#39;19970101&#39;, @no_of_rec = @no_of_rec OUTPUT
-SELECT @err = @@error
-IF @err &lt;&gt; 0 OR @ret &lt;&gt; 0 GOTO error_exit</PRE>
+   flavours, and we also want the return value. In <SMALL CLASS="allcaps"><NOBR>T-SQL</NOBR></SMALL> the call would be:</P>
+<PRE>EXEC putte_sp &#39;19970101&#39;, @no_of_rec = @no_of_rec OUTPUT</PRE>
 <P>In Win32::SqlServer this translates to:</P>
 <PRE>$sqlsrv-&gt;sql_sp(&#39;putte_sp&#39;, \$ret, [&#39;19970101&#39;], {&#39;no_of_rec&#39; =&gt; \$no_of_rec});</PRE>
 <P>Notice how we pass a reference to <CODE>$no_of_rec</CODE>, rather than the
    variable itself, so we can retrieve the output value later on. We also left
-   out the <CODE>@</CODE> from the hash key, knowing that Win32::SqlServer sorts it out
-   anyway. Finally, note that the
-   bulky error handling in <SMALL CLASS="allcaps">T-SQL</SMALL> is not present in the Perl code, as by default
-   <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> aborts on non-zero return values or <SMALL CLASS="allcaps">SQL</SMALL> errors. </P>
+   out the <CODE>@</CODE> from the hash key, knowing that Win32::SqlServer sorts
+it out anyway. </P>
 <H2><A NAME="sql_insert"><NOBR>sql_insert()</NOBR></A></H2>
 <P>
 Inserts a row in to table from a hash, using the keys in the hash as column
@@ -2723,16 +2992,332 @@ names.</P>
    <A HREF="#datatypes">Data-type Representation</A>.</P>
 <P><A HREF="#sql_insert"><NOBR>sql_insert()</NOBR></A> results in a parameterised call to <A HREF="#sql"><NOBR>sql()</NOBR></A>, and eventually
    <B>sp_executesql</B>. Thus, there will be a cached query plan, which is good
-for performance. Nevertheless, if you have a lot of data to insert, you should consider using an
+for performance. Nevertheless, if you have a lot of data to insert, you should
+consider using a table variable (<SMALL CLASS="allcaps">SQL</SMALL> 2008), an
    <SMALL CLASS="allcaps">XML</SMALL> document or <SMALL CLASS="allcaps">BCP</SMALL>
 instead.)</P>
+<H2><A NAME="TVP">Working with Table Parameters</A></H2>
+<P>Table-valued parameters is a new feature in <SMALL CLASS="allcaps">SQL</SMALL> Server 2008. To use
+table-valued parameters, you need to use the <SMALL CLASS="allcaps">SQLNCLI10</SMALL> provider. In <SMALL CLASS="allcaps">SQL</SMALL> 2008, table-valued parameters are read-only. This section
+covers how you work with table parameters with the high-level routines <A HREF="#sql"><NOBR>sql()</NOBR></A>,
+<A HREF="#sql_one"><NOBR>sql_one()</NOBR></A> and
+<A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A>. </P>
+<P>When you pass a table-valued parameter to <A HREF="#sql"><NOBR>sql()</NOBR></A>
+and <A HREF="#sql_one"><NOBR>sql_one()</NOBR></A>, you need to provide the type
+name, but that&#39;t all. On the first time you present the table type,
+Win32::SqlServer will retrieve the definition of the table type from <SMALL CLASS="allcaps">SQL</SMALL> Server.
+Win32::SqlServer saves saves the definition in the property
+<B><A HREF="#tabletypes">tabletypes</A></B>, and on future references to the type,
+Win32::SqlServer will retrieve the
+definition from the cache. Note that the cache is keyed by the string
+exactly as you passed it, so &quot;dbo.mytabletype&quot;, &quot;mytabletype&quot; and &quot;MyTableType&quot; will be
+three cache entries, even if they refer to the same type.</P>
+<P>As you recall, <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> retrieves the parameter profile for the stored procedure
+from <SMALL CLASS="allcaps">SQL</SMALL> Server or the Win32::SqlServer property <B><A HREF="#procs">procs</A></B>. When <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> finds that a
+parameter is a table, it will look up the type name in <B><A HREF="#tabletypes">tabletypes</A></B>, and if it is
+absent, <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> queries <SMALL CLASS="allcaps">SQL</SMALL> Server for the definition and saves it in the cache.</P>
+<P>To pass a value for a table-valued parameter, you pass a reference to an
+   array of rows where each row is a hash or an array with the column values. It&#39;s
+   perfectly possible to mix hashes and arrays in the same table array if you
+   feel like it.
+   </P>
+   <P>When you pass row as a hash, the hash should be keyed by the column names
+   (case-sensitive!). If you leave out a column, this is the same as specifying
+   <CODE>undef</CODE> for the column, that is <SMALL CLASS="allcaps">NULL</SMALL>; there is no way you can specify that you
+   want any default value for a column to apply. If the hash includes a key
+   that does not match a column in the table type, Win32::SqlServer emits a warning
+   through the <A HREF="#MsgHandler">current message handler</A>, if Perl warnings are enabled. Likewise, Win32::SqlServer issues a warning if the hash includes a key for a column that is
+   not writable, for instance an <SMALL CLASS="allcaps">IDENTITY</SMALL> column or a
+   computed column.</P>
+   <P>When you pass a row as an array, you must pass the columns exactly in the
+   order they come in the table definition. Even if a column is not writable
+   (for instance an <SMALL CLASS="allcaps">IDENTITY</SMALL> column), there still has to be an
+   element in that slot, although it does not matter what you put there. You
+   can pass an array with fewer elements than there are columns in the table
+   type, in which case the columns missing from the array will be set to <SMALL CLASS="allcaps">NULL</SMALL>.
+   If your array has more columns than there are columns in the type,
+   Win32::SqlServer issues a warning through the <A HREF="#MsgHandler">current
+   message handler</A>, if Perl warnings are enabled.</P>
+   <P>As for the column values, you pass the data types as you would in other
+   contexts, see the section <A HREF="#datatypes">Data-type Representation</A>.</P>
+   <P>To specify an empty table, you can pass <CODE>[]</CODE> or <CODE>undef</CODE>.
+   With <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A>, you can leave out the parameter entirely.</P>
+<P>So far the theory. Let&#39;s now look at some examples. In all examples we will
+work with this type.</P>
+<PRE>CREATE TYPE mytabletype AS TABLE
+       (ident   int         IDENTITY,
+        chr     char(1)     NOT NULL,
+        intcol  int         NOT NULL,
+        datecol date        NULL,
+        string  varchar(40) NULL)        </PRE>
+<P>Note: I&#39;m not sure that I see the point with an <SMALL CLASS="allcaps">IDENTITY</SMALL> column in a
+table-valued parameter. I have included one here to be able to demonstrate how
+you work with non-writable columns.</P>
+<P>Let&#39;s first look at using table types with stored procedures. Here is an
+example procedure that you cannot accuse for being overly useful, but I wanted
+to keep the examples brief.</P>
+<PRE>CREATE PROCEDURE myproc @chr char(1),
+                        @tvp mytabletype READONLY AS
 
+SELECT totalcnt = COUNT(*),
+       identsum = SUM(ident),
+       chrcnt   = SUM(CASE chr WHEN @chr THEN 1 ELSE 0 END),
+       datecnt  = SUM(CASE WHEN datecol IS NOT NULL THEN 1 ELSE 0 END),
+       strcnt   = SUM(coalesce(len(string), 0))
+FROM   @tvp</PRE>
+<P>In the case when you set up the table rows in your own code, I think hashes
+is the best choice. This makes
+the code more readable, and it also makes it easier to leave out columns you
+want to leave <SMALL CLASS="allcaps">NULL</SMALL>. So in the first example, we pass the rows as hashes:</P>
+<PRE>use strict;
+use Win32::SqlServer;
+
+my $sqlsrv = sql_init();
+
+my @rows;
+
+# Our first row. Here we provide all columns, but ident which we don&#39;t
+# have control over anyway.
+$rows[0]{&#39;chr&#39;}     = &#39;A&#39;;
+$rows[0]{&#39;intcol&#39;}  = 14;
+$rows[0]{&#39;datecol&#39;} = &#39;2009-01-01&#39;;
+$rows[0]{&#39;string&#39;}  = &#39;Typewriter&#39;;
+
+# Our second row. For this row, we leave out datecol and string.
+$rows[1]{&#39;chr&#39;}    = &#39;B&#39;;
+$rows[1]{&#39;intcol&#39;} = 9;
+
+# Our third and foruth rows. By now we have realised that we can specify
+# the entire hash at once:
+$rows[2] = {&#39;chr&#39; =&gt; &#39;A&#39;, &#39;intcol&#39; =&gt; 5,  &#39;datecol&#39; =&gt; &#39;1632-11-06&#39;};
+$rows[3] = {&#39;chr&#39; =&gt; &#39;C&#39;, &#39;intcol&#39; =&gt; 12, &#39;string&#39; =&gt; &#39;Luxury&#39;};
+
+# Let&#39;s now call our procedure. We need to pass a reference to the array.
+my %result = $sqlsrv-&gt;sql_sp(&#39;dbo.myproc&#39;, [&#39;A&#39;, \@rows],
+                              Win32::SqlServer::SINGLEROW,
+                              Win32::SqlServer::HASH);
+
+# Output the result.
+print &quot;totalcnt: $result{&#39;totalcnt&#39;}\n&quot;;
+print &quot;identsum: $result{&#39;identsum&#39;}\n&quot;;
+print &quot;chrcnt:   $result{&#39;chrcnt&#39;}\n&quot;;
+print &quot;datecnt:  $result{&#39;datecnt&#39;}\n&quot;;
+print &quot;strcnt:   $result{&#39;strcnt&#39;}\n&quot;;
+</PRE>
+<P>The output is:</P>
+<PRE>totalcnt: 4
+identsum: 10
+chrcnt:   2
+datecnt:  2
+strcnt:   16</PRE>
+<P>The way we filled in the rows in this example was somewhat tedious. Perl permits you to do this more compactly:</P>
+<PRE>use strict;
+use Win32::SqlServer;
+
+my $sqlsrv = sql_init();
+
+# Here define all rows at once in an array constructor.
+my $rows = [{&#39;chr&#39; =&gt; &#39;A&#39;, &#39;intcol&#39; =&gt; 14, &#39;datecol&#39; =&gt; &#39;2009-01-01&#39;,
+             &#39;string&#39; =&gt; &#39;Typewriter&#39;},
+            {&#39;chr&#39; =&gt; &#39;B&#39;, &#39;intcol&#39; =&gt; 9},
+            {&#39;chr&#39; =&gt; &#39;A&#39;, &#39;intcol&#39; =&gt; 5, &#39;datecol&#39; =&gt; &#39;1632-11-06&#39;},
+            {&#39;chr&#39; =&gt; &#39;C&#39;, &#39;intcol&#39; =&gt; 12, &#39;string&#39; =&gt; &#39;Luxury&#39;}];
+
+# This time we pass the parameters as named in a hash.
+my %result = $sqlsrv-&gt;sql_sp(&#39;dbo.myproc&#39;, {chr =&gt; &#39;A&#39;, &#39;tvp&#39; =&gt; $rows},
+                              Win32::SqlServer::SINGLEROW,
+                              Win32::SqlServer::HASH);
+
+# Output the result, same as above.
+print &quot;totalcnt: $result{&#39;totalcnt&#39;}\n&quot;;
+print &quot;identsum: $result{&#39;identsum&#39;}\n&quot;;
+print &quot;chrcnt:   $result{&#39;chrcnt&#39;}\n&quot;;
+print &quot;datecnt:  $result{&#39;datecnt&#39;}\n&quot;;
+print &quot;strcnt:   $result{&#39;strcnt&#39;}\n&quot;;</PRE>
+<P>Let&#39;s now look at how you pass the rows as
+arrays instead. Arrays are probably mainly of interest when the table type has a
+small number of columns, at least in the case you populate the rows yourself.</P>
+<PRE>use strict;
+use Win32::SqlServer;
+
+my $sqlsrv = sql_init();
+
+my @rows;
+
+# The first row. We must include a placeholder for ident, since this is
+# the first column.
+push(@rows, [undef, &#39;A&#39;, 14, &#39;2009-01-01&#39;, &#39;Typewriter&#39;]);
+
+# The second row. Since datecol and string are NULL, we can just leave
+# them out.
+push(@rows, [undef, &#39;B&#39;, 9]);
+
+# The third row. What we specify for ident does not matter. It just has
+# to be there.
+push(@rows, [4711, &#39;A&#39;, 5, &#39;1632-11-06&#39;]);
+
+# The fourth row. Since string has a value, we need to explicitly
+# provide an undef for datecol.
+push (@rows, [0, &#39;C&#39;, 12, undef, &#39;Luxury&#39;]);
+
+my %result = $sqlsrv-&gt;sql_sp(&#39;dbo.myproc&#39;, {chr =&gt; &#39;A&#39;, &#39;tvp&#39; =&gt; \@rows},
+                              Win32::SqlServer::SINGLEROW,
+                              Win32::SqlServer::HASH);
+
+# Output the result, same as before.
+print &quot;totalcnt: $result{&#39;totalcnt&#39;}\n&quot;;
+print &quot;identsum: $result{&#39;identsum&#39;}\n&quot;;
+print &quot;chrcnt:   $result{&#39;chrcnt&#39;}\n&quot;;
+print &quot;datecnt:  $result{&#39;datecnt&#39;}\n&quot;;
+print &quot;strcnt:   $result{&#39;strcnt&#39;}\n&quot;;</PRE>
+<P>Let&#39;s now look at examples where we use table-valued
+parameters with <A HREF="#sql"><NOBR>sql()</NOBR></A>. Here is the example with the hash rows again:</P>
+<PRE>use strict;
+use Win32::SqlServer;
+
+my $sqlsrv = sql_init();
+
+# It&#39;s the same old rows.
+my $rows = [{&#39;chr&#39; =&gt; &#39;A&#39;, &#39;intcol&#39; =&gt; 14, &#39;datecol&#39; =&gt; &#39;2009-01-01&#39;,
+             &#39;string&#39; =&gt; &#39;Typewriter&#39;},
+            {&#39;chr&#39; =&gt; &#39;B&#39;, &#39;intcol&#39; =&gt; 9},
+            {&#39;chr&#39; =&gt; &#39;A&#39;, &#39;intcol&#39; =&gt; 5, &#39;datecol&#39; =&gt; &#39;1632-11-06&#39;},
+            {&#39;chr&#39; =&gt; &#39;C&#39;, &#39;intcol&#39; =&gt; 12, &#39;string&#39; =&gt; &#39;Luxury&#39;}];
+
+# The SQL statement. It&#39;s the same as the body of the stored procedure.
+# We put SQLEND in single quotes to protect the @ in the SQL variabels.
+my $sqlcode = &lt;&lt;&#39;SQLEND&#39;;
+   SELECT totalcnt = COUNT(*),
+          identsum = SUM(ident),
+          chrcnt   = SUM(CASE chr WHEN @chr THEN 1 ELSE 0 END),
+          datecnt  = SUM(CASE WHEN datecol IS NOT NULL THEN 1 ELSE 0 END),
+          strcnt   = SUM(coalesce(len(string), 0))
+   FROM   @tvp
+SQLEND
+
+# Set up the parameter list. Since the bacth uses named parameters, we need
+# to specify the parameter list as a hash. First the character parameter.
+my %params;
+$params{&#39;@chr&#39;} = [&#39;char(1)&#39;, &#39;A&#39;];
+
+# And then the table parameter. For the data type we say &quot;table&quot;, but we
+# must also provide the name of the table type.
+$params{&#39;@tvp&#39;} = [&#39;table&#39;, $rows, &#39;mytabletype&#39;];
+
+# Now we call the batch.
+my %result = $sqlsrv-&gt;sql($sqlcode, \%params,
+                          Win32::SqlServer::SINGLEROW,
+                          Win32::SqlServer::HASH);
+
+# Output the same old result.
+print &quot;totalcnt: $result{&#39;totalcnt&#39;}\n&quot;;
+print &quot;identsum: $result{&#39;identsum&#39;}\n&quot;;
+print &quot;chrcnt:   $result{&#39;chrcnt&#39;}\n&quot;;
+print &quot;datecnt:  $result{&#39;datecnt&#39;}\n&quot;;
+print &quot;strcnt:   $result{&#39;strcnt&#39;}\n&quot;;</PRE>
+<P>Overall, I think named parameters is to prefer, and even more so when you
+work with table-valued parameters. But if you want to work with positional
+parameters, you can. Here is an example of this. This example also passes the
+rows an array constructed in one go. And the table type is specified in a
+different way:</P>
+<PRE>use strict;
+use Win32::SqlServer;
+
+my $sqlsrv = sql_init();
+
+# The rows, now as arrays.
+my $rows = [[undef, &#39;A&#39;, 14, &#39;2009-01-01&#39;, &#39;Typewriter&#39;],
+            [undef, &#39;B&#39;, 9],
+            [undef, &#39;A&#39;, 5, &#39;1632-11-06&#39;],
+            [undef, &#39;C&#39;, 12, undef, &#39;Luxury&#39;]];
+
+# The SQL statement. Now with positional parameters.
+my $sqlcode = &lt;&lt;&#39;SQLEND&#39;;
+   SELECT totalcnt = COUNT(*),
+          identsum = SUM(ident),
+          chrcnt   = SUM(CASE chr WHEN ? THEN 1 ELSE 0 END),
+          datecnt  = SUM(CASE WHEN datecol IS NOT NULL THEN 1 ELSE 0 END),
+          strcnt   = SUM(coalesce(len(string), 0))
+   FROM   ?
+SQLEND
+
+# Now we call the batch. This time the parameters are in an anonymous array.
+my %result = $sqlsrv-&gt;sql($sqlcode, [[&#39;char(1)&#39;, &#39;A&#39;],
+                                     [&#39;table(dbo.mytabletype)&#39;, $rows]],
+                           Win32::SqlServer::SINGLEROW,
+                           Win32::SqlServer::HASH);
+
+# Output the result.
+print &quot;totalcnt: $result{&#39;totalcnt&#39;}\n&quot;;
+print &quot;identsum: $result{&#39;identsum&#39;}\n&quot;;
+print &quot;chrcnt:   $result{&#39;chrcnt&#39;}\n&quot;;
+print &quot;datecnt:  $result{&#39;datecnt&#39;}\n&quot;;
+print &quot;strcnt:   $result{&#39;strcnt&#39;}\n&quot;;</PRE>
+<P>In all these examples, I have put the rows for the table-valued
+parameters in a separate variable. But if you want to show off, you can put it
+all in the parameter list:</P>
+<PRE>my %result = $sqlsrv-&gt;sql($sqlcode,
+                          [[&#39;char(1)&#39;, &#39;A&#39;],
+                           [&#39;table(dbo.mytabletype)&#39;,
+                              [[undef, &#39;A&#39;, 14, &#39;2009-01-01&#39;, &#39;Typewriter&#39;],
+                               [undef, &#39;B&#39;, 9],
+                               [undef, &#39;A&#39;, 5, &#39;1632-11-06&#39;],
+                               [undef, &#39;C&#39;, 12, undef, &#39;Luxury&#39;]]]],
+                           Win32::SqlServer::SINGLEROW,
+                           Win32::SqlServer::HASH);</PRE>
+<P>Or why not:</P>
+<PRE>my %result = $sqlsrv-&gt;sql($sqlcode,
+             {chr =&gt; [&#39;char(1)&#39;, &#39;A&#39;],
+              tvp =&gt; [&#39;table(mytabletype)&#39;,
+                [{&#39;chr&#39; =&gt; &#39;A&#39;, &#39;intcol&#39; =&gt; 14,
+                  &#39;datecol&#39; =&gt; &#39;2009-01-01&#39;, &#39;string&#39; =&gt; &#39;Typewriter&#39;},
+                 [&#39;B&#39;, 9],
+                 {&#39;chr&#39; =&gt; &#39;A&#39;, &#39;intcol&#39; =&gt; 5, &#39;datecol&#39; =&gt; &#39;1632-11-06&#39;},
+                 {&#39;chr&#39; =&gt; &#39;C&#39;, &#39;intcol&#39; =&gt; 12, &#39;string&#39; =&gt; &#39;Luxury&#39;}]
+                ]},
+              Win32::SqlServer::SINGLEROW, Win32::SqlServer::HASH);</PRE>
+<P>But don&#39;t blame me if you get lost in this orgy of nested brackets and
+braces.</P>
+<P>We now change the first data row a bit:</P>
+<PRE>{ident=&gt; 1, &#39;chr&#39; =&gt; &#39;A&#39;, &#39;intcol&#39; =&gt; 14, &#39;datecol&#39; =&gt; &#39;2009-01-01&#39;,
+ &#39;stringcol&#39; =&gt; &#39;Typewriter&#39;}</PRE>
+<P>That is, we have included the <SMALL CLASS="allcaps">IDENTITY</SMALL> column, and we have
+erred on one
+column name. When we run this (assuming we specifed <NOBR><CODE>-w</CODE></NOBR>
+that is!), we get these two warnings:</P>
+<PRE>Message -1 from &#39;Win32::SqlServer&#39;, Severity: 10
+Warning: input hash to inserttableparam includes key &#39;stringcol&#39;,
+   but no such column has been defined for this table parameter.
+Message from Win32::SqlServer at C:\temp\slask.pl line 34
+Message -1 from &#39;Win32::SqlServer&#39;, Severity: 10
+Warning: input hash to inserttableparam includes key &#39;ident&#39;,
+   but this column has been defined with usedefault=1 and the value is ignored.
+Message from Win32::SqlServer at C:\temp\slask.pl line 34</PRE>
+<P>As these checks are performed by the mid-level interface, the error message
+are worded from that horizon. You will have to live with that. </P>
+<P>Finally some examples on how to pass an empty table. All these are valid:</P>
+<PRE>$sqlsrv-&gt;sql_sp(&#39;dbo.myproc&#39;, [&#39;A&#39;, [] ]);
+$sqlsrv-&gt;sql_sp(&#39;dbo.myproc&#39;, [&#39;A&#39;, undef]);
+$sqlsrv-&gt;sql_sp(&#39;dbo.myproc&#39;, [&#39;A&#39;]);</PRE>
+<P>The last example works, because in <SMALL CLASS="allcaps">SQL</SMALL> Server there is an implict default
+value of the empty table for all table-valued parameters. (On the other hand,
+you are not permitted to pass <SMALL CLASS="allcaps">NULL</SMALL> for table parameters, so when
+Win32::SqlServer permits you to specify <CODE>undef</CODE> it bends the rules a bit.) For <A HREF="#sql"><NOBR>sql()</NOBR></A>
+you have these choices:</P>
+<PRE>$sqlsrv-&gt;sql($sqlcode, {chr =&gt; [&#39;char(1)&#39;, &#39;A&#39;],
+                        tvp =&gt; [&#39;table(mytabletype)&#39;, [] ]});
+$sqlsrv-&gt;sql($sqlcode, {chr =&gt; [&#39;char(1)&#39;, &#39;A&#39;],
+                        tvp =&gt; [&#39;table(mytabletype)&#39;, undef]});
+$sqlsrv-&gt;sql($sqlcode, {chr =&gt; [&#39;char(1)&#39;, &#39;A&#39;],
+                        tvp =&gt; [&#39;table(mytabletype)&#39;]});</PRE>
+<P>Since the batch does not compile if you don&#39;t define the parameter, you can&#39;t
+escape it entirely.</P>
 <H1><A NAME="Mid-level">Mid-Level Query Functions</A></H1>
 <P>The high-level query functions are implemented in Perl, and they in their
    turn use the mid-level functions that are implemented in C++ (save for
  <A HREF="#get_result_sets"><NOBR>get_result_sets()</NOBR></A>). These in their turn call the
    low-level functions in the <SMALL CLASS="allcaps">OLE DB API</SMALL>, not exposed directly to Perl.</P>
-<P>If you think that the high-level functions puts too much into a
+<P>If you think that the high-level functions puts you too much into a
    straightjacket (or are just too bewildering for you), you can call the
    mid-level functions directly. But... there is a disclaimer: the extensive
    test suite for Win32::SqlServer does not include any tests of direct use of the mid-level functions. Thus, if your usage of these functions goes beyond what the
@@ -2741,22 +3326,34 @@ instead.)</P>
    submitting the query and getting the result sets in one single call, the
    mid-level functions makes the Win32::SqlServer object very stateful, and there is a
    certain order in which you must call these functions:</P>
-<OL>
-   <LI>First define the text of the command batch with
-   <A HREF="#initbatch"><NOBR>initbatch()</NOBR></A>.</LI>
-   <LI>Then for each parameter in the batch define the parameter with
-      <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>.</LI>
-   <LI>Execute the command batch with <A HREF="#executebatch"><NOBR>executebatch()</NOBR></A>.</LI>
-   <LI>Iterate over all result sets with <A HREF="#nextresultset"><NOBR>nextresultset()</NOBR></A>
-       until this function returns a false value.</LI>
-   <LI>Within a result set, iterate over all rows with <A HREF="#nextrow"><NOBR>nextrow()</NOBR></A>
+<TABLE>
+<TR VALIGN="top"><TD>1.</TD><TD>
+   First define the text of the command batch with
+   <A HREF="#initbatch"><NOBR>initbatch()</NOBR></A>.</TD></TR>
+<TR VALIGN="top"><TD>2.</TD><TD>
+Then for each parameter in the batch define the parameter with
+      <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>.</TD></TR>
+<TR VALIGN="top"><TD>2a.</TD><TD>
+   Define the columns of each table-valued parameter with
+   <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A>, and populate the table parameters with <A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A>. (You
+   can do this once the table-parameter has been entered, or you can wait until
+   all parameters have been entered.)</TD></TR>
+<TR VALIGN="top"><TD>3.</TD><TD>
+     Execute the command batch with <A HREF="#executebatch"><NOBR>executebatch()</NOBR></A>.</TD></TR>
+<TR VALIGN="top"><TD>4.</TD><TD>
+     Iterate over all result sets with <A HREF="#nextresultset"><NOBR>nextresultset()</NOBR></A>
+       until this function returns a false value.</TD></TR>
+<TR VALIGN="top"><TD>5.</TD><TD>
+       Within a result set, iterate over all rows with <A HREF="#nextrow"><NOBR>nextrow()</NOBR></A>
        until returns false, alternatively skip the result set by calling
        <A HREF="#cancelresultset"><NOBR>cancelresultset()</NOBR></A>. As long as
    you have not reached the end of the result set, you can retrieve column
-   information with <A HREF="#getcolumninfo"><NOBR>getcolumninfo()</NOBR></A>.</LI>
-   <LI>When you have retrieved all result sets, get any output
-       parameters from the command batch with <A HREF="#getoutputparams"><NOBR>getoutputparams()</NOBR></A>.</LI>
-</OL>
+   information with <A HREF="#getcolumninfo"><NOBR>getcolumninfo()</NOBR></A>.</TD></TR>
+<TR VALIGN="top"><TD>6.</TD><TD>
+       When you have retrieved all result sets, get any output
+       parameters from the command batch with <A HREF="#getoutputparams"><NOBR>getoutputparams()</NOBR></A>.
+       </TD></TR>
+</TABLE>
 <P>If all you need is more freedom when you specify the
    parameters, but you still want the result sets and the rows packaged
    according to row styles and result styles, you can perform steps 4 and 5 in
@@ -2783,7 +3380,8 @@ instead.)</P>
    <LI>
       The <B><A HREF="#NoExec">NoExec</A></B> property has no effect.</LI>
    <LI>
-      Conversions you have set up with <A HREF="#sql_set_conversion"><NOBR>sql_set_conversion()</NOBR></A> have no effect.</LI>
+      Conversions you have set up with <A HREF="#sql_set_conversion"><NOBR>sql_set_conversion()</NOBR></A>
+      have no effect (except in <A HREF="#get_result_sets"><NOBR>get_result_sets()</NOBR></A>).</LI>
 </UL>
 <H2><A NAME="initbatch"><NOBR>initbatch()</NOBR></A></H2>
 <P>Defines the text for a command batch.</P>
@@ -2822,7 +3420,7 @@ looks like this:</P>
                          @par3 datetime = NULL,
                          @par4 bit = 0 AS</PRE>
    You intend to provide a value only for <CODE><NOBR>@par2</NOBR></CODE> and <CODE><NOBR>@par4</NOBR></CODE>
-when you can
+when you call
    <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>. In this case the parameter
 list in the <SMALL CLASS="allcaps">ODBC</SMALL> call should look like above, that is include two <CODE>?</CODE>
 only.
@@ -2850,20 +3448,42 @@ That is, only <B><CODE>varchar</CODE></B>, not <B><CODE><NOBR>varchar(3)</NOBR><
 This must be a system type, and it must be the main name for the type; you
 cannot use the data-type synonyms that ships with <SMALL CLASS="allcaps">SQL</SMALL> Server, for instance
 <B><CODE>integer</CODE></B> for <CODE><B>int</B></CODE>, with one exception: you can use <B>
-<CODE>rowversion</CODE></B> for <B><CODE>timestamp</CODE></B>. For <SMALL CLASS="allcaps">CLR UDT</SMALL>s, use
+<CODE>rowversion</CODE></B> for <B><CODE>timestamp</CODE></B>. For user-defined <SMALL CLASS="allcaps">CLR </SMALL>
+types, use
 <B>
 <CODE>UDT</CODE></B>. The name must be in lowercase, except for <B><CODE>UDT</CODE></B>
-which must be all uppercase. </DD>
+which must be all uppercase. For built-in <SMALL CLASS="allcaps">CLR</SMALL> types you can pass the actual
+name, or you can use <CODE><B>UDT</B></CODE> and pass the
+actual name in the <CODE>$typeinfo</CODE> parameter. For table-valued parameters use, <B>
+<CODE>table</CODE></B>.</DD>
 <DT>&nbsp;</DT>
 <DT><CODE>$maxlen</CODE></DT>
-<DD>The maximum length for the parameter. You need to specify this for character
-and binary data types. When you are calling a stored procedure, you would
-typically use 20 for a <B><CODE><NOBR>varchar(20)</NOBR></CODE></B> parameter (as well as for
-<B><CODE><NOBR>nvarchar(20)</NOBR></CODE></B>; the length is not in bytes). If
-you leave it <CODE>undef</CODE>, you get a default value of 1, which may not be what you
-want. Use -1, for large types, that is <B><CODE>(n)text</CODE></B>, <B><CODE>image</CODE></B>, the
-<B><CODE>(MAX)</CODE></B>
-types and <B><CODE>xml</CODE></B></DD>
+<DD>
+<UL>
+   <LI>For regular-sized character and binary parameters to stored procedure,
+specify the length of the parameter in the procedure definition. That is
+   20 for <B><CODE><NOBR>varchar(20)</NOBR></CODE></B> (as well as for
+<B><CODE><NOBR>nvarchar(20)</NOBR></CODE></B>; the length is not in bytes).
+If you leave <CODE>$maxlen</CODE> as <CODE>undef</CODE>, you will get a default of 1, which is not likely
+to be what you want.
+   </LI>
+   <LI>For character and binary parameters to ad-hoc batches,
+   I recommend that you settle on a constant, and do not use the length of the
+   current parameter value. This increases the cache reuse on the <SMALL CLASS="allcaps">SQL</SMALL> Server
+   side.</LI>
+   <LI>For large parameters, that is <B><CODE>(n)text</CODE></B>,
+   <B><CODE>image</CODE></B>, the <B><CODE>(MAX)</CODE></B> types,
+   <B><CODE>xml</CODE></B> and large UDTs, specify -1.
+   </LI>
+   <LI>For <B><CODE>table</CODE></B>, this
+parameter has a special meaning: <CODE>$maxlen</CODE> holds the number of columns in the
+table type.
+   </LI>
+   <LI>For data types with fixed length, you can set <CODE>$maxlen</CODE> to the size of
+the data type or leave it <CODE>undef</CODE>.
+   </LI>
+</UL>
+</DD>
 <DT>&nbsp;</DT>
 <DT><CODE>$paramname</CODE></DT>
 <DD>The name for the parameter. This works differently depending on the context
@@ -2901,7 +3521,7 @@ different cases.
 <DT><CODE>$isinput</CODE></DT>
 
 <DD>1 if the parameter is an input parameter. Most parameters are input
-parameters, but not return values from stored procedures. Here is another
+parameters, but return values from stored procedures are not. Here is another
 example of a parameter that is not an input parameter:
 <PRE>SELECT ? = @@version</PRE>
 </DD>
@@ -2913,7 +3533,9 @@ example of a parameter that is not an input parameter:
 passing <SMALL CLASS="allcaps">NULL</SMALL>, or you have specified 0 for <CODE>$isinput</CODE>. If you
 specified 1 for <CODE>$isinpu</CODE>t, Win32::SqlServer will attempt to convert the value to type
 specified in <CODE>$nameoftype</CODE>, as described in the chapter
-<A HREF="#datatypes">Data-type Representation</A>.</DD>
+<A HREF="#datatypes">Data-type Representation</A>. If the parameter is a
+table-valued parameter, you must specify <CODE>undef</CODE> for <CODE>$value</CODE>, or else
+Win32::SqlServer will <CODE>croak</CODE>.</DD>
 <DT>&nbsp;</DT>
 <DT><CODE>$precision</CODE></DT>
 <DT><CODE>$scale</CODE></DT>
@@ -2921,15 +3543,16 @@ specified in <CODE>$nameoftype</CODE>, as described in the chapter
 If you don&#39;t specify these, the default values are 18 and 0 respectively.</DD>
 <DT>&nbsp;</DT>
 <DT><CODE>$typeinfo</CODE></DT>
-<DD>This parameter applies only to parameters of the types <B><CODE>xml</CODE></B>
-and
-<B><CODE>UDT</CODE></B>, and only when you use <SMALL CLASS="allcaps">SQL</SMALL> Native Client as the <SMALL CLASS="allcaps">OLE DB</SMALL>
-provider. For <B><CODE>xml</CODE></B> it specifies a schema collection and is
-optional. For <B><CODE>UDT</CODE></B> it specifies the name of the actual <SMALL CLASS="allcaps">CLR</SMALL>
-type and is mandatory. Both names can be specified with three-part notation on
-the form <I>database</I>.<I>schema</I>.<I>object</I>. If there are parts that
+<DD>This parameter applies only to parameters of the types <B><CODE>xml</CODE></B>,
+<B><CODE>UDT</CODE></B> and <B><CODE>table</CODE></B>. For <B><CODE>xml</CODE></B>, it specifies a schema collection and is
+optional. For <B><CODE>UDT</CODE></B> and <CODE><B>table</B></CODE>, it specifies the name of the actual <SMALL CLASS="allcaps">CLR</SMALL>
+or table
+type and is mandatory. All names can be specified with three-part notation on
+the form <I>database</I>.<I>schema</I>.<I>object</I>. (Although, may not
+actually be able to specify a type in a different database.) If there are parts that
 include special characters such as space or period, you must quote these in
-brackets or double quotes. </DD>
+brackets or double quotes. This parameter is not applicable when you use
+<SMALL CLASS="allcaps">SQLOLEDB</SMALL>. </DD>
 </DL>
 <P>You must call <A HREF="#initbatch"><NOBR>initbatch()</NOBR></A> prior to calling
 <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>. You cannot call <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>, once you have called
@@ -2941,15 +3564,116 @@ you call <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>.</P>
    <A HREF="#executebatch"><NOBR>executebatch()</NOBR></A>. Nevertheless, you can continue to
    enter more parameters. This makes it possible to catch all parameter errors in
    one go. Each parameter value that cannot be converted results in a warning
-   communicated through the <A HREF="#MsgHandler">current message handler</A>.</P>
+   communicated through the <A HREF="#MsgHandler">current message handler</A>..</P>
 <P>You must call <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A> exactly as many times as there are parameter
    holders in your command batch. Specifying too many parameters, will yield the
    message <I>Multiple-step <SMALL CLASS="allcaps">OLE DB</SMALL> operation generated errors</I>. But
    this is a generic message and can appear in other situations as well. </P>
+<P>If any of the parameters is a table-valued parameter, you must define the
+columns in the table type by calling <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A> for each column. You
+then enter rows with <A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A>.</P>
 <P>Note that far from all parameter errors are detected by <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>, but
    will not raise an error message until you call
    <A HREF="#executebatch"><NOBR>executebatch()</NOBR></A>, for instance an illegal parameter
    name.</P>
+<H2><A NAME="definetablecolumn"><NOBR>definetablecolumn()</NOBR></A></H2>
+<P>Defines a column in a table-variable parameter previously entered with
+<A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>.</P>
+<PRE>$ret = $sqlsrv-&gt;definetablecolumn($tblname, $colname, $nameoftype
+                                  [, $maxlen&nbsp;[, $prec, [, $scale
+                                  [, $usedefault [, $typeinfo]]]]]);</PRE>
+<DL>
+   <DT><CODE>$ret</CODE> </DT>
+   <DD>True if the call completed successfully, else false.</DD>
+   <DT></DT>
+   <DT><CODE>$tblname</CODE></DT>
+   <DD>The name of the table-valued parameter for which you are defining a
+   column. This is the name you specified in the <CODE>$paramname</CODE> parameter to
+   <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>. If you leave <CODE>$tblname</CODE> as <CODE>undef</CODE>,
+   this is understood as the most recently entered parameter, even if this is
+   not a table parameter. Thus, if you work with unamed parameters, you must
+   define your table columns and insert your rows directly after you have
+   entered the parameter. If the parameter <CODE>$tblname</CODE> refer to is
+   not a table parameter, <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A> will <CODE>croak</CODE>.</DD>
+   <DT></DT>
+   <DT><CODE>$colname</CODE></DT>
+   <DD>The name of the column. You don&#39;t have to use the actual names in the
+   table type, although it&#39;s best practice to do so. If you pass rows as hashes
+   to <A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A>, the names you use in <CODE>$colname</CODE> will be your hash keys.</DD>
+   <DT></DT>
+   <DT><CODE>$nameoftype</CODE></DT>
+   <DD>The data type for the parameter. The same rules as for <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>
+   apply. That is, you must use the system names, and you should not include
+   length or similar. Not surprisingly, the type <CODE><B>table</B></CODE> is
+   not permitted here, but all other types are legit.</DD>
+   <DT></DT>
+   <DT><CODE>$maxlen</CODE></DT>
+   <DD>Maximum length for character and binary data types (including <CODE><B>
+   UDT</B></CODE>).&nbsp;For large data types, that is <B><CODE>(n)text</CODE></B>, <B><CODE>image</CODE></B>, the
+<B><CODE>(MAX)</CODE></B>
+types and <B><CODE>xml</CODE></B>, specify -1. The length is in characters, not
+   bytes, so specify 20 for <CODE><B><NOBR>nvarchar(20)</NOBR></B></CODE>.</DD>
+<DT></DT>
+   <DT><CODE>$precision</CODE></DT>
+<DT><CODE>$scale</CODE></DT>
+<DD>Precision and scale for <B><CODE>decimal</CODE></B> and <CODE><B>numeric</B></CODE>.
+If you don&#39;t specify these, the default values are 18 and 0 respectively.</DD>
+   <DT></DT>
+   <DT><CODE>$usedefault</CODE></DT>
+   <DD>This is a boolean parameter with a default value of false. When true,
+   this specifies that the default value for this column should apply to <I>all
+   rows</I> inserted into the table-valued parameter. You must set <CODE>$usedefault</CODE>
+   to true for columns that cannot be set explicitly: <SMALL CLASS="allcaps">IDENTITY</SMALL> columns,
+   timestamp/rowversion columns and computed columns.</DD>
+   <DT></DT>
+   <DT><CODE>$typeinfo</CODE></DT>
+   <DD>Type information for <CODE><B>xml</B></CODE> and <CODE><B>UDT</B></CODE>
+   columns, in the same vein as for <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>.</DD>
+</DL>
+<P>You should call <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A> once for column in the table type. You need
+to define the columns in the order they are defined in the table type. You cannot
+define the fifth column first etc.</P>
+<P>You specify the number of columns in the table type with the <CODE>$maxlen</CODE>
+parameter to <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>. Once you have defined that many columns, you can
+start entering rows with <A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A>.</P>
+<H2><A NAME="inserttableparam"><NOBR>inserttableparam()</NOBR></A></H2>
+<P>Inserts one row into a table-valued parameter.</P>
+<PRE>$ret = $sqlsrv-&gt;inserttableparm($tblname, $inputref);</PRE>
+<DL>
+   <DT><CODE>$ret</CODE></DT>
+   <DD>Returns true if the row was inserted successfully, and all values were
+   convertible. False, if one or more values were not convertible to the <SMALL CLASS="allcaps">SQL</SMALL>
+   type in question.</DD>
+   <DT></DT>
+   <DT><CODE>$tblname</CODE></DT>
+   <DD>The name of the table-valued parameter you are insert a row into. This
+   is the name you specified in the <CODE>$paramname</CODE> to <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>. As with
+   <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A>, <CODE>undef</CODE> refers to the most recently entered parameter,
+   even if this is not an input parameter.</DD>
+   <DT></DT>
+   <DT><CODE>$inputref</CODE></DT>
+   <DD>A reference to a hash or an array of column values for the row. See
+   below for details.</DD>
+</DL>
+<P>Before you can call <A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A> for a table-valued parameter, you need
+to have called <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A> for all columns in the table type.</P>
+<P>When you provide the values in a hash, the hash should be keyed with the
+names you used when you set up the table type with <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A>. If you
+leave out a column, that column is simply set to <SMALL CLASS="allcaps">NULL</SMALL>. If your hash includes a
+key that does not match a column in the table, <A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A> will emit a
+warning if Perl warnings are enabled. <A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A> will also give a warning,
+if you specify a value for a column for which you have specified <CODE>$usedefault</CODE> =
+1.</P>
+<P>When you provide the values in an array, the values should appear in the
+order they appear in the table definition, <I>including</I> columns with
+<CODE>$usedefault</CODE> = 1, even if the values you provide will be ignored. If your array
+has fewer elements than the table type, the last columns will be set to <SMALL CLASS="allcaps">NULL</SMALL>. If
+your array has more elements than there are columns in the table type,
+<A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A> will issue a warning, if Perl warnings are enabled.</P>
+<P>As with <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>, if a value fails to convert, this only yields a
+warning at this point, but when you call <A HREF="#executebatch"><NOBR>executebatch()</NOBR></A>, there will be an error
+and the batch will not be executed. This permits you to detect all parameter
+errors in one go.</P>
 <H2><A NAME="executebatch"><NOBR>executebatch()</NOBR></A></H2>
 <P>Executes a batch previously defined with <A HREF="#initbatch"><NOBR>initbatch()</NOBR></A>.</P>
 <PRE>$ret = $sqlsrv-&gt;executebatch();</PRE>
@@ -2965,12 +3689,16 @@ the command. When you call <A HREF="#executebatch"><NOBR>executebatch()</NOBR></
 set the <B><A HREF="#AutoConnect">AutoConnect</A></B> property. In the latter
 case, <A HREF="#executebatch"><NOBR>executebatch()</NOBR></A> will connect automatically.
 </P>
+<P>If you entered a table-valued parameter with <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>, but you did not
+define as many columns as you defined with hte <CODE>$maxlen</CODE> parameter, <A HREF="#executebatch"><NOBR>executebatch()</NOBR></A>
+will <CODE>croak</CODE>.</P>
 <P>Note that the return status reports whether the submission of the batch was
    successful. That is, errors you get at this point are those detected by
    Win32::SqlServer and the <SMALL CLASS="allcaps">OLE DB</SMALL> provider. Errors from <SMALL CLASS="allcaps">SQL</SMALL> Server are not reported until
    you call <A HREF="#nextresultset"><NOBR>nextresultset()</NOBR></A>. (And if your batch
    returns result sets before the error, you will not see the error until you
-   have called <A HREF="#nextresultset"><NOBR>nextresultset()</NOBR></A> once for each result
+   have called <A HREF="#nextresultset"><NOBR>nextresultset()</NOBR></A> for
+these result
    set.) If the command submission fails, the batch is cancelled, and you
    cannot perform any further work with it.</P>
 <P>Most errors are communicated through the <A HREF="#MsgHandler">current
@@ -3063,8 +3791,8 @@ until you have advanced to the next result set.</P>
    <DT><CODE>$hashref</CODE></DT>
    <DD>A scalar variable that on output receives the reference to a hash that
    holds the column information as detailed below. The keys in <NOBR><CODE>%$hashref</CODE></NOBR> are
-   column names in the query. As with <A HREF="#nextrow"><NOBR>nextrow()</NOBR></A>, you get <I>Col 1</I>, <I>Col 2</I> etc for
-   nameless columns. As with <A HREF="#nextrow"><NOBR>nextrow()</NOBR></A>, you must pass a scalar variable, <NOBR><CODE>\%hash</CODE></NOBR>
+   column names in the query. As with <A HREF="#nextrow"><NOBR>nextrow()</NOBR></A>, you get <I>Col 1</I>, <I>Col 2</I>
+   etc for nameless columns. You must pass a scalar variable, <NOBR><CODE>\%hash</CODE></NOBR>
    will not work. If you don&#39;t care about the hash, you
    can pass <CODE>undef</CODE>.</DD>
    <DT>&nbsp;</DT>
@@ -3103,8 +3831,9 @@ sets <NOBR><CODE>%$hashref</CODE></NOBR> and <NOBR><CODE>@$arrayref</CODE></NOBR
    <CODE><B>ntext</B></CODE> and <CODE><B>image</B></CODE> appear as <CODE><B>
    varchar</B></CODE>, <CODE><B>nvarchar</B></CODE> and <CODE><B>varbinary</B></CODE>
    respectively,
-   with <B>Maxlength</B> set to <CODE>undef</CODE>. A <SMALL CLASS="allcaps">CLR</SMALL> user-defined type appears as <CODE>
-   <B>UDT</B></CODE>; the actual name of the type is not available.</DD>
+   with <B>Maxlength</B> set to <CODE>undef</CODE>. A <SMALL CLASS="allcaps">CLR</SMALL> type appears as <CODE>
+   <B>UDT</B></CODE>; the actual name of the type is not available. This applies
+   to both user-defined <SMALL CLASS="allcaps">CLR</SMALL> types and built-in <SMALL CLASS="allcaps">CLR</SMALL> types.</DD>
    <DT>&nbsp;</DT>
    <DT><B>Maxlength</B></DT>
    <DD>The maximum length for the column. Mainly relevant for character and
@@ -3113,13 +3842,13 @@ sets <NOBR><CODE>%$hashref</CODE></NOBR> and <NOBR><CODE>@$arrayref</CODE></NOBR
    not applicable.</DD>
    <DT>&nbsp;</DT>
    <DT><B>Precision</B></DT>
-   <DD>The precision for the column. Mainly relevant for the decimal and numeric data types,
+   <DD>The precision for the column. Mainly relevant for <B><CODE>decimal</CODE></B> and <B><CODE>numeric</CODE></B> ,
        but <SMALL CLASS="allcaps">SQL</SMALL> Server appears to populate it for other types as well. <B>
    Precision</B> is <CODE>undef</CODE> for types
        where it is not applicable.</DD>
    <DT>&nbsp;</DT>
    <DT><B>Scale</B></DT>
-   <DD>The scale for the column. Mainly relevant for the decimal and numeric data types.
+   <DD>The scale for the column. Mainly relevant for the <B><CODE>decimal</CODE></B> and <B><CODE>numeric</CODE></B>.
        <B>Scale</B> is <CODE>undef</CODE> for types where it is not applicable.</DD>
    <DT>&nbsp;</DT>
    <DT><B>Maybenull</B></DT>
@@ -3145,7 +3874,7 @@ specified form.</P>
    <DT><CODE>($|@|%)result</CODE></DT>
    <DD>The result set(s) from the command batch. Depending on the <CODE>
    $rowstyle</CODE> and
-   <CODE>$resultstyle</CODE> parameters, this can an array, a hash or a scalar.
+   <CODE>$resultstyle</CODE> parameters, this can be an array, a hash or a scalar.
    If the result is an array or a hash, you can always use a scalar to receive
    the return value as a reference to the array/hash. </DD>
    <DT>&nbsp;</DT>
@@ -3165,7 +3894,8 @@ specified form.</P>
    <DT>&nbsp;</DT>
    <DT><CODE>$resultstyle</CODE></DT>
    <DD>Specifies how the result sets are to be structured. Possible values are
-   <A HREF="#MULTISET"><SMALL CLASS="allcaps">MULTISET</SMALL></A> (an array of result sets), <A HREF="#SINGLESET"><SMALL CLASS="allcaps">SINGLESET</SMALL></A> (an array of rows), <A HREF="#SINGLEROW"><SMALL CLASS="allcaps">SINGLEROW</SMALL></A>
+   <A HREF="#MULTISET"><SMALL CLASS="allcaps">MULTISET</SMALL></A> (an array of result sets),
+   <A HREF="#MULTISET_RC"><SMALL CLASS="allcaps">MULTISET_RC</SMALL></A> (an array of result sets and row counts for action statements), <A HREF="#SINGLESET"><SMALL CLASS="allcaps">SINGLESET</SMALL></A> (an array of rows), <A HREF="#SINGLEROW"><SMALL CLASS="allcaps">SINGLEROW</SMALL></A>
    (a single row according to <CODE>$rowstyle</CODE>), <A HREF="#KEYED"><SMALL CLASS="allcaps">KEYED</SMALL></A> (a hash, keyed by
    the data in the result set), <A HREF="#NORESULT"><SMALL CLASS="allcaps">NORESULT</SMALL></A> (no result set returned) or a reference
    to a callback routine that is called on each row. See the section
@@ -3198,7 +3928,7 @@ topic of <A HREF="#sql"><NOBR>sql()</NOBR></A> for details.</P>
    <DT><CODE>$hashref</CODE></DT>
    <DD>A scalar variable that on output receives a reference to a hash. The keys
    in the hash are the parameter names (don&#39;t forget the leading <CODE>@</CODE>)
-   you provided with <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>. For parameter for which you passed <CODE>undef</CODE>
+   you provided with <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>. For parameters for which you passed <CODE>undef</CODE>
    for the name, the keys are <I>Par 1, Par 2</I> etc (without any <CODE>@</CODE>.)
    You must pass a scalar, you cannot pass a reference to hash like <CODE><NOBR>
    \%hash</NOBR></CODE>. You can pass <CODE>undef</CODE> if you don&#39;t care about
@@ -3232,7 +3962,7 @@ resources allocated for the batch are released.
    not roll back any transactions, neither any transactions started prior to
    submitting the command batch, nor transactions started the command batch itself.</P>
 <P>Since cancelling a command batch actually means that part of the batch may not be executed at all, using <A HREF="#cancelbatch"><NOBR>cancelbatch()</NOBR></A> casually can lead to
-   unexpected results. If you just want to discard all data, it&#39;s better go call
+   unexpected results. If you just want to discard all data, it&#39;s better to call
    <A HREF="#get_result_sets"><NOBR>get_result_sets()</NOBR></A> with <CODE>$resultstyle</CODE> = <A HREF="#NORESULT"><SMALL CLASS="allcaps">NORESULT</SMALL></A>, or call
    <A HREF="#cancelresultset"><NOBR>cancelresultset()</NOBR></A> for each result set.</P>
 <H2><A NAME="getcmdstate"><NOBR>getcmdstate()</NOBR></A></H2>
@@ -3253,10 +3983,12 @@ resources allocated for the batch are released.
    <DT><B><A NAME="CMDSTATE_ENTEREXEC">CMDSTATE_ENTEREXEC</A></B></DT>
    <DD>A command batch have been entered with <A HREF="#initbatch"><NOBR>initbatch()</NOBR></A>, but it has not yet been
    submitted for execution. You can now define parameters with <A HREF="#enterparameter"><NOBR>enterparameter()</NOBR></A>
-   or execute it with <A HREF="#executebatch"><NOBR>executebatch()</NOBR></A>.</DD>
+   or execute it with <A HREF="#executebatch"><NOBR>executebatch()</NOBR></A>.
+   You can also define columns for table parameters with <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A> or
+   enter rows to a table parameter with <A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A>.</DD>
    <DT>&nbsp;</DT>
    <DT><B><A NAME="CMDSTATE_NEXTRES">CMDSTATE_NEXTRES</A></B></DT>
-   <DD>The command batch have been executed, and you can now retrieve the next
+   <DD>The command batch has been executed, and you can now retrieve the next
    result set with <A HREF="#nextresultset"><NOBR>nextresultset()</NOBR></A>. You also get this value when you have
    reached the end of the result set with <A HREF="#nextrow"><NOBR>nextrow()</NOBR></A> or
    <NOBR><A HREF="#cancelresultset">cancelresultset()</A></NOBR>.</DD>
@@ -3302,10 +4034,10 @@ my $ok = $sqlsrv-&gt;enterparameter(&#39;int&#39;, -1, &#39;@cnt&#39;, 0, 1);
 
 # Then the parameters for the query. Since they both occur twice, we need
 # to supply both twice. We don&#39;t care about the names.
-$ok &amp;= $sqlsrv-&gt;enterparameter(&#39;nchar&#39;, 5, undef, 1, 0, &#39;ALFKI&#39;);
-$ok &amp;= $sqlsrv-&gt;enterparameter(&#39;datetime&#39;, -1, undef, 1, 0, &#39;1997-06-01&#39;);
-$ok &amp;= $sqlsrv-&gt;enterparameter(&#39;nchar&#39;, 5, undef, 1, 0, &#39;ALFKI&#39;);
-$ok &amp;= $sqlsrv-&gt;enterparameter(&#39;datetime&#39;, -1, undef, 1, 0, &#39;1997-06-01&#39;);
+$ok &amp;= $sqlsrv-&gt;enterparameter(&#39;nchar&#39;,    5,     undef, 1, 0, &#39;ALFKI&#39;);
+$ok &amp;= $sqlsrv-&gt;enterparameter(&#39;datetime&#39;, undef, undef, 1, 0, &#39;1997-06-01&#39;);
+$ok &amp;= $sqlsrv-&gt;enterparameter(&#39;nchar&#39;,    5,     undef, 1, 0, &#39;ALFKI&#39;);
+$ok &amp;= $sqlsrv-&gt;enterparameter(&#39;datetime&#39;, undef, undef, 1, 0, &#39;1997-06-01&#39;);
 
 if ($ok) {
   $ok = $sqlsrv-&gt;executebatch();
@@ -3372,7 +4104,7 @@ my $ok = $sqlsrv-&gt;enterparameter(&#39;int&#39;, -1, undef, 0, 1);
 
 # Then the parameters for the query.
 $ok &amp;= $sqlsrv-&gt;enterparameter(&#39;nchar&#39;, 5, &#39;@custid&#39;, 1, 0, &#39;ALFKI&#39;);
-$ok &amp;= $sqlsrv-&gt;enterparameter(&#39;datetime&#39;, -1, &#39;@orderdate&#39;, 1, 0, &#39;1997-06-01&#39;);
+$ok &amp;= $sqlsrv-&gt;enterparameter(&#39;datetime&#39;, undef, &#39;@orderdate&#39;, 1, 0, &#39;1997-06-01&#39;);
 
 # And the output parameter. But T-SQL has no OUTPUT-only parameter,
 # so this is input and output.
@@ -3409,7 +4141,226 @@ if ($sqlsrv-&gt;getcmdstate() == CMDSTATE_GETPARAMS) {
    print &quot;The return value is: $$paramref[0].\n&quot;;
    print &quot;The count is: $$paramref[1].\n&quot;;
 }</PRE>
+<P>Here is an example with a table valued-parameter, using <A HREF="#definetablecolumn"><NOBR>definetablecolumn()</NOBR></A>
+and <A HREF="#inserttableparam"><NOBR>inserttableparam()</NOBR></A>. The type and procedure is the same as in the
+<A HREF="#TVP">examples&nbsp; for the high-level routines</A>.</P>
+<PRE>use strict;
+use Win32::SqlServer;
 
+# Get an object and connect.
+my $sqlsrv = new Win32::SqlServer;
+$sqlsrv-&gt;setloginproperty(&#39;Database&#39;, &#39;tempdb&#39;);
+$sqlsrv-&gt;connect();
+
+# Define the SQL batch. This time we ignore the return value from
+# the stored procedure for brevity.
+$sqlsrv-&gt;initbatch(&#39;{call myproc(?,?)}&#39;);
+
+# Enter the first parameter.
+$sqlsrv-&gt;enterparameter(&#39;char&#39;, 1, &#39;@chr&#39;, 1, 0, &#39;A&#39;);
+
+# Enter the table-valued parameter.
+$sqlsrv-&gt;enterparameter(&#39;table&#39;,        # It&#39;s a table-valued parameter.
+                        5,              # Number of columns in the table.
+                        &#39;@tvp&#39;,         # The name of the parameter.
+                        1, 0,           # Is input. Is not output.
+                        undef,          # $value. Must be undef here.
+                        undef, undef,   # Prec &amp; scale.
+                        &#39;mytabletype&#39;); # The table type.
+
+# Now we set up the table. First we define the IDENTITY column. For this
+# column we need to specify $usedefault = 1.
+$sqlsrv-&gt;definetablecolumn(&#39;@tvp&#39;, &#39;ident&#39;, &#39;int&#39;, 0, undef, undef, 1);
+
+# The remaining columns. Since there is no requirement for an exact
+# match, we use initial uppercase for all columns, so that can use the
+# column names as keys in a hash without quoting them. For the character
+# columns we need to specify the max length. Note that we don&#39;t have to
+# specify nullability.
+$sqlsrv-&gt;definetablecolumn(&#39;@tvp&#39;, &#39;Chr&#39;,     &#39;char&#39;, 1);
+$sqlsrv-&gt;definetablecolumn(&#39;@tvp&#39;, &#39;Intcol&#39;,  &#39;int&#39;);
+$sqlsrv-&gt;definetablecolumn(&#39;@tvp&#39;, &#39;Datecol&#39;, &#39;date&#39;);
+$sqlsrv-&gt;definetablecolumn(&#39;@tvp&#39;, &#39;String&#39;,  &#39;varchar&#39;, 40);
+
+# We can now insert the rows. First we set up some test data.
+my @rows = ({Chr =&gt; &#39;A&#39;, Intcol =&gt; 14, Datecol =&gt; &#39;2009-01-01&#39;,
+             String =&gt; &#39;Typewriter&#39;},
+            {Chr =&gt; &#39;B&#39;, Intcol =&gt; 9},
+            {Chr =&gt; &#39;A&#39;, Intcol =&gt; 5, Datecol =&gt; &#39;1632-11-06&#39;},
+            {Chr =&gt; &#39;C&#39;, Intcol =&gt; 12, String =&gt; &#39;Luxury&#39;});
+
+# Then we insert the rows one by one.
+foreach my $row (@rows) {
+   $sqlsrv-&gt;inserttableparam(&#39;@tvp&#39;, $row);
+}
+
+# Execute the procedure.
+$sqlsrv-&gt;executebatch();
+
+# We use get_result_sets to get the output, to keep the example shorter.
+my %result = $sqlsrv-&gt;get_result_sets(Win32::SqlServer::SINGLEROW,
+                                      Win32::SqlServer::HASH);
+
+# Output the result.
+print &quot;totalcnt: $result{&#39;totalcnt&#39;}\n&quot;;
+print &quot;identsum: $result{&#39;identsum&#39;}\n&quot;;
+print &quot;chrcnt:   $result{&#39;chrcnt&#39;}\n&quot;;
+print &quot;datecnt:  $result{&#39;datecnt&#39;}\n&quot;;
+print &quot;strcnt:   $result{&#39;strcnt&#39;}\n&quot;;</PRE>
+
+<H1><A NAME="OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A></H1>
+<P>The <NOMEDDLE>OpenSqlFilestream</NOMEDDLE> is an <SMALL CLASS="allcaps">API</SMALL> in <SMALL CLASS="allcaps">SQL</SMALL> Server Native Client that permits you
+get a file handle to
+a <SMALL CLASS="allcaps">FILESTREAM</SMALL> column, so that you can access it with Windows routines such
+ReadFile and WriteFile. This provides for faster access to <SMALL CLASS="allcaps">BLOB</SMALL> data, than
+going through <SMALL CLASS="allcaps">SQL</SMALL> Server. This is not the least applicable when you use
+Win32::SqlServer which beomces very slow when the <SMALL CLASS="allcaps">BLOB</SMALL> exceeds1MB in size. Win32::SqlServer exposes the <NOMEDDLE>OpenSqlFilestream</NOMEDDLE> <SMALL CLASS="allcaps">API</SMALL>, somewhat modified to fit it
+into its own mould. To access the file, you would use the module
+<NOMEDDLE>Win32API::File</NOMEDDLE>.
+For a very brief introduction, there is an example at the end of this section.</P>
+<P>To use <NOBR><A HREF="#OpenSqlFilestream">OpenSqlFilestream()</A></NOBR>, you 
+must have SQL Server Native Client 10 installed. Unfortunately, Win32::SqlServer 
+does not check for the provider version, so if you call <NOBR>
+<A HREF="#OpenSqlFilestream">OpenSqlFilestream()</A></NOBR> on a machine where
+<SMALL CLASS="allcaps">SQLNCLI10</SMALL> is not installed, your Perl script will 
+fail when it tries to load sqlncli10.dll. </P>
+<P>For full details on the
+<SMALL CLASS="allcaps">FILESTREAM</SMALL> feature and the <NOMEDDLE>OpenSqlFilestream</NOMEDDLE> <SMALL CLASS="allcaps">API</SMALL>, please see Books Online. The
+description here is restricted to what you need to know when you use
+<A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A> with Win32::SqlServer.</P>
+<PRE>$fh = $sqlsrv-&gt;OpenSqlFilestream($path, $access, $context [, $options [, $alloclen]])</PRE>
+<DL>
+   <DT><CODE>$fh</CODE></DT>
+   <DD>The returned file handle to use with Windows file operations. See below
+   what applies in the case <A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A> fails.</DD>
+   <DT>&nbsp;</DT>
+   <DT><CODE>$path</CODE></DT>
+   <DD>A path to the <SMALL CLASS="allcaps">FILESTREAM</SMALL> column that you have retrieved from <SMALL CLASS="allcaps">SQL</SMALL> Server
+   with the <B>PathName</B> method.</DD>
+   <DT>&nbsp;</DT>
+   <DT><CODE>$access</CODE></DT>
+   <DD>Any of the constants <SMALL CLASS="allcaps">FILESTREAM_READ, FILESTREAM_WRITE</SMALL> or
+   <SMALL CLASS="allcaps">FILESTREAM_READWRITE</SMALL>. These constants are not imported by default. Either
+   denote them as <CODE><NOBR>Win32::SqlServer::FILESTREAM_READ</NOBR></CODE>, or import them
+   explicitly or with an <A HREF="#EXPORTTAGS">export tag</A>. </DD>
+   <DT>&nbsp;</DT>
+   <DT><CODE>$context</CODE></DT>
+   <DD>A binary value that you have retrieved from <SMALL CLASS="allcaps">SQL</SMALL> Server using the
+   function <SMALL CLASS="allcaps">GET_FILESTREAM_TRANSACTION_CONTEXT</SMALL>. <CODE>$context</CODE> is interpreted
+   according the setting of <B><A HREF="#binary">BinaryAsStr</A></B> in the same way as when you pass binary
+   values to other Win32::SqlServer routines. This permits you to retrieve the
+   context token from <SMALL CLASS="allcaps">SQL</SMALL> Server and then pass it to
+   <A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A>, no matter the setting
+   of <B><A HREF="#binary">BinaryAsStr</A></B>.</DD>
+   <DT>&nbsp;</DT>
+   <DT><CODE>$options</CODE></DT>
+   <DD>A bit mask of file-access options that controls how the flags are
+   opened. See the topic on <NOMEDDLE>OpenSqlFilestream</NOMEDDLE> in Books Online for more details.
+   You can use the names <SMALL CLASS="allcaps">SQL_FILESTREAM_OPEN_FLAG_ASYNC</SMALL> etc, if you either
+   prefix them as Win32::SqlServer::<SMALL CLASS="allcaps">SQL_FILESTREAM_OPEN_FLAG_ASYNC</SMALL> or use an
+   <A HREF="#EXPORTTAGS">export tag</A>. Default is 0.</DD>
+   <DT></DT>
+   <DT><CODE>$alloclen</CODE></DT>
+   <DD>Books Online says &quot;Specifies the initial allocation size of the data
+   file in bytes. It is ignored in read mode.&quot; You can specify this parameter
+   as an integer value or as a reference to a hash with the keys <B>High</B>
+   and <B>Low</B>. If you are using 64-bit Perl, you can always use an integer
+   value. With 32-bit Perl, you cannot specify a value higher than 2^32 if you
+   use an integer. By using the hash keys <B>High</B> and <B>Low</B>, you can
+   overcome this limitation. Caveat: I have not been able to find a way to
+   verify that this parameter actually has any effect.</DD>
+</DL>
+<P>If the <NOMEDDLE>OpenSqlFilestream</NOMEDDLE> <SMALL CLASS="allcaps">API</SMALL> returns an error condition, Win32::SqlServer
+reports this through the <A HREF="#MsgHandler">current message handler</A>. The
+source will be set to
+<NOMEDDLE>&quot;OpenSqlFilestream&quot;</NOMEDDLE>
+and the error number is the error number set by the
+<A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A> <SMALL CLASS="allcaps">API</SMALL>, although with a negative number (since positive numbers
+are reserved for <SMALL CLASS="allcaps">SQL</SMALL> Server messages). The severity is 16, which means that with
+the default error handling in Win32::SqlServer, the script is aborted. If the
+settings in <B><A HREF="#ErrInfo">ErrInfo</A></B> are such that execution continues, <A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A> returns
+the Windows constant <SMALL CLASS="allcaps">INVALID_HANDLE_VALUE</SMALL>, which I assume is a negative number.</P>
+<P>Here is a simple example of how to use <A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A> together with
+Win32<SMALL CLASS="allcaps">API</SMALL>::File to read and write a <SMALL CLASS="allcaps">FILESTREAM</SMALL> column through the file system.
+The example assumes that you already have a database with a <SMALL CLASS="allcaps">FILESTREAM</SMALL> file
+group.</P>
+<PRE>use strict;
+use Win32::SqlServer qw(:filestream :rowstyles :resultstyles);
+
+# You need Win32API::File to use ReadFile and WriteFile.
+use Win32API::File;
+
+my ($path, $context, $fh, $buffer);
+
+# Connect to server. Change server and database as needed to test
+my $sqlsrv = Win32::SqlServer::sql_init(undef, undef, undef, &#39;filestream_test&#39;);
+
+# Create a table with a FILESTREAM column and insert two columns. One with
+# data, and one empty that we will write through the file system.
+$sqlsrv-&gt;sql(&lt;&lt;&#39;SQLEND&#39;, NORESULT);
+CREATE TABLE fstest (guid uniqueidentifier          NOT NULL ROWGUIDCOL UNIQUE,
+                     name varchar(23)               NOT NULL PRIMARY KEY,
+                     data varbinary(MAX) FILESTREAM NULL)
+
+INSERT fstest (guid, name, data)
+   VALUES(newid(), &#39;One&#39;,
+          cast(&#39;This string was written from T-SQL.&#39; AS varbinary(MAX))),
+         (newid(), &#39;Two&#39;, 0x)
+SQLEND
+
+# Let&#39;s read the data we wrote from T-SQL. First retrive the file path and
+# transaction context. Note that we must start a transaction.
+($path, $context) = $sqlsrv-&gt;sql(&lt;&lt;SQLEND, LIST, SINGLEROW);
+BEGIN TRANSACTION
+SELECT data.PathName(), get_filestream_transaction_context()
+FROM   fstest
+WHERE  name = &#39;One&#39;
+SQLEND
+
+# Open the filestream.
+$fh = $sqlsrv-&gt;OpenSqlFilestream($path, FILESTREAM_READ, $context);
+
+# Read the file. For more info on ReadFile see the manual page for
+# Win32API::File and the documentation for the Platform SDK. Note that
+# for large files, you may want to read in chunks.
+Win32API::File::ReadFile($fh, $buffer, 200000, [], []);
+print &quot;We read this from the file: &lt;$buffer&gt;\n&quot;;
+
+# Close this transaction. We must close the file first.
+Win32API::File::CloseHandle($fh);
+$sqlsrv-&gt;sql(&#39;ROLLBACK TRANSACTION&#39;);
+
+# Now we go writing.
+($path, $context) = $sqlsrv-&gt;sql(&lt;&lt;SQLEND, LIST, SINGLEROW);
+BEGIN TRANSACTION
+SELECT data.PathName(), get_filestream_transaction_context()
+FROM   fstest
+WHERE  name = &#39;Two&#39;
+SQLEND
+
+# Get the file handle.
+$fh = $sqlsrv-&gt;OpenSqlFilestream($path, FILESTREAM_WRITE, $context);
+
+# Write to the file. Again, for a large file, you may want to write in
+# chunks.
+$buffer = &#39;This text was written with WriteFile.&#39;;
+Win32API::File::WriteFile($fh, $buffer, 0, [], []);
+
+# Close the transaction.
+Win32API::File::CloseHandle($fh);
+$sqlsrv-&gt;sql(&#39;COMMIT TRANSACTION&#39;);
+
+# Did it work?
+$buffer = $sqlsrv-&gt;sql_one(&lt;&lt;SQLEND, SCALAR);
+SELECT convert(varchar(MAX), data)
+FROM   fstest
+WHERE  name = &#39;Two&#39;
+SQLEND
+
+print &quot;We read this from T-SQL: &lt;$buffer&gt;\n&quot;;
+
+# Clean up
+$sqlsrv-&gt;sql(&#39;DROP TABLE fstest&#39;);</PRE>
 <H1><A NAME="Conversion_Routines">Character-set Conversion Routines</A></H1>
 <P>
 These routines are retained from
@@ -3421,10 +4372,11 @@ another <NOBR>8-bit</NOBR> character set in the database. For instance, you read
 you know is in the <SMALL CLASS="allcaps">OEM</SMALL> character set, and your server is using an <SMALL CLASS="allcaps">ANSI</SMALL> code
 page, you can use these routines to convert the data from <SMALL CLASS="allcaps">OEM</SMALL> to <SMALL CLASS="allcaps">ANSI</SMALL>.</P>
 <P>
-Caveat: I have only tested with an <SMALL CLASS="allcaps">ANSI</SMALL> server
-– really what the <SMALL CLASS="allcaps">OLE DB</SMALL> provider does with an server using an <SMALL CLASS="allcaps">OEM</SMALL> code page I
-don&#39;t know.
-</P>
+Caveat: these character-set conversions are performed by Win32::SqlServer
+itself, before it passes the data to <SMALL CLASS="allcaps">OLE DB</SMALL>. There may be situations where <SMALL CLASS="allcaps">OLE
+DB</SMALL> also performs character-set conversions, particularly if the server&#39;s code
+page differs from the client&#39;s code page. Possibly the login property
+AutoTranslate controls this.</P>
 <H2><A NAME="sql_set_conversion"><NOBR>sql_set_conversion()</NOBR></A> </H2>
 <P>Activates a character-set conversion.</P>
 <PRE>$sqlsrv-&gt;sql_set_conversion([$client_cs [, $server_cs [, $direction]]]);</PRE>
@@ -3456,7 +4408,7 @@ don&#39;t know.
 <P>If <CODE>$clent_cs</CODE> and <CODE>$server_cs</CODE> are the same, the net
    effect that any active conversion is removed.</P>
 <P><B>Very important</B>: when you activate a conversion, Win32::SqlServer converts about
-   everything that comes it ways. Blindly. Command text. Parameter names. Column
+   everything that comes its way. Blindly. Command text. Parameter names. Column
    names. Data. Without discrimination. There are at least two cases, when this
    is not likely to be desirable. when you work with the Unicode data types (<B><CODE>nchar</CODE></B>,
    <B><CODE>nvarchar</CODE></B>, <B><CODE>ntext</CODE></B> and <B><CODE>xml</CODE></B>)
@@ -3475,7 +4427,7 @@ back <I>RSksmörgss</I>.</P>
 <PRE>$sqlsrv-&gt;sql_unset_conversion([$direction]);</PRE>
 <DL>
    <DT><CODE>$direction</CODE></DT>
-   <DD>Specifies in which directions conversion is to be removed. Legal values
+   <DD>Specifies in which direction conversion is to be removed. Legal values
    are <SMALL CLASS="allcaps">TO_CLIENT_ONLY</SMALL> (remove only conversion for data going to the client),
    <SMALL CLASS="allcaps">TO_SERVER_ONLY</SMALL> (removes conversion only for data going to the server),
    <SMALL CLASS="allcaps">TO_SERVER_CLIENT</SMALL> (removes all conversions). The default is <SMALL CLASS="allcaps">TO_SERVER_CLIENT</SMALL>.</DD>
@@ -3506,6 +4458,11 @@ Internally, <A HREF="#codepage_convert"><NOBR>codepage_convert()</NOBR></A> firs
 Beware that if a character in <CODE>$string</CODE> is not available in <CODE>$to_cp</CODE>, you will get
 some replacement character. This can be a similar character, for instance &quot;a&quot; in
 place of &quot;å&quot;, or the general fallback character &quot;?&quot;.</P>
+<P>
+<A HREF="#codepage_convert"><NOBR>codepage_convert()</NOBR></A> is implemented in XS code, which implies some restrictions.
+<CODE>$string</CODE> must be a variable; it cannot be a constant string, nor can it be an
+expression that normally can be an l-value like <CODE><NOBR>substr($string, 3,
+3)</NOBR></CODE> or <CODE>$1</CODE>.</P>
 <H1><A NAME="Utility_Routines">Utility Routines</A></H1>
 <H2><A NAME="sql_has_errors"><NOBR>sql_has_errors()</NOBR></A></H2>
 <P>Returns whether there have been any errors on the Win32::SqlServer object. Presumes that
@@ -3528,7 +4485,7 @@ place of &quot;å&quot;, or the general fallback character &quot;?&quot;.</P>
 </DL>
 <P>The Win32::SqlServer property <B><A HREF="#ErrInfo">ErrInfo</A></B> has an element <B><A HREF="#Messages">Messages</A></B> into which
  <A HREF="#ErrInfo"><NOBR>sql_message_handler()</NOBR></A>, the default message handler
-of Win32::SqlServer, saves messages from <SMALL CLASS="allcaps">SQL</SMALL>
+for Win32::SqlServer, saves messages from <SMALL CLASS="allcaps">SQL</SMALL>
  Server if the <B><A HREF="#ErrInfo">ErrInfo</A></B> element <B><A HREF="#SaveMessages">SaveMessages</A></B> is true. In this case
  you can check for errors by calling <A HREF="#sql_has_errors"><NOBR>sql_has_errors()</NOBR></A>. </P>
 <P>If <B><A HREF="#SaveMessages">SaveMessages</A></B> is not enabled when you
@@ -3713,7 +4670,7 @@ $sqlsrv-&gt;{LogHandle} = \*F;
 </TABLE>
 </P>
    <P>The currently installed message handler, which is invoked when <SMALL CLASS="allcaps">SQL</SMALL> Server
-      sends a message (error, warning or informational). Also be called in case of errors
+      sends a message (error, warning or informational). Also called in case of errors
       from the <SMALL CLASS="allcaps">OLE DB</SMALL> provider and for warnings and errors from
       Win32::SqlServer itself.
       This property is detailed in the chapter on <A HREF="#MsgHandler">Error
@@ -3738,7 +4695,7 @@ an result
 </P>
    <P>This hash is used by <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> to cache parameter profiles for stored
       procedures. You should never write anything to <B><A HREF="#procs">procs</A></B>. The only permissible
-      operation is to delete a key value if you need to force <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> to refresh the cache.</P>
+      operation is to delete a key value if you want to force <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> to refresh the cache.</P>
 <H2><A NAME="PropsDebug">PropsDebug</A></H2>
 <P>
 <TABLE BORDER=1 CELLSPACING=0 CELLPADDING=0>
@@ -3756,27 +4713,40 @@ an result
 <TR><TH>Data type</TH><TD CLASS="extrapad">enumeration</TD><TH>Default</TH><TD CLASS="extrapad">see below</TD></TR>
 </TABLE>
 </P>
-   <P>Win32::SqlServer can connect to <SMALL CLASS="allcaps">SQL</SMALL> Server though one of two <SMALL CLASS="allcaps">OLE DB</SMALL> providers:
-      <SMALL CLASS="allcaps">SQLOLEDB</SMALL> (<I>Microsoft <SMALL CLASS="allcaps">OLE DB</SMALL> Provider for <SMALL CLASS="allcaps">SQL</SMALL> Server</I>), which comes
-      with the <SMALL CLASS="allcaps">MDAC</SMALL> and Windows, and <SMALL CLASS="allcaps">SQLNCLI</SMALL> (<I>Microsoft <SMALL CLASS="allcaps">SQL</SMALL> Native Client</I>)
-      which is a redistributable component that comes with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005. Only <SMALL CLASS="allcaps">SQL</SMALL>
-      Native Client has full support for <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005. Only <SMALL CLASS="allcaps">SQLOLEDB</SMALL> supports
-      connections to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5.</P>
-<P>There are three different values:</P>
+   <P>There are three <SMALL CLASS="allcaps">OLE DB</SMALL> providers that Win32::SqlServer can use when
+   connecting to <SMALL CLASS="allcaps">SQL</SMALL> Server: </P>
+<UL>
+   <LI><SMALL CLASS="allcaps">SQLOLEDB</SMALL> (<I>Microsoft
+   <SMALL CLASS="allcaps">OLE DB</SMALL> Provider for <SMALL CLASS="allcaps">SQL</SMALL> Server</I>), which comes
+      with the <SMALL CLASS="allcaps">MDAC</SMALL> and Windows. This is the only
+   provider that supports connections to <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;6.5.</LI>
+   <LI><SMALL CLASS="allcaps">SQLNCLI</SMALL> (<I>Microsoft <SMALL CLASS="allcaps">SQL</SMALL>
+   Server Native Client</I>)
+      which is a redistributable component that comes with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005.
+   You need at least <SMALL CLASS="allcaps">SQLNCLI</SMALL> to have full support for <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005.</LI>
+   <LI><SMALL CLASS="allcaps">SQLNCLI10</SMALL> is the version of <SMALL CLASS="allcaps">SQL</SMALL> Server Native Client that ships with <SMALL CLASS="allcaps">SQL</SMALL>
+   2008. You need <SMALL CLASS="allcaps">SQLNCLI10</SMALL> to have full support for features in <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008.</LI>
+</UL>
+<P>There are four different values for this property.</P>
 <DL>
+   <DT><B><A NAME="PROVIDER_SQLNCLI10">PROVIDER_SQLNCLI10</A></B></DT>
+   <DD>Use <SMALL CLASS="allcaps">SQL</SMALL> Server Native Client 10 as the <SMALL CLASS="allcaps">OLE DB</SMALL> provider. This is the
+   default if <SMALL CLASS="allcaps">SQLNCLI10</SMALL> is installed.</DD>
+   <DT>&nbsp;</DT>
    <DT><B><A NAME="PROVIDER_SQLNCLI">PROVIDER_SQLNCLI</A></B></DT>
-   <DD>Use <SMALL CLASS="allcaps">SQL</SMALL> Native Client as the <SMALL CLASS="allcaps">OLE DB</SMALL> provider. This is the default if <SMALL CLASS="allcaps">SQL</SMALL>
-   Native Client is installed.</DD>
+   <DD>Use <SMALL CLASS="allcaps">SQL</SMALL> Native Client as the <SMALL CLASS="allcaps">OLE DB</SMALL> provider. This is the default if
+   <SMALL CLASS="allcaps">SQLNCLI</SMALL> is installed, but <SMALL CLASS="allcaps">SQLNCLI10</SMALL> is not available.</DD>
    <DT>&nbsp;</DT>
    <DT><B><A NAME="PROVIDER_SQLOLEDB">PROVIDER_SQLOLEDB</A></B></DT>
-   <DD>Use the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> provider. This is the default if <SMALL CLASS="allcaps">SQL</SMALL> Native Client is
-   not available. Note that you need at least <SMALL CLASS="allcaps">MDAC</SMALL>&nbsp;2.6 to be able to use
+   <DD>Use the <SMALL CLASS="allcaps">SQLOLEDB</SMALL> provider. This is the default if
+   no version of <SMALL CLASS="allcaps">SQL</SMALL> Server Native Client is
+   available. Note that you need at least <SMALL CLASS="allcaps">MDAC</SMALL>&nbsp;2.6 to be able to use
    <SMALL CLASS="allcaps">SQLOLEDB</SMALL>.</DD>
    <DT>&nbsp;</DT>
    <DT><B><A NAME="PROVIDER_DEFAULT">PROVIDER_DEFAULT</A></B></DT>
    <DD>Use this value when you want to set the provider to the default provider
    for the machine. When you set the property to this value, Win32::SqlServer will
-   automatically change it to one of the other two.</DD>
+   automatically change it to one of the other three.</DD>
 </DL>
 <P>You cannot set this property when you are connected. You can check whether
    you are connected with the function <A HREF="#isconnected"><NOBR>isconnected()</NOBR></A>.</P>
@@ -3825,7 +4795,30 @@ an result
 </P>
    <P>This hash is used by <A HREF="#sql_insert"><NOBR>sql_insert()</NOBR></A> to cache column information for tables. You should never write anything to
       <B>tables</B>. The only permissible
-      operation is to delete of a key value if you want to force <A HREF="#sql_insert"><NOBR>sql_insert()</NOBR></A> to refresh the cache.</P>
+      operation is to delete a key if you want to force <A HREF="#sql_insert"><NOBR>sql_insert()</NOBR></A> to refresh the cache.</P>
+<H2><A NAME="tabletypes">tabletypes</A></H2>
+<P>
+<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=0>
+<TR><TH>Data type</TH><TD CLASS="extrapad"><CODE>ref</CODE> to hash</TD><TH>Default</TH><TD CLASS="extrapad"><CODE>undef</CODE></TD></TR>
+</TABLE>
+</P>
+   <P>This hash is used by <A HREF="#sql"><NOBR>sql()</NOBR></A>, <A HREF="#sql_one"><NOBR>sql_one()</NOBR></A> and <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A> to cache information about table
+   types. You should never write anything to
+      <B><A HREF="#tabletypes">tabletypes</A></B>. The only permissible
+      operation is to delete a key if you want to force Win32::SqlServer to refresh the cache.</P>
+<H2>TZOffset</H2>
+<P>
+<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=0>
+<TR><TH>Data type</TH><TD CLASS="extrapad">string</TD><TH>Default</TH><TD CLASS="extrapad"><CODE>undef</CODE></TD></TR>
+</TABLE>
+</P>
+<P>This property sets a default time-zone
+for values of the <B><CODE>datetimeoffset</CODE></B> data type. On output, values are shifted into
+this time zone, and the time-zone indicator is dropped from the value. On input,
+the value of <B><A HREF="#datetime">TZOffset</A></B> is used as the time-zone indicator if none is present in the input
+value. The value should be on the form <FONT COLOR="DD0000"><I><CODE>±hh:mm</CODE></I></FONT>,
+or &quot;<CODE>local</CODE>&quot; to indicate the local time zone of the client. See
+further the section on <A HREF="#datetime">Date and time data types</A>.</P>
 <H2><A NAME="UserData">UserData</A></H2>
 <P>
 <TABLE BORDER=1 CELLSPACING=0 CELLPADDING=0>
@@ -3833,7 +4826,8 @@ an result
 </TABLE>
 </P>
 <P>This attribute is not referenced by Win32::SqlServer, but permits you to save your own
-   data with a Win32::SqlServer object, would you need it. (You cannot use any key value,
+   data with a Win32::SqlServer object, would you need it. (You make up a key value
+on your own,
    as a Win32::SqlServer object is a tied hash that will reject unknown keys.) If you need to
    store more than one value, you can make <B><A HREF="#UserData">UserData</A></B> a hash, for instance:</P>
 <PRE>$sqlsrv-&gt;{UserData}{MyData1} = 4711;</PRE>
@@ -3845,7 +4839,8 @@ an result
  <CODE>eval</CODE>. However, this is merely the default behaviour, and there
  are several options to change this.</P>
 <P>When you submit a command batch to <SMALL CLASS="allcaps">SQL</SMALL> Server, the batch may produce
- messages. These messages may be errors or purely informational. Since <SMALL CLASS="allcaps">T-SQL</SMALL>
+ messages. These messages may be errors or purely informational. Since <SMALL CLASS="allcaps">
+<NOBR>T-SQL</NOBR></SMALL>
  offers both <SMALL CLASS="allcaps">RAISERROR</SMALL> and <SMALL CLASS="allcaps">PRINT</SMALL> you may think of
    these as different things, but <SMALL CLASS="allcaps">PRINT</SMALL> is really only syntactic sugar for <CODE>
  RAISERROR(&#39;Message&#39;, 0, 1)</CODE>. </P>
@@ -3907,7 +4902,7 @@ No further error information was collected at F:\Test\example.pl line 7.</PRE>
    when then error is related to Perl usage and the message handler when the
    condition is related to <SMALL CLASS="allcaps">SQL</SMALL>. So a call <NOBR>
    to
-   <A HREF="#executebatch">executebatch()</A></NOBR> without first having called <NOBR> <A HREF="#initbatch">initbatch()</A></NOBR>
+   <A HREF="#executebatch">executebatch()</A></NOBR> without first having called <NOBR><A HREF="#initbatch">initbatch()</A></NOBR>
    results in an unconditional <CODE>croak</CODE>. While if <A HREF="#sql_sp"><NOBR>sql_sp()</NOBR></A>
    is not able to find the stored procedure you want it to call, this goes to
    the message handler.&nbsp; </P>
@@ -3929,7 +4924,10 @@ No further error information was collected at F:\Test\example.pl line 7.</PRE>
 <H3>Other sources</H3>
 <P>Errors and warnings can also come from Perl, Win32 system calls and similar.
    They are never communicated through any message handler, but always through
-   <CODE>croak</CODE>/<CODE>carp</CODE>.</P>
+   <CODE>croak</CODE>/<CODE>carp</CODE>. The one exception are errors that appear
+with <A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A>. They will be communicated through the current message
+handler with <NOMEDDLE>&quot;OpenSqlFilestream&quot; </NOMEDDLE>
+as the source for the error message.</P>
 <H2><A NAME="errornumbers">Error Numbers and SQLstates</A></H2>
 <P>All errors from <SMALL CLASS="allcaps">SQL</SMALL> Server have an error number, from 1 and up. Errors below
  50000 are from <SMALL CLASS="allcaps">SQL</SMALL> Server itself (or a system stored procedure or similar).
@@ -3941,7 +4939,7 @@ No further error information was collected at F:\Test\example.pl line 7.</PRE>
    for
  those that look like <SMALL CLASS="allcaps">SQL</SMALL> Server messages).</P>
 <P>SQLstates are five-letter codes, defined by the <SMALL CLASS="allcaps">ODBC</SMALL>
-   standard. set by the <SMALL CLASS="allcaps">OLE DB</SMALL> provider for <SMALL CLASS="allcaps">SQL</SMALL>
+   standard. They are set by the <SMALL CLASS="allcaps">OLE DB</SMALL> provider for <SMALL CLASS="allcaps">SQL</SMALL>
    Server errors and some its own errors as well. For <SMALL CLASS="allcaps">SQL</SMALL> Server errors these are of less
    interest, since an SQLstate can cover several error numbers from <SMALL CLASS="allcaps">SQL</SMALL>
    Server. For provider errors, on the other hand, SQLstate is the only way to
@@ -4021,7 +5019,8 @@ END</PRE>
 <TABLE BORDER=1 CELLPADDING=0 CELLSPACING=0>
    <TR><TH>Level</TH><TH>Comment</TH></TR>
    <TR><TD>0</TD><TD>Level 0 is informational messages from <SMALL CLASS="allcaps">SQL</SMALL> Server. </TD></TR>
-   <TR><TD>1-9</TD><TD>As far as I know, <SMALL CLASS="allcaps">SQL</SMALL> Server never itself generates
+   <TR><TD>1-9</TD><TD>As far as I know, <SMALL CLASS="allcaps">SQL</SMALL> Server itself
+   never generates
       messages with these levels, but you can use <SMALL CLASS="allcaps">RAISERROR</SMALL> to
       produce such messages. </TD></TR>
    <TR><TD>10</TD><TD><SMALL CLASS="allcaps">SQL</SMALL> Server cannot produce messages
@@ -4032,8 +5031,9 @@ END</PRE>
       conversion of an input value).</TD></TR>
    <TR><TD><NOBR>11-16</NOBR></TD><TD>For normal <SMALL CLASS="allcaps">SQL</SMALL> errors &#8211; what Books Online calls
       &quot;user errors&quot; &#8211; <SMALL CLASS="allcaps">SQL</SMALL> Server uses the levels 11-16, in a fairly arbitrary
-      fashion. For instance, a <SMALL CLASS="allcaps">NOT NULL</SMALL> violation is level 16,
-      while a permission error is level 13. The severity of Win32::SqlServer errors or errors from the <SMALL CLASS="allcaps">OLE DB</SMALL> provider
+      fashion. For instance, a <SMALL CLASS="allcaps">NOT NULL</SMALL> violation
+   is level 16, while a permission error is level 13. The severity of
+   Win32::SqlServer errors and errors from the <SMALL CLASS="allcaps">OLE DB</SMALL> provider
       is always 16.</TD></TR>
    <TR><TD>17-25</TD><TD>Level 17 and above are various resource errors, such as
       running out of disk space, or internal errors in <SMALL CLASS="allcaps">SQL</SMALL> Server. In difference
@@ -4046,7 +5046,7 @@ END</PRE>
    <P>From this
       follows that the only reasonable values for <B><A HREF="#MaxSeverity">MaxSeverity</A></B> are 10
       (stop on any error), 16 (permit users errors, but stop on resource
-      errors), 17-19 (stop on real fatal errors) and 25 (never stop).</P>
+      errors), 17-19 (stop on real fatal errors only) and 25 (never stop).</P>
    <P>If you decide to set <B><A HREF="#MaxSeverity">MaxSeverity</A></B> to a higher level than 10, you
       should have a plan to handle errors. If you say &quot;I can&#39;t
       afford to let the script to abort&quot;, then ask yourself if you can afford
@@ -4152,7 +5152,8 @@ Message from Win32::SqlServer at F:\Test\example.pl line 8</PRE>
    &quot;header information&quot; of the message. In the examples, this is the
    first two lines in the first example and the first line in the second
    and third examples. You get
-   message number, severity level, state as well as server, procedure and line if
+   the message number, the severity level, the state as well as the server, the procedure and
+   the line number if
    these are available. Fairly similar to what you see in Query Analyzer or
    Management Studio.
    <P>
@@ -4190,7 +5191,7 @@ Message from Win32::SqlServer at F:\Test\example.pl line 8</PRE>
    Win32::SqlServer produces a textual representation of the corresponding <SMALL CLASS="allcaps">EXEC</SMALL>
    command. When you use parameterised commands with the mid-level
    functions, you will always see the command string you passed to <A HREF="#initbatch"><NOBR>initbatch()</NOBR></A>
-   as is. For some errors detected by Win32::SqlServer, this part is not printed, because
+   as-is. For some errors detected by Win32::SqlServer, this part is not printed, because
    Win32::SqlServer detects the error before it has constructed the command text, so there
    is nothing to print.</P>
    <P>
@@ -4212,7 +5213,7 @@ Message from Win32::SqlServer at F:\Test\example.pl line 8</PRE>
       is 10. That is, this part is printed for warnings and errors.</P></DD>
 
    <DT><B><A NAME="NeverPrint">NeverPrint</A></B></DT>
-   <DD>An hash, keyed by <SMALL CLASS="allcaps">SQL</SMALL> Server error numbers or SQLstates from the <SMALL CLASS="allcaps">OLE DB</SMALL>
+   <DD>A hash, keyed by <SMALL CLASS="allcaps">SQL</SMALL> Server error numbers or SQLstates from the <SMALL CLASS="allcaps">OLE DB</SMALL>
    provider. For entries with true values, printing of all parts of the message
    is suppressed. See above under <B><A HREF="#NeverStopOn">NeverStopOn</A></B>
    for an example on how to use it.
@@ -4223,15 +5224,13 @@ Message from Win32::SqlServer at F:\Test\example.pl line 8</PRE>
    suppress these messages.</P></DD>
 
    <DT><B><A NAME="AlwaysPrint">AlwaysPrint</A></B></DT>
-   <DD>An hash, keyed by <SMALL CLASS="allcaps">SQL</SMALL> Server error numbers or SQLstates from the <SMALL CLASS="allcaps">OLE DB</SMALL>
+   <DD>A hash, keyed by <SMALL CLASS="allcaps">SQL</SMALL> Server error numbers or SQLstates from the <SMALL CLASS="allcaps">OLE DB</SMALL>
    provider. For entries with true values, <A HREF="#ErrInfo"><NOBR>sql_message_handler()</NOBR></A> prints of all parts of the message.
    <P>Three messages are added to this hash by default. These are the
       informational messages
       for arithmetic errors you get if all of <SMALL CLASS="allcaps">ANSI_WARNINGS,
       ARITHABORT</SMALL> and <SMALL CLASS="allcaps">ARITHIGNORE</SMALL> are off.
-      When you connect with Win3<SMALL CLASS="allcaps">2::SqlServer, ANSI_WARNINGS</SMALL> is on by default. These
-      settings are brought over from <SMALL CLASS="allcaps">MSSQL</SMALL>::Sqllib, which uses DB-Library and
-      that has all these settings off by default.</P></DD>
+      (When you connect with Win3<SMALL CLASS="allcaps">2::SqlServer, ANSI_WARNINGS</SMALL> is on by default.)</P></DD>
    <DT><B><A NAME="LinesWindow">LinesWindow</A></B></DT>
    <DD>If this property is defined, <A HREF="#ErrInfo"><NOBR>sql_message_handler()</NOBR></A> does not print the full
    text of the command batch that cause the error, but only the line on which
@@ -4397,7 +5396,8 @@ intended.</P>
    <DT><CODE>$procedure</CODE></DT>
 
    <DD>Name of the <SMALL CLASS="allcaps">SQL</SMALL> module (stored procedure, <SMALL CLASS="allcaps">UDF</SMALL>, trigger etc) where the error
-   occurred. For messages from the <SMALL CLASS="allcaps">OLE DB</SMALL> provider, it can be the name <SMALL CLASS="allcaps">API</SMALL> call
+   occurred. For messages from the <SMALL CLASS="allcaps">OLE DB</SMALL> provider, it can be the name
+   of the <SMALL CLASS="allcaps">API</SMALL> call
    that failed (this string is mainly for debugging Win32::SqlServer itself). Always <CODE>undef</CODE> for
    Win32::SqlServer messages.</DD>
    <DT>&nbsp;</DT>
@@ -4412,7 +5412,9 @@ intended.</P>
    <DT><CODE>$source</CODE></DT>
    <DD>The source for the error message. For <SMALL CLASS="allcaps">SQL</SMALL> Server messages <CODE>$source</CODE>
    is <CODE>undef</CODE>. For <SMALL CLASS="allcaps">OLE DB</SMALL> messages, it is the name of the provider.
-   For Win32::SqlServer messages, <CODE>$source</CODE> is <I>Win32::SqlServer</I>. </DD>
+   For Win32::SqlServer messages, <CODE>$source</CODE> is <I>Win32::SqlServer</I>.
+   Forerrors from <A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A>, source
+   is <NOMEDDLE><I>OpenSqlFilestream</I></NOMEDDLE>.</DD>
    <DT>&nbsp;</DT>
    <DT><CODE>$n</CODE></DT>
    <DT><CODE>$no_of_errs</CODE></DT>
@@ -4545,7 +5547,7 @@ the error messages itself. The point is that the line number is modified to
 refer to a line in the file, and not in the batch. Thus, if the file first
 contains a batch for dropping the procedure if it exists, and there then is an
 error on Line 24 in the procedure, the example script will report this error on
-Line 28 in the file (if the <SMALL CLASS="allcaps">DROP</SMALL> batch is four lines). This is nice if you edit
+Line 28 in the file (if the <SMALL CLASS="allcaps">DROP</SMALL> batch is four lines). This is nice, if you edit
 <SMALL CLASS="allcaps">SQL</SMALL> files in an editor like Textpad from which you can run command-line tools.
 You could format the error message, so that you could double-click the error
 message and be taken to the line where there error is.</P>
@@ -4695,10 +5697,20 @@ the line number in the line above.
    <NOMEDDLE><SMALL CLASS="allcaps">TO_SERVER_ONLY, TO_CLIENT_ONLY</SMALL> and
    <SMALL CLASS="allcaps">TO_SERVER_CLIENT</SMALL></NOMEDDLE>.</DD>
    <DT>&nbsp;</DT>
+   <DT><CODE>:filestream</CODE></DT>
+   <DD>Constants used in conjunction with <A HREF="#OpenSqlFilestream"><NOBR>OpenSqlFilestream()</NOBR></A>: <SMALL CLASS="allcaps">FILESTREAM_READ,
+   FILESTREAM_WRITE,
+   FILESTREAM_READWRITE, SQL_FILESTREAM_OPEN_FLAG_ASYNC,
+   SQL_FILESTREAM_OPEN_FLAG_NO_BUFFERING,
+   SQL_FILESTREAM_OPEN_FLAG_NO_WRITE_THROUGH,
+   SQL_FILESTREAM_OPEN_FLAG_SEQUENTIAL_SCAN</SMALL> and
+   <SMALL CLASS="allcaps">SQL_FILESTREAM_OPEN_FLAG_RANDOM_ACCESS</SMALL></DD>
+   <DT>&nbsp;</DT>
    <DT><CODE>:providers</CODE></DT>
    <DD>The possible values for the <B><A HREF="#Provider">Provider</A></B>
-   property: <NOMEDDLE><SMALL CLASS="allcaps">PROVIDER_DEFAULT, PROVIDER_SQLNCLI</SMALL> and
-   <SMALL CLASS="allcaps">PROVIDER_SQLOLEDB</SMALL></NOMEDDLE>.</DD>
+   property: <NOMEDDLE><SMALL CLASS="allcaps">PROVIDER_DEFAULT, PROVIDER_SQLOLEDB</SMALL>,&nbsp;
+   <SMALL CLASS="allcaps">PROVIDER_SQLNCLI</SMALL></NOMEDDLE> and
+   PROVIDER_SQLNCLI10.</DD>
 
    <DT>&nbsp;</DT>
    <DT><CODE>:resultstyles</CODE></DT>
@@ -4736,6 +5748,12 @@ value <A HREF="#DATETIME_REGIONAL"><SMALL CLASS="allcaps">DATETIME_REGIONAL</SMA
 <PRE>use Win32::SqlServer qw(:rowstyles :resultstyles sql_init DATETIME_REGIONAL);</PRE>
 <P>All export tags must come before any explicit names. For more information about importing names and using export tags, please
    refer to the Perl documentation.</P>
+<H2><A NAME="Versionnumbers">Getting the Win32::SqlServer Version</A>&nbsp;&nbsp; </H2>
+<P>If you need to check which version of Win32:SqlServer that is instealled,
+there are two variables available: <CODE><NOBR>$Win32::SqlServer::VERSION</NOBR></CODE>
+and <NOBR><CODE>$Win32::SqlServer::Version</CODE></NOBR>. The former is just the
+version string, for instance 2.004. The latter also includes a copyright blurb.
+There are no export tags that includes these two.</P>
 <H2><A NAME="SQLLIB">Notes on Migration from MSSQL::Sqllib</A></H2>
 <P>If you have existing scripts that uses <SMALL CLASS="allcaps">MSSQL</SMALL>::Sqllib, it should be fairly
    easy to port these to use Win32::SqlServer. This chapter highlights some
@@ -4776,9 +5794,9 @@ value <A HREF="#DATETIME_REGIONAL"><SMALL CLASS="allcaps">DATETIME_REGIONAL</SMA
 <TR VALIGN="top"><TD><I>dbmsghandle</I></TD><TD>You can establish your
    own message handler with the <B><A HREF="#MsgHandler">MsgHandler</A></B>
    attribute.</TD></TR>
-</TABLE>
+</TABLE><BR/>
 </P>
-<H3>Windows Authetnication is Now Default</H3>
+<H3>Windows Authentication is Now Default</H3>
 <P>In <SMALL CLASS="allcaps">MSSQL</SMALL>::Sqllib, if you did not specify a username for the second parameter
    to <A HREF="#sql_init"><NOBR>sql_init()</NOBR></A>, the default was to connect as <B><I>sa</I></B>.
    To use Windows authentication (a.k.a. integrated security or trusted
@@ -4797,8 +5815,8 @@ value <A HREF="#DATETIME_REGIONAL"><SMALL CLASS="allcaps">DATETIME_REGIONAL</SMA
 <P>In <SMALL CLASS="allcaps">MSSQL</SMALL>::Sqllib and <SMALL CLASS="allcaps">MSSQL</SMALL>::DBlib many properties have initial lowercase, but
    mixed case inside, for instance <I>errInfo</I>, <I>dateFormat</I>.
    Win32::SqlServer uses leading uppercase: <I><B><A HREF="#ErrInfo">ErrInfo</A></B></I>, <I><B><A HREF="#datetime">DateFormat</A></B></I>
-   (save two exceptions: the all-lowercase <B><A HREF="#procs">procs</A></B> and
-   <B><A HREF="#tables">tables</A></B>).&nbsp;This also applies to the <B><A HREF="#ErrInfo">ErrInfo</A></B> elements and to the elements of the <B><A HREF="#Messages">Messages</A></B> array.</P>
+   (save three exceptions: the all-lowercase <B><A HREF="#procs">procs</A>,</B>
+<B><A HREF="#tables">tables</A></B> and <B><A HREF="#tabletypes">tabletypes</A></B>).&nbsp;This also applies to the <B><A HREF="#ErrInfo">ErrInfo</A></B> elements and to the elements of the <B><A HREF="#Messages">Messages</A></B> array.</P>
 <P>However, to retain compatibility, Win32::SqlServer performs a second lookup with
    initial lowercase if first lookup fails. Thus, you can still use <I>errInfo</I>, <I>
    dateFormat</I> etc with Win32::SqlServer, with some slight performance penalty.</P>
@@ -4822,7 +5840,7 @@ value <A HREF="#DATETIME_REGIONAL"><SMALL CLASS="allcaps">DATETIME_REGIONAL</SMA
 <TR VALIGN="top"><TD><I>dbNullIsUndef</I></TD><TD><SMALL CLASS="allcaps">NULL</SMALL> is always
    represented as <CODE>undef</CODE> in Win32::SqlServer.</TD></TR>
 <TR VALIGN="top"><TD><I>dbKeepNumeric</I></TD><TD>Integer values (except
-   bigint on 32-bit Perl) and real/float are always numbers with Win32::SqlServer. Bigint, decimal and
+   <B><CODE>bigint</CODE></B> on 32-bit Perl) and real/float are always numbers with Win32::SqlServer. Bigint, decimal and
    money are controlled by the property <B><A HREF="#DecimalAsStr">DecimalAsStr</A></B>.</TD></TR>
 <TR VALIGN="top"><TD><I>dbBin0x</I></TD><TD>Replaced by the property
    <B><A HREF="#binary">BinaryAsStr</A></B>.</TD></TR>
@@ -4857,20 +5875,23 @@ value <A HREF="#DATETIME_REGIONAL"><SMALL CLASS="allcaps">DATETIME_REGIONAL</SMA
    <SMALL CLASS="allcaps">COMPUTE BY</SMALL> is a highly
    deprecated <SMALL CLASS="allcaps">SQL</SMALL> Server feature – and with a good reason.</P>
 <H2><A NAME="QueryNotification">Using Query Notification with Win32::SqlServer</A></H2>
-<P>Query notification is a new feature in <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005
+<P>Query notification is a feature added in <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005
  that uses the new Service Broker infrastructure. It is a little funny in that
  you cannot set up a subscription query notification from plain
- <SMALL CLASS="allcaps">T-SQL</SMALL>, you must do it from client code. In
+ <SMALL CLASS="allcaps"><NOBR>T-SQL</NOBR></SMALL>, you must do it from client code. In
  <SMALL CLASS="allcaps">ADO</SMALL> .Net this is packaged in the SqlDependency
  class for a little more elegance, but the feature is available in
- <SMALL CLASS="allcaps">SQL</SMALL> Native Client as well, and
+ <SMALL CLASS="allcaps">SQL</SMALL> Server Native Client as well, and
  Win32::SqlServer gives you access to query
  notification through the <B><A HREF="#QueryNotification">QueryNotification</A></B>
  hash. </P>
-<P>For full information on Query Notification, please see Books Online: <I><SMALL CLASS="allcaps">SQL</SMALL> Server
+<P>For full information on Query Notification, please see Books Online: <I>
+Database Engine </I>→ <I>Development </I>→ <I>Querying an Changing Data</I> → <I>
+Accessing and Changing Database Data</I> → <I>Mainpulating Result Sets</I> → <I>
+Using Query Notifications</I> (<SMALL CLASS="allcaps">SQL</SMALL> 2008) or <I><SMALL CLASS="allcaps">SQL</SMALL> Server
    Database Engine</I> → <I>Accessing and
    Changing Database Data</I> → <I>Manipulating Result Sets</I> → <I>Using Query
-   Notifications</I>, for the full story in Query Notification. Here follows a crash
+   Notifications</I> (<SMALL CLASS="allcaps">SQL</SMALL> 2005). Here follows a crash
    course in the context of Win32::SqlServer. The <B><A HREF="#QueryNotification">QueryNotification</A></B> hash has three
    elements:</P>
 <DL>
@@ -4893,7 +5914,7 @@ value <A HREF="#DATETIME_REGIONAL"><SMALL CLASS="allcaps">DATETIME_REGIONAL</SMA
    <DT><B>Timeout</B></DT>
    <DD>An integer value that specifies how many seconds you want the
    notification subscription to be active. It appears that Service Broker only
-   clears out subscription about every minute or so, so if you set a small
+   clears out subscriptions about every minute or so, so if you set a small
    value, you may find that the subscription lives longer than you expected. If
    you do not specify any timeout, it appears that you get a timeout of 432000
    seconds, or five days.</DD>
@@ -4989,7 +6010,8 @@ SQLEND
    <LI><SMALL CLASS="allcaps">NOCOUNT</SMALL> is ON.</LI>
    <LI>An error is raised. </LI>
    <LI>A result set is returned after the error. </LI>
-   <LI>You are not using the combination of <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 and <SMALL CLASS="allcaps">SQL</SMALL> Native Client.</LI>
+   <LI>You are using the <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 or earlier
+   or you are using <SMALL CLASS="allcaps">SQLOLEDB</SMALL> as your <SMALL CLASS="allcaps">OLE DB</SMALL> provider.</LI>
 </UL>
 <P>then Win32::SqlServer fails to return the result set that comes directly after the
  error. (Subsequent result sets are returned.) Consider this procedure:</P>
@@ -5035,7 +6057,7 @@ WAITFOR DELAY &#39;00:00:05&#39;</PRE>
    MB</SMALL> value could take ten times as long.</P>
 <P>The root cause is that Win32::SqlServer does not have any particular support for large
  types, and does not use streaming to retrieve them. I hope to add this in a
- latter release.</P>
+ later release.</P>
 <H3>Issue 4</H3>
 <P>You cannot use the <CODE>share</CODE> operator from the <CODE>threads::shared</CODE>
    package. I don&#39;t know if this is a problem in my code, or a restriction with
@@ -5054,12 +6076,12 @@ WAITFOR DELAY &#39;00:00:05&#39;</PRE>
 <P>I also need to thank the people in the perl.xs and perl.unicode newsgroups for
  answering my questions, and particularly Jarkko Hietaniemi and Nick Ing-Simmons. </P>
 <H1><A NAME="AUTHOR">Author</A>, Copyright and Licence</H1>
-<P>&copy; 2005-2007 Erland Sommarskog &lt;<A HREF="mailto:esquel@sommarskog.se">esquel@sommarskog.se</A>&gt;.</P>
+<P>&copy; 2005-2008 Erland Sommarskog &lt;<A HREF="mailto:esquel@sommarskog.se">esquel@sommarskog.se</A>&gt;.</P>
 <P>This module is available under any license you
  want, as long as you don&#39;t claim that you wrote it yourself.</P>
 <HR />
 <I>
-This file was last updated <!--$$Modtime:--> 07-07-11 12:07 <!-- $-->
+This file was last updated <!--$$Modtime:--> 08-05-04 22:29 <!-- $-->
 </I>
 </BODY>
 </HTML>

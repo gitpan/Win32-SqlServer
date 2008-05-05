@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/A_rowsetprops.t 4     05-11-26 23:47 Sommar $
+# $Header: /Perl/OlleDB/t/A_rowsetprops.t 5     07-09-09 0:10 Sommar $
 #
 # This test suite tests rowset properties, that is CommandTimeout and
 # QueryNotification.
 #
 # $History: A_rowsetprops.t $
 # 
+# *****************  Version 5  *****************
+# User: Sommar       Date: 07-09-09   Time: 0:10
+# Updated in $/Perl/OlleDB/t
+# Correct checks for the provider version.
+#
 # *****************  Version 4  *****************
 # User: Sommar       Date: 05-11-26   Time: 23:47
 # Updated in $/Perl/OlleDB/t
@@ -35,7 +40,7 @@ $| = 1;
 
 my $olle = testsqllogin();
 my ($sqlver) = split(/\./, $olle->{SQL_version});
-my ($doqn) = ($sqlver >= 9 and $olle->{Provider} == PROVIDER_SQLNCLI);
+my ($doqn) = ($sqlver >= 9 and $olle->{Provider} >= PROVIDER_SQLNCLI);
 
 $olle->{ErrInfo}{PrintMsg}    = 17;
 $olle->{ErrInfo}{PrintLines}  = 17;

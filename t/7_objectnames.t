@@ -1,11 +1,37 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/7_objectnames.t 5     07-06-10 21:32 Sommar $
+# $Header: /Perl/OlleDB/t/7_objectnames.t 10    08-05-04 23:14 Sommar $
 #
 # This test suite tests that we interpret object names passed to sql_sp
 # and sql_insert correctly.
 #
 # $History: 7_objectnames.t $
 # 
+# *****************  Version 10  *****************
+# User: Sommar       Date: 08-05-04   Time: 23:14
+# Updated in $/Perl/OlleDB/t
+# In correct no of tests for SQL 2008 and SQLNCLI.
+#
+# *****************  Version 9  *****************
+# User: Sommar       Date: 08-05-04   Time: 21:40
+# Updated in $/Perl/OlleDB/t
+# Careful with that N, Eugene!
+#
+# *****************  Version 8  *****************
+# User: Sommar       Date: 08-03-23   Time: 23:29
+# Updated in $/Perl/OlleDB/t
+# A little fix with the REVERT command, to avoid that SQLOLEDB adds
+# "exec" in front.
+#
+# *****************  Version 7  *****************
+# User: Sommar       Date: 08-03-09   Time: 22:48
+# Updated in $/Perl/OlleDB/t
+# Added tests for table-valued parameters and table types.
+#
+# *****************  Version 6  *****************
+# User: Sommar       Date: 07-09-08   Time: 23:22
+# Updated in $/Perl/OlleDB/t
+# Corrected the test on which provider we use.
+#
 # *****************  Version 5  *****************
 # User: Sommar       Date: 07-06-10   Time: 21:32
 # Updated in $/Perl/OlleDB/t
@@ -51,7 +77,8 @@ $| = 1;
 
 my $X = testsqllogin();
 my ($sqlver) = split(/\./, $X->{SQL_version});
-my ($sqlncli) = ($X->{Provider} == PROVIDER_SQLNCLI);
+my ($sqlncli) = ($X->{Provider} >= PROVIDER_SQLNCLI);
+my ($sqlncli10) = ($X->{Provider} >= PROVIDER_SQLNCLI10);
 
 # Suppress informatiomal messages for our coming creation craze.
 $X->{errInfo}{printText} = 1;
@@ -82,14 +109,17 @@ push(@schemas, '"OlleDB$ test"', '"."', '"OlleDB.."""',
 
 # And procedure names.
 my @procnames = ('plain_sp', '"space sp"');
-push (@procnames, '"dot.sp"', '"dot.dot.sp"', '[bracket sp.]', '[bracket]]sp]', $shrimp) if $sqlver > 6;
+push (@procnames, '"dot.sp"', '"dot.dot.sp"', '[bracket sp.]', '[bracket]]sp]',
+                  $shrimp) if $sqlver > 6;
+
 
 # Drop existing databases. This is commented out normally as a safety
 # precaution, so that we don't drop existing databases.
-#$X->sql("USE master");
-#foreach my $db (@dbs) {
-#   $X->sql("IF db_id('$db') IS NOT NULL DROP DATABASE $db");
-#}
+$X->sql("USE master");
+foreach my $db (@dbs) {
+   my $N = ($sqlver >= 7 ? 'N' : '');
+   $X->sql("IF object_id($N'$db.dbo.sysobjects') IS NOT NULL DROP DATABASE $db");
+}
 
 
 # Go on and create databases, schemas and procedures. Note that we don't drop
@@ -101,14 +131,21 @@ foreach my $db (@dbs) {
    $X->sql("CREATE DATABASE $db");
    $X->sql("USE $db");
 
-   # Add guest so we can SETUSER to it.
-   $X->sql("EXEC sp_adduser guest");
+   # Add as user to impersonate. We use guest on SQL 2000 and earlier,
+   # else our own user.
+   if ($sqlver >= 9) {
+      $X->sql('CREATE USER olle WITHOUT LOGIN WITH DEFAULT_SCHEMA = guest');
+   }
+   else {
+      $X->sql("EXEC sp_adduser guest");
+   }
 
    # And create the schemas as groups (so logins are not required).
    foreach my $sch (@schemas) {
       unless ($sch =~ /^(dbo|guest)$/) {
          if ($sqlver >= 9) {
             $X->sql("CREATE SCHEMA $sch");
+            $X->sql("GRANT VIEW DEFINITION ON SCHEMA::$sch TO public");
          }
          else {
             # No direct CREATE SCHEMA in previous version, but creating a
@@ -134,6 +171,19 @@ CREATE XML SCHEMA COLLECTION $sch.$proc AS '
       <element name="Olle$n" type="string"/>
 </schema>'
 SQLEND
+         $X->sql ("GRANT EXECUTE ON XML SCHEMA COLLECTION::$sch.$proc TO public");
+         }
+
+         # And on SQL 2008 with SQL Native Client 10 we also test with
+         # table types.
+         if ($sqlver >= 10 and $sqlncli10) {
+            $X->sql("CREATE TYPE $sch.$proc AS TABLE (Olle$n int NOT NULL)");
+            $X->sql(<<SQLEND);
+            CREATE PROCEDURE $sch.Olletbl$n \@t $sch.$proc READONLY AS
+                SELECT * FROM \@t
+SQLEND
+            $X->sql("GRANT EXECUTE ON TYPE::$sch.$proc TO public");
+            $X->sql("GRANT EXECUTE ON $sch.Olletbl$n TO public");
          }
       }
    }
@@ -156,40 +206,49 @@ $X->sql("USE $db");
 my $sch = 'dbo';
 foreach my $proc (@procnames) {
    my $expect = $procmap{$db}{$sch}{$proc};
-   do_test($proc, $expect, 1);
-   do_test(".$proc", $expect);
-   do_test("..$proc", $expect);
-   do_test("...$proc", $expect);
-   do_test("$db. .$proc", $expect, 1);
-   do_test("....$proc", 'ERROR');
-   do_test(".$db.$sch.$proc", $expect);
-   do_test(". $db . $sch . $proc", $expect);
-   do_test(". $db . $sch . $proc", $expect);  # Do it twice to test look-up.
-   do_test("...$sch.$proc", 'ERROR');
-   do_test("server.$db.$sch.$proc", 'ERROR', 1);
-   do_test("..$db.$sch.$proc", 'ERROR');
+   do_test($db, $sch, $proc, $expect, 1, 1);
+   do_test($db, $sch, ".$proc", $expect);
+   do_test($db, $sch, "..$proc", $expect);
+   do_test($db, $sch, "...$proc", $expect);
+   do_test($db, $sch, "$db. .$proc", $expect, 1);
+   do_test($db, $sch, "....$proc", 'ERROR');
+   do_test($db, $sch, ".$db.$sch.$proc", $expect);
+   do_test($db, $sch, ". $db . $sch . $proc", $expect);
+   do_test($db, $sch, ". $db . $sch . $proc", $expect);  # Do it twice to test look-up.
+   do_test($db, $sch, "...$sch.$proc", 'ERROR');
+   do_test($db, $sch, "server.$db.$sch.$proc", 'ERROR', 1, 0);
+   do_test($db, $sch, "..$db.$sch.$proc", 'ERROR');
 }
 
 # Redo for the guest schema. We must flush the proc cache here.
-$X->sql("SETUSER 'guest'");
+if ($sqlver >= 9) {
+   $X->sql("EXECUTE AS USER = 'olle'");
+}
+else {
+    $X->sql("SETUSER 'guest'");
+}
 $X->{'procs'} = {};
+$X->{'tabletypes'} = {};
 $sch = 'guest';
 foreach my $proc (@procnames) {
    my $expect = $procmap{$db}{$sch}{$proc};
-   do_test($proc, $expect, 1);
-   do_test("guest.$proc", $expect, 1);
-   do_test("..$proc", $expect);
-   do_test(". ..$proc", $expect);
+   do_test($db, $sch, $proc, $expect, 1, 1);
+   do_test($db, $sch, "guest.$proc", $expect, 1, 1);
+   do_test($db, $sch, "..$proc", $expect);
+   do_test($db, $sch, ". ..$proc", $expect);
 }
-$X->sql("SETUSER");
+# The semi-colon is needed, because else SQLOLEDB adds "exec" before REVERT.
+$X->sql(($sqlver >= 9 ? "; REVERT" : "SETUSER"));
 
 # Now try all combinations of schema and procedure.
+$X->{'procs'} = {};
+$X->{'tabletypes'} = {};
 foreach $sch (@schemas) {
    foreach my $proc (@procnames) {
       my $expect = $procmap{$db}{$sch}{$proc};
-      do_test(" $sch.$proc ", $expect, 1);
-      do_test(".$sch.$proc", $expect);
-      do_test("..$sch.$proc", $expect);
+      do_test($db, $sch, " $sch.$proc ", $expect, 1, 1);
+      do_test($db, $sch, ".$sch.$proc", $expect);
+      do_test($db, $sch, "..$sch.$proc", $expect);
    }
 }
 
@@ -199,14 +258,14 @@ foreach $db (@dbs) {
    foreach $sch (@schemas) {
       foreach my $proc (@procnames) {
          my $expect = $procmap{$db}{$sch}{$proc};
-         do_test("$db.$sch.$proc", $expect, 1);
+         do_test($db, $sch, "$db.$sch.$proc", $expect, 1, 0);
       }
    }
 }
 
 # Test the temporary stored procedure.
 blurb("#temp_sp");
-do_test("#temp_sp", 4711);
+do_test('master', 'dbo', "#temp_sp", 4711);
 
 # Finnaly test system stored procedures.
 my $resset = ($sqlver ==  6 ? 2 : 1);
@@ -228,7 +287,10 @@ foreach my $db (@dbs) {
    $X->sql("DROP DATABASE $db");
 }
 
-if ($sqlver >= 9 and $sqlncli) {
+if ($sqlver >= 10 and $sqlncli10) {
+   $no_of_tests = 1526;
+}
+elsif ($sqlver >= 9 and $sqlncli) {
    $no_of_tests = 917;
 }
 elsif ($sqlver > 6) {
@@ -261,7 +323,7 @@ foreach my $result (@testres) {
 exit;
 
 sub do_test {
-    my($objref, $mapvalue, $doxml) = @_;
+    my($db, $sch, $objref, $mapvalue, $doxml, $dotvpadhoc) = @_;
     blurb($objref);
     if ($mapvalue =~ /^\d+$/) {
        my $retvalue;
@@ -272,11 +334,26 @@ sub do_test {
        push(@testres, $retvalue == $expect);
 
        if ($sqlver >= 9 and $sqlncli and $doxml) {
+          blurb($objref . ' XML ');
           $expect = "<Olle$mapvalue>$mapvalue</Olle$mapvalue>";
           my $sqlparams = ['xml', '<?xml version="1.0"?>' . $expect, $objref];
           $retvalue = $X->sql('SELECT convert(nvarchar(MAX), ?)', [$sqlparams],
                                SCALAR, SINGLEROW);
           push(@testres, $retvalue eq $expect);
+       }
+
+       if ($sqlver >= 10 and $sqlncli10 and $objref !~ /^#/) {
+          $expect = "Olle$mapvalue";
+          if ($dotvpadhoc) {
+              blurb("Table type $objref param sql");
+              $retvalue = $X->sql('SELECT * FROM ?', [['table', [], $objref]],
+                                  COLINFO_NAMES, LIST);
+              push(@testres, $$retvalue[0][0] eq $expect);
+          }
+          blurb("Table type $objref SP call");
+          $retvalue = $X->sql_sp("$db.$sch.Olletbl$mapvalue", [[]], COLINFO_NAMES, LIST);
+          push(@testres,
+               (ref $retvalue eq 'ARRAY' and $$retvalue[0][0] eq $expect));
        }
     }
     else {

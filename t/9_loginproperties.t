@@ -1,10 +1,27 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/9_loginproperties.t 16    07-07-07 16:43 Sommar $
+# $Header: /Perl/OlleDB/t/9_loginproperties.t 19    08-03-23 23:28 Sommar $
 #
 # This test suite tests that setloginproperty, Autoclose and CommandTimeout.
 #
 # $History: 9_loginproperties.t $
 # 
+# *****************  Version 19  *****************
+# User: Sommar       Date: 08-03-23   Time: 23:28
+# Updated in $/Perl/OlleDB/t
+# Handle empty provider value, so that it does not yield warnings about
+# not being numeric.
+#
+# *****************  Version 18  *****************
+# User: Sommar       Date: 07-11-12   Time: 22:14
+# Updated in $/Perl/OlleDB/t
+# Added two tests to see if we retrieve SqlVersion properly.
+#
+# *****************  Version 17  *****************
+# User: Sommar       Date: 07-09-09   Time: 0:11
+# Updated in $/Perl/OlleDB/t
+# Correct checks for the provider version. Print error message for checks
+# on changing passwords.
+#
 # *****************  Version 16  *****************
 # User: Sommar       Date: 07-07-07   Time: 16:43
 # Updated in $/Perl/OlleDB/t
@@ -93,6 +110,7 @@ my ($mainserver, $mainuser, $mainpw,
     $secondserver, $seconduser, $secondpw, $provider);
 ($mainserver, $mainuser, $mainpw, $secondserver, $seconduser, $secondpw, $provider) =
      split(/;/, $olledbtest) if defined $olledbtest;
+   undef $provider if defined $provider and $provider !~ /\S/;
 
 sub setup_testc {
     # Creates a test connection object with some common initial settings.
@@ -122,7 +140,7 @@ $| = 1;
 
 chdir dirname($0);
 
-print "1..33\n";
+print "1..35\n";
 
 # Set up a monitor connection
 my $monitor = sql_init($mainserver, $mainuser, $mainpw, undef, $provider);
@@ -546,7 +564,7 @@ $testc->disconnect;
 
 # Test old password. This requires SQL 2005, SQL Native Client and SQL
 # authentication.
-if ($monitor->{Provider} == PROVIDER_SQLNCLI and $monitorsqlver >= 9 and
+if ($monitor->{Provider} >= PROVIDER_SQLNCLI and $monitorsqlver >= 9 and
     $loginconfig{'config_value'} !~ /^Windows/) {
    my $testuser = 'Olle' . rand;
    my $pw1 = 'pw1' . rand;
@@ -566,7 +584,7 @@ if ($monitor->{Provider} == PROVIDER_SQLNCLI and $monitorsqlver >= 9 and
        print "ok 23\n";
    }
    else {
-       print "not ok 23\n";
+       print "not ok 23 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
    }
    $testc->disconnect();
 
@@ -580,7 +598,7 @@ if ($monitor->{Provider} == PROVIDER_SQLNCLI and $monitorsqlver >= 9 and
        print "ok 24\n";
    }
    else {
-       print "not ok 24\n";
+       print "not ok 24 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
    }
    $testc->disconnect();
 
@@ -641,7 +659,7 @@ else {
    print "not ok 29\n";
 }
 
-# Finally test DisconnectOn in ErrInfo.
+# Test DisconnectOn in ErrInfo.
 $testc->setloginproperty('Pooling', 1);
 $testc->connect();
 $testc->sql("SELECT * FROM #nosuchtable");
@@ -680,5 +698,29 @@ if (not $testc->isconnected()) {
 }
 else {
    print "not ok 33\n";
+}
+
+# This test may seem out of place, but the code will try to access the
+# SQL version while a batch is running.
+undef $testc;
+$testc = setup_testc;
+$testc->{AutoConnect} = 1;
+$testc->sql('SELECT getdate()', COLINFO_FULL);
+if (not $testc->{ErrInfo}{Messages}) {
+    print "ok 34\n";
+}
+else {
+    print "not ok 34 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
+}
+
+undef $testc;
+$testc = setup_testc;
+$testc->connect();
+$testc->sql('SELECT getdate()', COLINFO_FULL);
+if (not $testc->{ErrInfo}{Messages}) {
+    print "ok 35\n";
+}
+else {
+    print "not ok 35 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
 }
 

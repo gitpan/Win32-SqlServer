@@ -1,11 +1,119 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/SqlServer.pm 47    07-07-10 21:59 Sommar $
+# $Header: /Perl/OlleDB/SqlServer.pm 66    08-05-04 20:56 Sommar $
 #
 # Copyright (c) 2004-2006 Erland Sommarskog
 #
 #
 # $History: SqlServer.pm $
 # 
+# *****************  Version 66  *****************
+# User: Sommar       Date: 08-05-04   Time: 20:56
+# Updated in $/Perl/OlleDB
+# Fixed errors in SQL for retrieving parameter and column info from SQL
+# 2000 and lower. Had broken the possibility to send longer statements
+# and parameter lists than 4000 chars on SQL 2000 and SQL7.
+#
+# *****************  Version 65  *****************
+# User: Sommar       Date: 08-05-02   Time: 0:52
+# Updated in $/Perl/OlleDB
+# When testing that the code pages are correct, we need to pass a
+# variable, a constant string won't do.
+#
+# *****************  Version 64  *****************
+# User: Sommar       Date: 08-05-01   Time: 10:44
+# Updated in $/Perl/OlleDB
+# The character conversion stuff did not work when there was no default
+# handle. All routines now check that there is a handle available.
+#
+# *****************  Version 63  *****************
+# User: Sommar       Date: 08-04-30   Time: 22:36
+# Updated in $/Perl/OlleDB
+# Set verison number to 2.004.
+#
+# *****************  Version 62  *****************
+# User: Sommar       Date: 08-03-23   Time: 23:42
+# Updated in $/Perl/OlleDB
+# Further changes when testing table-valued parameters. There was a bug,
+# so that we used maxlen for binay values as strings at too low size.
+#
+# *****************  Version 61  *****************
+# User: Sommar       Date: 08-03-16   Time: 21:10
+# Updated in $/Perl/OlleDB
+# Further corrections to the code to get the type id. Added more checks
+# of the value for a table parameter.
+#
+# *****************  Version 60  *****************
+# User: Sommar       Date: 08-03-09   Time: 20:24
+# Updated in $/Perl/OlleDB
+# Corrected handling of retrieving the type id. Handle the case the user
+# does not have permission to the table type/UDT better. Improvements in
+# error handling with table types.
+#
+# *****************  Version 59  *****************
+# User: Sommar       Date: 08-02-24   Time: 23:50
+# Updated in $/Perl/OlleDB
+# Some improved error checks for table parameters.
+#
+# *****************  Version 58  *****************
+# User: Sommar       Date: 08-02-24   Time: 22:00
+# Updated in $/Perl/OlleDB
+# nvarchar/varchar/varbinary without length now results in nvarchar(4000)
+# etc to avoid cache bloats. Whereas char/nchar/binary without length
+# yield warnings.
+#
+# *****************  Version 57  *****************
+# User: Sommar       Date: 08-02-24   Time: 20:35
+# Updated in $/Perl/OlleDB
+# Seems like code-page conversion works with table parameters now. And
+# UDTs and XML schema collections, which it did not in the past. General
+# changes how conversion for hashes is done.
+#
+# *****************  Version 56  *****************
+# User: Sommar       Date: 08-02-24   Time: 16:11
+# Updated in $/Perl/OlleDB
+# Added support for table parameters.
+#
+# *****************  Version 55  *****************
+# User: Sommar       Date: 08-02-10   Time: 17:14
+# Updated in $/Perl/OlleDB
+# Added the rowversion to places where we handle timestamp.
+#
+# *****************  Version 54  *****************
+# User: Sommar       Date: 07-12-01   Time: 23:40
+# Updated in $/Perl/OlleDB
+# Added support for OpenSqlFilestream. Clear some internal ErrInfo fields
+# in olle_croak, so they are not set if we return from eval.
+#
+# *****************  Version 53  *****************
+# User: Sommar       Date: 07-11-25   Time: 17:42
+# Updated in $/Perl/OlleDB
+# Added support for the spatial data types.
+#
+# *****************  Version 52  *****************
+# User: Sommar       Date: 07-10-28   Time: 23:37
+# Updated in $/Perl/OlleDB
+# Corrections after test.
+#
+# *****************  Version 51  *****************
+# User: Sommar       Date: 07-10-20   Time: 23:47
+# Updated in $/Perl/OlleDB
+# Added support for the new date/time data types.
+#
+# *****************  Version 50  *****************
+# User: Sommar       Date: 07-10-06   Time: 22:20
+# Updated in $/Perl/OlleDB
+# New property: TZOffset.
+#
+# *****************  Version 49  *****************
+# User: Sommar       Date: 07-09-16   Time: 22:38
+# Updated in $/Perl/OlleDB
+# Added suppor for large UDTs.
+#
+# *****************  Version 48  *****************
+# User: Sommar       Date: 07-09-09   Time: 0:13
+# Updated in $/Perl/OlleDB
+# Added PROVIDER_SQLNCLI10 to the PROVIDER group.
+#
 # *****************  Version 47  *****************
 # User: Sommar       Date: 07-07-10   Time: 21:59
 # Updated in $/Perl/OlleDB
@@ -60,11 +168,12 @@ use Carp;
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS
             $def_handle $SQLSEP
-            %VARLENTYPES %STRINGTYPES %QUOTEDTYPES %UNICODETYPES %LARGETYPES
-            %BINARYTYPES %DECIMALTYPES %MAXTYPES %TYPEINFOTYPES $VERSION);
+            %TYPESWITHLENGTH %TYPESWITHFIXLEN %STRINGTYPES %QUOTEDTYPES
+            %UNICODETYPES %LARGETYPES %CLRTYPES %BINARYTYPES %DECIMALTYPES
+            %NEWDATETIMETYPES %MAXTYPES %TYPEINFOTYPES $VERSION);
 
 
-$VERSION = '2.003';
+$VERSION = '2.004';
 
 @ISA = qw(Exporter DynaLoader Tie::StdHash);
 
@@ -82,11 +191,19 @@ bootstrap Win32::SqlServer;
                 TO_SERVER_ONLY TO_CLIENT_ONLY TO_SERVER_CLIENT
                 RETURN_NEXTROW RETURN_NEXTQUERY RETURN_CANCEL RETURN_ERROR
                 RETURN_ABORT
-                PROVIDER_DEFAULT PROVIDER_SQLNCLI PROVIDER_SQLOLEDB
+                PROVIDER_DEFAULT PROVIDER_SQLOLEDB PROVIDER_SQLNCLI
+                PROVIDER_SQLNCLI10
                 DATETIME_HASH DATETIME_ISO DATETIME_REGIONAL DATETIME_FLOAT
                 DATETIME_STRFMT
                 CMDSTATE_INIT CMDSTATE_ENTEREXEC CMDSTATE_NEXTRES
-                CMDSTATE_NEXTROW CMDSTATE_GETPARAMS);
+                CMDSTATE_NEXTROW CMDSTATE_GETPARAMS
+                SQL_FILESTREAM_OPEN_FLAG_ASYNC
+                SQL_FILESTREAM_OPEN_FLAG_NO_BUFFERING
+                SQL_FILESTREAM_OPEN_FLAG_NO_WRITE_THROUGH
+                SQL_FILESTREAM_OPEN_FLAG_SEQUENTIAL_SCAN
+                SQL_FILESTREAM_OPEN_FLAG_RANDOM_ACCESS
+                FILESTREAM_READ FILESTREAM_WRITE FILESTREAM_READWRITE);
+
 %EXPORT_TAGS = (consts       => [qw($SQLSEP)],   # Filled in below.
                 routines     => [qw(sql_set_conversion sql_unset_conversion
                                     sql_one sql sql_sp sql_insert
@@ -101,12 +218,20 @@ bootstrap Win32::SqlServer;
                 directions   => [qw(TO_SERVER_ONLY TO_CLIENT_ONLY TO_SERVER_CLIENT)],
                 returns      => [qw(RETURN_NEXTROW RETURN_NEXTQUERY RETURN_CANCEL
                                     RETURN_ERROR RETURN_ABORT)],
-                providers    => [qw(PROVIDER_DEFAULT PROVIDER_SQLNCLI PROVIDER_SQLOLEDB)],
+                providers    => [qw(PROVIDER_DEFAULT PROVIDER_SQLOLEDB
+                                    PROVIDER_SQLNCLI PROVIDER_SQLNCLI10)],
                 datetime     => [qw(DATETIME_HASH DATETIME_ISO DATETIME_REGIONAL
                                     DATETIME_FLOAT DATETIME_STRFMT)],
                 cmdstates    => [qw(CMDSTATE_INIT CMDSTATE_ENTEREXEC CMDSTATE_NEXTRES
-                                    CMDSTATE_NEXTROW CMDSTATE_GETPARAMS)]
-                );
+                                    CMDSTATE_NEXTROW CMDSTATE_GETPARAMS)],
+                filestream   => [qw(SQL_FILESTREAM_OPEN_FLAG_ASYNC
+                                    SQL_FILESTREAM_OPEN_FLAG_NO_BUFFERING
+                                    SQL_FILESTREAM_OPEN_FLAG_NO_WRITE_THROUGH
+                                    SQL_FILESTREAM_OPEN_FLAG_SEQUENTIAL_SCAN
+                                    SQL_FILESTREAM_OPEN_FLAG_RANDOM_ACCESS
+                                    FILESTREAM_READ FILESTREAM_WRITE
+                                    FILESTREAM_READWRITE)]);
+
 push(@{$EXPORT_TAGS{'consts'}}, @{$EXPORT_TAGS{'routines'}},
                                 @{$EXPORT_TAGS{'resultstyles'}},
                                 @{$EXPORT_TAGS{'rowstyles'}},
@@ -114,7 +239,9 @@ push(@{$EXPORT_TAGS{'consts'}}, @{$EXPORT_TAGS{'routines'}},
                                 @{$EXPORT_TAGS{'directions'}},
                                 @{$EXPORT_TAGS{'returns'}},
                                 @{$EXPORT_TAGS{'providers'}},
-                                @{$EXPORT_TAGS{'datetime'}});
+                                @{$EXPORT_TAGS{'datetime'}},
+                                @{$EXPORT_TAGS{'cmdstates'}},
+                                @{$EXPORT_TAGS{'filestream'}});
 
 # Result-style constants.
 use constant NORESULT    => 821;
@@ -156,11 +283,12 @@ use constant RETURN_ERROR      =>  0;
 use constant RETURN_ABORT      => -1;
 
 # Constants for option Provider
-use constant PROVIDER_DEFAULT  => 0;
-use constant PROVIDER_SQLOLEDB => 1;
-use constant PROVIDER_SQLNCLI  => 2;
-use constant PROVIDER_OPTIONS => (PROVIDER_DEFAULT, PROVIDER_SQLOLEDB,
-                                  PROVIDER_SQLNCLI);
+use constant PROVIDER_DEFAULT   => 0;
+use constant PROVIDER_SQLOLEDB  => 1;
+use constant PROVIDER_SQLNCLI   => 2;
+use constant PROVIDER_SQLNCLI10 => 3;
+use constant PROVIDER_OPTIONS   => (PROVIDER_DEFAULT, PROVIDER_SQLOLEDB,
+                                    PROVIDER_SQLNCLI, PROVIDER_SQLNCLI10);
 
 # Constants for datetime options
 use constant DATETIME_HASH     => 0;
@@ -179,23 +307,33 @@ use constant CMDSTATE_NEXTRES   => 2;
 use constant CMDSTATE_NEXTROW   => 3;
 use constant CMDSTATE_GETPARAMS => 4;
 
+# Filestream constants for access. (The others are defined in the XS.)
+use constant FILESTREAM_READ      => 0;
+use constant FILESTREAM_WRITE     => 1;
+use constant FILESTREAM_READWRITE => 2;
+
 use constant PACKAGENAME => 'Win32::SqlServer';
 
 # Constant hashes for datatype combinations, for internal use only.
-%VARLENTYPES  = ('char' => 1, 'nchar' => 1, 'varchar' => 1, 'nvarchar' => 1,
-                 'binary' => 1, 'varbinary' => 1, 'UDT' => 1);
-%STRINGTYPES  = ('char' => 1, 'varchar' => 1, 'nchar' => 1, 'nvarchar' => 1,
-                 'xml' => 1, 'text'=> 1, 'ntext' => 1);
-%LARGETYPES   = ('text' => 1, 'ntext' => 1, 'image' => 1, 'xml' => 1);
-%QUOTEDTYPES  = ('char' => 1, 'varchar' => 1, 'nchar' => 1, 'nvarchar' => 1,
-                 'text' => 1, 'ntext' => 1, 'uniqueidentifier' => 1,
-                 'datetime' => 1 , 'smalldatetime'=> 1);
-%UNICODETYPES  = ('nchar' => 1, 'nvarchar' => 1, 'ntext' => 1);
-%BINARYTYPES   = ('binary' => 1, 'varbinary' => 1, 'timestamp' => 1,
-                  'image' => 1, 'UDT' => 1);
-%DECIMALTYPES  = ('decimal' => 1, 'numeric' => 1);
-%MAXTYPES      = ('varchar' => 1, 'nvarchar' => 1, 'varbinary' =>1);
-%TYPEINFOTYPES = ('UDT' => 1, 'xml' => 1);
+%TYPESWITHLENGTH = ('char' => 1, 'nchar' => 1, 'varchar' => 1, 'nvarchar' => 1,
+                   'binary' => 1, 'varbinary' => 1, 'UDT' => 1);
+%TYPESWITHFIXLEN = ('char' => 1, 'nchar' => 1, 'binary' => 1);
+%STRINGTYPES     = ('char' => 1, 'varchar' => 1, 'nchar' => 1, 'nvarchar' => 1,
+                    'xml' => 1, 'text'=> 1, 'ntext' => 1);
+%LARGETYPES      = ('text' => 1, 'ntext' => 1, 'image' => 1, 'xml' => 1);
+%QUOTEDTYPES     = ('char' => 1, 'varchar' => 1, 'nchar' => 1, 'nvarchar' => 1,
+                    'text' => 1, 'ntext' => 1, 'uniqueidentifier' => 1,
+                    'datetime' => 1 , 'smalldatetime'=> 1, 'date' => 1,
+                    'time' => 1, 'datetime2' => 1, 'datetimeoffset' => 1);
+%UNICODETYPES     = ('nchar' => 1, 'nvarchar' => 1, 'ntext' => 1);
+%CLRTYPES         = ('geometry' => 1, 'geography' => 1, 'hierarchyid' => 1);
+%BINARYTYPES      = ('binary' => 1, 'varbinary' => 1, 'timestamp' => 1,
+                     'rowversion', => 1, 'image' => 1, 'UDT' => 1, %CLRTYPES);
+%DECIMALTYPES     = ('decimal' => 1, 'numeric' => 1);
+%NEWDATETIMETYPES = ('time' => 1, 'datetime2' => 1, 'datetimeoffset' => 1);
+%MAXTYPES         = ('varchar' => 1, 'nvarchar' => 1, 'varbinary' => 1,
+                     'UDT' => 1);
+%TYPEINFOTYPES    = ('UDT' => 1, 'xml' => 1, 'table' => 1);
 
 # Global hash to keep track of all object we create and destroy. This is
 # needed when cloning for a new thread.
@@ -206,11 +344,11 @@ my %myattrs;
 
 use constant XS_ATTRIBUTES =>   # Used by the XS code.
              qw(internaldata Provider PropsDebug AutoConnect RowsAtATime
-                DecimalAsStr DatetimeOption BinaryAsStr DateFormat MsecFormat
-                CommandTimeout MsgHandler QueryNotification);
+                DecimalAsStr DatetimeOption TZOffset BinaryAsStr DateFormat
+                MsecFormat CommandTimeout MsgHandler QueryNotification);
 use constant PERL_ATTRIBUTES => # Attributes used by the Perl code.
              qw(ErrInfo SQL_version to_server to_client NoExec procs tables
-                LogHandle UserData);
+                tabletypes LogHandle UserData);
 use constant ALL_ATTRIBUTES => (XS_ATTRIBUTES, PERL_ATTRIBUTES);
 
 foreach my $attr (ALL_ATTRIBUTES) {
@@ -284,6 +422,13 @@ sub STORE {
    elsif ($key eq "DatetimeOption") {
       if (not grep($value == $_, DATETIME_OPTIONS)) {
          $self->olle_croak("Illegal value '$value' for the DatetimeOption property");
+      }
+   }
+   elsif ($key eq "TZOffset" and defined $value) {
+      $value = lc($value);
+      $value =~ s/\s//g;
+      if ($value ne 'local' and $value !~ /[+-]\d\d:\d\d/) {
+         $self->olle_croak("Incorrect value '$value' for the TZOffset property. The format must be '+/-hh:mm'.");
       }
    }
    elsif ($key eq "QueryNotification") {
@@ -408,11 +553,26 @@ sub sql_init {
     $X;
 }
 
+#------------------------- get_handle, internal ------------------------
+# Decdes the first parameter to all methods, and dies there is no valid
+# handle.
+sub get_handle {
+   my ($atundref) = @_;
+   if (ref @$atundref[$[] eq PACKAGENAME) {
+       return shift @$atundref;
+   }
+   elsif (defined $def_handle) {
+       return $def_handle;
+   }
+   else {
+      croak PACKAGENAME . ": No handle provided, and there is no default handle,";
+   }
+}
 
 #-------------------------- sql_set_conversion --------------------------
 sub sql_set_conversion
 {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    my ($X) = get_handle(\@_);
     my($client_cs, $server_cs, $direction) = @_;
 
     # First validate the $direction parameter.
@@ -471,17 +631,17 @@ SQLEND
 
     # Test that the conversion works. That is, if the caller has specified
     # non-existing code-pages, this is where it all ends.
-    $X->codepage_convert("test", $client_cs, $server_cs);
+    my $test = 'räksmörgås';
+    $X->codepage_convert($test, $client_cs, $server_cs);
 
     # Construct subs to perform the conversion. These subs are then called
     # in do_conversion.
     my $evaltext = <<'EVALEND';
-    sub { my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    sub { my($X) = get_handle(\@_);
           foreach (@_) {
              next if ref or not $_;
              $X->codepage_convert($_, FROM_CP, TO_CP);
           }
-          return @_;
         }
 EVALEND
 
@@ -510,8 +670,8 @@ EVALEND
 #-------------------------- sql_unset_conversion -------------------------
 sub sql_unset_conversion
 {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
-    my($direction) = @_;
+    my ($X) = get_handle(\@_);
+    my ($direction) = @_;
 
     # First validate the $direction parameter.
     if (! $direction) {
@@ -534,8 +694,8 @@ sub sql_unset_conversion
 #-----------------------------  sql_one-------------------------------------
 sub sql_one
 {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
-    my($sql) = shift @_;
+    my ($X) = get_handle(\@_);
+    my ($sql) = shift @_;
 
     # Get parameter array if any.
     my ($hashparams, $arrayparams);
@@ -624,7 +784,7 @@ sub sql_one
 #-----------------------  sql  --------------------------------------
 sub sql
 {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    my ($X) = get_handle(\@_);
 
     my $sql = shift @_;
 
@@ -670,7 +830,7 @@ sub sql
 
 #-------------------------- sql_sp ------------------------------------
 sub sql_sp {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    my ($X) = get_handle(\@_);
 
     # In this one we're not taking all parameters at once, but one by one,
     # as the parameter list is quite variable.
@@ -738,7 +898,9 @@ sub sql_sp {
                      is_output = CASE c.status & 0x40
                                     WHEN 0 THEN 0
                                     ELSE 1
-                                 END, is_retstatus = 0, typeinfo = NULL
+                                 END,
+                     is_retstatus = 0, typeinfo = NULL, is_table_type = 0,
+                     needstypeinfo = 0
               FROM   $objdb.dbo.syscolumns c
               JOIN   $objdb.dbo.systypes ut ON c.usertype = ut.usertype
               JOIN   $objdb.dbo.systypes t  ON ut.type = t.type
@@ -746,7 +908,7 @@ sub sql_sp {
                 AND  t.usertype < 80
                 AND  t.name <> 'sysname'
              UNION
-             SELECT  NULL, 0, 'int', 4, 0, 0, 0, 1, 1, NULL
+             SELECT  NULL, 0, 'int', 4, 0, 0, 0, 1, 1, NULL, 0, 0
              ORDER   BY paramno
 SQLEND
        }
@@ -759,11 +921,12 @@ SQLEND
                      scale = coalesce(scale, 0),
                      is_input  = CASE colid WHEN 0 THEN 0 ELSE 1 END,
                      is_output = CASE colid WHEN 0 THEN 1 ELSE isoutparam END,
-                     is_retstatus = 0, typeinfo = NULL
+                     is_retstatus = 0, typeinfo = NULL, is_table_type = 0,
+                     needstypeinfo = 0
               FROM   $objdb.dbo.syscolumns
               WHERE  id = \@objid
               UNION
-              SELECT NULL, 0, 'int', 4, 0, 0, 0, 1, 1, NULL
+              SELECT NULL, 0, 'int', 4, 0, 0, 0, 1, 1, NULL, 0, 0
               WHERE  NOT EXISTS (SELECT *
                                  FROM   $objdb.dbo.syscolumns
                                  WHERE  id = \@objid
@@ -772,7 +935,10 @@ SQLEND
 SQLEND
        }
        else {
-          # SQL Server 2005 or later.
+          # SQL Server 2005 or later. There is one small difference between
+          # SQL 2005 and SQL 2008.
+          my $tabletypecol = ($X->{SQL_version} =~ /^9\./ ?
+                               '0' : 't.is_table_type');
           $getcols = <<SQLEND;
               SELECT name = CASE p.parameter_id WHEN 0 THEN NULL ELSE p.name END,
                      paramno = p.parameter_id,
@@ -784,25 +950,34 @@ SQLEND
                      is_input = CASE p.parameter_id WHEN 0 THEN 0 ELSE 1 END,
                      p.is_output, is_retstatus = 0,
                      typeinfo =
-                     CASE p.system_type_id
-                          WHEN 240
-                          THEN \@objdb + '.' + quotename(s1.name) + '.' +
-                                quotename(t.name)
-                          WHEN 241
-                          THEN \@objdb + '.' + quotename(s2.name) + '.' +
+                     CASE WHEN p.system_type_id IN (240, 243)
+                          THEN CASE WHEN nullif(\@objdb, '') IS NOT NULL
+                                    THEN \@objdb + '.'
+                                    ELSE ''
+                               END + quotename(s1.name) + '.' +
+                               quotename(t.name)
+                          WHEN p.system_type_id = 241
+                          THEN CASE WHEN nullif(\@objdb, '') IS NOT NULL
+                                    THEN \@objdb + '.'
+                                    ELSE ''
+                               END + quotename(s2.name) + '.' +
                                quotename(x.name)
-                     END
+                     END, is_table_type = coalesce($tabletypecol, 0),
+                     needstypeinfo = CASE WHEN p.system_type_id IN (240, 243)
+                                          THEN 1
+                                          ELSE 0
+                                     END
               FROM   $objdb.sys.all_parameters p
               LEFT   JOIN ($objdb.sys.types t
                           JOIN  $objdb.sys.schemas s1 ON t.schema_id = s1.schema_id)
                   ON  p.user_type_id = t.user_type_id
-                 AND  t.is_assembly_type = 1
+                 AND  t.is_assembly_type | $tabletypecol = 1
               LEFT   JOIN ($objdb.sys.xml_schema_collections x
                            JOIN  $objdb.sys.schemas s2 ON x.schema_id = s2.schema_id)
                   ON  p.xml_collection_id = x.xml_collection_id
               WHERE  object_id = \@objid
               UNION
-              SELECT NULL, 0, 'int', 4, 0, 0, 0, 1, 1, NULL
+              SELECT NULL, 0, 'int', 4, 0, 0, 0, 1, 1, NULL, 0, 0
               WHERE  NOT EXISTS (SELECT *
                                  FROM   $objdb.sys.all_parameters
                                  WHERE  object_id = \@objid
@@ -821,8 +996,8 @@ SQLEND
        }
        else {
           $paramdefs = $X->internal_sql($getcols,
-                                       {'@objid' => ['int',      $objid],
-                                        '@objdb' => ['nvarchar', $objdb]},
+                                       {'@objid' => ['int',           $objid],
+                                        '@objdb' => ['nvarchar(127)', $objdb]},
                                         HASH);
        }
 
@@ -925,8 +1100,27 @@ SQLEND
        }
     }
 
+
+    # Before we start building the command, get information about all
+    # table types.
+    foreach my $par_ix (0..$#all_parameters) {
+       next if not defined($all_parameters[$par_ix]);
+       next if not $$paramdefs[$par_ix]{'is_table_type'};
+       $$paramdefs[$par_ix]{'tabledef'} =
+             $X->get_table_type_info($$paramdefs[$par_ix]{'typeinfo'});
+       if (not $$paramdefs[$par_ix]{'tabledef'}) {
+            my $msg = "Not able to find information about table type " .
+                      $$paramdefs[$par_ix]{'typeinfo'} .
+                      ". This is somewhat unexpected.";
+            $X->olledb_message(-1, 1, 16, $msg);
+            $X->cancelbatch;
+            return 0;
+       }
+    }
+
+
     # Compose the SQL statement and initiliaze the batch. We enter the
-    # return value as parameter, and start to build the log string.
+    # return value as a parameter, and start to build the log string.
     my $SP_conv = $X->{'procs'}{$SP}{'normal'};
     $X->do_conversion('to_server', $SP_conv);
     my $sqlstmt = "{? = call $SP_conv";
@@ -942,7 +1136,7 @@ SQLEND
        next if not defined($all_parameters[$par_ix]);
 
        my($param, $is_ref, $value, $name, $maxlen, $precision, $scale, $type,
-          $is_input, $is_output, $typeinfo);
+          $is_input, $is_output, $typeinfo, $istbltype, $needstypeinfo, $tabledef);
 
        # Get the actual parameter. What is in @all_parameter is a reference to
        # the parameter.
@@ -952,15 +1146,28 @@ SQLEND
        # to the value. (And damn it! The value can also be a reference!)
        $is_ref = (ref $param) =~ /^(SCALAR|REF)$/;
 
-       # Get attributes for the parameters.
-       $name      = $$paramdefs[$par_ix]{'name'};
-       $type      = $$paramdefs[$par_ix]{'type'};
-       $is_output = $$paramdefs[$par_ix]{'is_output'};
-       $is_input  = $$paramdefs[$par_ix]{'is_input'};
-       $maxlen    = $$paramdefs[$par_ix]{'max_length'};
-       $precision = $$paramdefs[$par_ix]{'precision'};
-       $scale     = $$paramdefs[$par_ix]{'scale'};
-       $typeinfo  = $$paramdefs[$par_ix]{'typeinfo'};
+       # Get attributes for the parameter.
+       $name          = $$paramdefs[$par_ix]{'name'};
+       $type          = $$paramdefs[$par_ix]{'type'};
+       $is_output     = $$paramdefs[$par_ix]{'is_output'};
+       $is_input      = $$paramdefs[$par_ix]{'is_input'};
+       $maxlen        = $$paramdefs[$par_ix]{'max_length'};
+       $precision     = $$paramdefs[$par_ix]{'precision'};
+       $scale         = $$paramdefs[$par_ix]{'scale'};
+       $typeinfo      = $$paramdefs[$par_ix]{'typeinfo'};
+       $istbltype     = $$paramdefs[$par_ix]{'is_table_type'};
+       $needstypeinfo = $$paramdefs[$par_ix]{'needstypeinfo'};
+       $tabledef      = $$paramdefs[$par_ix]{'tabledef'};
+
+       # Check that we have typeinfo for parameters where this is required.
+       if ($needstypeinfo and not $typeinfo) {
+          my $msg = "Parameter " . ($name ? "$name" : $par_ix) .
+                    " is a '$type' parameter, but the type definition was " .
+                    "not found. You may not have permission to access it.";
+          $X->olledb_message(-1, 1, 16, $msg);
+          $X->cancelbatch;
+          return 0;
+       }
 
        # Save reference where to receive the < of output parameters.
        if ($is_output) {
@@ -978,10 +1185,9 @@ SQLEND
 
        # Get the value and perform conversions of name and value.
        $value = ($is_ref ? $$param : $param) if $is_input;
-       if (defined $value) {
-          $X->do_conversion('to_server', $value);
-       }
+       $X->do_conversion('to_server', $value);
        $X->do_conversion('to_server', $name);
+       $X->do_conversion('to_server', $typeinfo);
 
        # SQL Server 6.x thinks an empty string and NULL is the same, so
        # pass an empty string as one space to 6.5.
@@ -999,21 +1205,30 @@ SQLEND
           $maxlen = $maxlen / 2;
        }
 
-       # Precision and scale should be set only for decimal types.
-       if (not $DECIMALTYPES{$type}) {
-          $precision = 0;
-          $scale     = 0;
-       }
+       # Precision and scale should be set only for some types
+       undef $precision unless $DECIMALTYPES{$type};
+       undef $scale unless $DECIMALTYPES{$type} or $NEWDATETIMETYPES{$type};
 
        # Add to the log string, execept for return values.
        if ($is_input) {
           $X->{ErrInfo}{SP_call} .= $name . ' = ' .
-                                   $X->valuestring($type, $value) . ', ';
+                                   $X->valuestring($type, $value, $name) . ', ';
        }
 
-       # Now we can enter the parameter.
-       $X->enterparameter($type, $maxlen, $name, $is_input, $is_output,
-                          $value, $precision, $scale, $typeinfo);
+       # Now we can enter the parameter, but if it's a table variable there
+       # is a special path. We cannot convert the typeinfo until now, because
+       # we must pass the unconverted value to do_table_param.
+       unless ($istbltype) {
+          $X->enterparameter($type, $maxlen, $name, $is_input, $is_output,
+                             $value, $precision, $scale, $typeinfo);
+       }
+       else {
+          my $ret = $X->do_table_parameter($name, $typeinfo, $tabledef, $value);
+          if (not $ret) {
+             $X->cancelbatch();
+             return 0;
+          }
+       }
     }
 
     # Do logging.
@@ -1077,7 +1292,7 @@ SQLEND
 
 #-------------------------  sql_insert  -------------------------------
 sub sql_insert {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    my ($X) = get_handle(\@_);
     my($tblspec) = shift @_;
     my(%values) = %{shift @_};  # Take a copy, we'll be modifying.
 
@@ -1108,6 +1323,7 @@ sub sql_insert {
                                         WHEN 80 THEN ut.name
                                         ELSE t.name
                                     END,
+                     "length" = coalesce(c.length, 0),
                      "precision" = coalesce(c.prec, 0),
                      scale = coalesce(c.scale, 0), typeinfo = NULL
               FROM   $objdb.dbo.syscolumns c
@@ -1120,8 +1336,8 @@ SQLEND
        }
        elsif ($X->{SQL_version} =~ /^[78]\./) {
           $getcols = <<SQLEND;
-              SELECT name, type = type_name(xtype), "precision" = prec, scale,
-                     typeinfo = NULL
+              SELECT name, type = type_name(xtype), length,
+                     "precision" = prec, scale, typeinfo = NULL
               FROM   $objdb.dbo.syscolumns
               WHERE  id = \@objid
 SQLEND
@@ -1129,10 +1345,16 @@ SQLEND
        else {
           # SQL Server 2005 or later.
           $getcols = <<SQLEND;
-              SELECT c.name, type = CASE c.system_type_id
-                                         WHEN 240 THEN 'UDT'
-                                         ELSE type_name(c.system_type_id)
-                                     END, c.precision, c.scale,
+              SELECT c.name,
+                     type = CASE c.system_type_id
+                                 WHEN 240 THEN 'UDT' +
+                                      CASE WHEN c.max_length = -1
+                                           THEN '(MAX)'
+                                           ELSE ''
+                                      END
+                                  ELSE type_name(c.system_type_id)
+                             END,
+                     length = c.max_length, c.precision, c.scale,
                      typeinfo =
                      CASE c.system_type_id
                           WHEN 240
@@ -1186,18 +1408,29 @@ SQLEND
           my $type = $$tbldef{$col}{'type'};
           my $typeinfo = $$tbldef{$col}{'typeinfo'};
 
-          # timestamp columns, cannot be inserted into, so skip.
-          next if $type eq 'timestamp';
+          # timestamp/rowversion columns, cannot be inserted into, so skip.
+          next if $type =~ /^(timestamp|rowversion)$/;
 
           if ($DECIMALTYPES{$type}) {
              my $prec = $$tbldef{$col}{'precision'};
              my $scale = $$tbldef{$col}{'scale'};
              $type .= "($prec,$scale)";
           }
+          elsif ($NEWDATETIMETYPES{$type}) {
+             my $scale = $$tbldef{$col}{'scale'};
+             $type .= "($scale)";
+          }
+          elsif ($TYPESWITHFIXLEN{$type}) {
+             my $length = $$tbldef{$col}{'length'};
+             if ($UNICODETYPES{$type}) {
+                $length /= 2;
+             }
+             $type .= "($length)";
+          }
           push(@params, [$type, $values{$col}, $typeinfo]);
        }
        else {
-          # Missing column an error condition, but let SQL say that.
+          # Missing column is an error condition, but let SQL say that.
           push (@params, ['int', undef]);
        }
        if (not defined $values{$col}) {
@@ -1224,7 +1457,7 @@ sub get_result_sets {
 
 #------------------------- sql_has_errors ----------------------------
 sub sql_has_errors {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    my ($X) = get_handle(\@_);
     my ($keep) = @_;
 
     # Check that SaveMessages is on. Warn if not.
@@ -1252,14 +1485,15 @@ sub sql_has_errors {
 
 #---------------------- sql_get_command_text -------------------------
 sub sql_get_command_text {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    my ($X) = get_handle(\@_);
     return ($X->{ErrInfo}{SP_call} ? $X->{ErrInfo}{SP_call} :
                                      $X->getcmdtext);
 }
 
 #-------------------------  sql_string  -------------------------------
 sub sql_string {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    # Since the handle is optional here, we do not use get_handle.
+    shift @_ if ref ($_[0]) eq PACKAGENAME;
     my($str) = @_;
     if (defined $str) {
        $str =~ s/'/'\'/g;
@@ -1272,17 +1506,17 @@ sub sql_string {
 
 #------------------------- transaction routines -----------------------
 sub sql_begin_trans {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    my ($X) = get_handle(\@_);
     $X->sql("BEGIN TRANSACTION");
 }
 
 sub sql_commit {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    my ($X) = get_handle(\@_);
     $X->sql("COMMIT TRANSACTION");
 }
 
 sub sql_rollback {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    my ($X) = get_handle(\@_);
     $X->sql("ROLLBACK TRANSACTION");
 }
 
@@ -1429,7 +1663,7 @@ sub sql_message_handler {
 # Use for internal calls to support sql_sp and sql_insert.
 sub internal_sql
 {
-    my($X) = (ref @_[$[] eq PACKAGENAME ? shift @_ : $def_handle);
+    my ($X) = get_handle(\@_);
 
     my $sql = shift @_;
 
@@ -1462,16 +1696,31 @@ sub internal_sql
 #----------------------- olle_croak, internal -----------------------
 sub olle_croak  {
     my ($X, $msg) = @_;
+    delete $X->{ErrInfo}{DieFlag};
+    delete $X->{ErrInfo}{CarpFlag};
+    delete $X->{ErrInfo}{SP_call};
     $X->cancelbatch;
     croak($msg);
 }
 
 #---------------------- valuestring, internal----------------------------
 sub valuestring {
-    my ($X, $datatype, $value) = @_;
-    # Returns $value as stringliteral suitable for SQL code.
+    my ($X, $datatype, $value, $name) = @_;
+    # Returns $value as literal suitable for SQL code.
 
-    if (not defined $value) {
+    if ($datatype =~ /table( type)?/) {
+    # For a table parameter we return the name of the parameter. Elsewhere
+    # code is generated to declare and insert data into the table variable.
+    # If no value is defined, we should pass default, NULL is not legal for
+    # table parameters.
+       if (not defined $value or ref $value eq 'ARRAY' and not @$value) {
+          return 'DEFAULT';
+       }
+       else {
+          return $name;
+       }
+    }
+    elsif (not defined $value) {
        return "NULL";
     }
     elsif ($UNICODETYPES{$datatype} or $datatype eq 'sql_variant') {
@@ -1555,17 +1804,36 @@ sub do_conversion{
     my ($direction) = shift @_;
     if (defined $X->{$direction}) {
        my $reftype = ref $_[0];
+
        if ($reftype eq "HASH") {
-          %{$_[0]} = &{$X->{$direction}}(%{$_[0]});
+          # HASH needs particular care to handle the keys.
+          my %tmp;
+          foreach my $key (keys %{$_[0]}) {
+             my $keycopy = $key;
+             my $valuecopy = ${$_[0]}{$key};
+             &{$X->{$direction}}($X, $keycopy, $valuecopy);
+             $tmp{$keycopy} = $valuecopy;
+          }
+          $_[0] = \%tmp;
        }
        elsif ($reftype  eq "ARRAY") {
-          &{$X->{$direction}}(@{$_[0]});
+          if ($direction eq 'to_server') {
+          # On direction to the server, we must work on a copy of the data,
+          # so we don't change the caller's data. (Think table parameters.)
+             my @tmp = @{$_[0]};
+             $_[0] = \@tmp;
+          }
+          &{$X->{$direction}}($X, @{$_[0]});
        }
        elsif ($reftype eq "SCALAR") {
-          &{$X->{$direction}}(${$_[0]});
+          if ($direction eq 'to_server') {
+             my $tmp = ${$_[0]};
+             $_[0] = \$tmp;
+          }
+          &{$X->{$direction}}($X, ${$_[0]});
        }
        else {
-          &{$X->{$direction}}(@_);
+          &{$X->{$direction}}($X, @_);
        }
     }
 }
@@ -1692,6 +1960,7 @@ sub setup_sqlcmd {
    my ($paramdecls);    # Parameter declaration for the second param to sp_executesql.
    my (@parameters);    # Here we assemble input to enterparameter.
    my ($paramvalues);   # Parameter assignments for sp_executesql.
+   my (@tabledefs);     # Table-type definition for table-parameters.
 
    # Named parameters not supported for SQL 6.5
    if ($X->{SQL_version} =~ /^6\./ and $hashparams) {
@@ -1763,7 +2032,7 @@ sub setup_sqlcmd {
             my $msg = "Warning: no datatype provided for parameter '$parname', value '$value'.";
             $X->olledb_message(-1, 1, 10, $msg);
          }
-         $datatype = 'char';
+         $datatype = 'varchar';
       }
 
       # Normalize $datatype to be lowercase, except UDT that should be
@@ -1787,12 +2056,16 @@ sub setup_sqlcmd {
          if ($paren =~ /^\s*(\d+)\s*$/) {
             # One number in parens. This is OK for strings, binary and
             # decimal types
-            if ($VARLENTYPES{$dtyptemp}) {
+            if ($TYPESWITHLENGTH{$dtyptemp}) {
                $length = $1;
                $datatype = $dtyptemp;
             }
             elsif ($DECIMALTYPES{$dtyptemp}) {
                $precision = $1;
+               $datatype = $dtyptemp;
+            }
+            elsif ($NEWDATETIMETYPES{$dtyptemp}) {
+               $scale = $1;
                $datatype = $dtyptemp;
             }
          }
@@ -1824,46 +2097,79 @@ sub setup_sqlcmd {
       }
 
       # Get length for variable length types.
-      if ($VARLENTYPES{$datatype} and defined $value) {
-         unless (defined $length) {
-            # Length is always at least 1.
-            $length = (length($value) or 1);
-
-            # For binary as string, length passed is only half of value.
-            if ($BINARYTYPES{$datatype} and $X->{BinaryAsStr}) {
-               $length -= 2 if $value =~ /^0x/ and $length > 2;
-               $length++ if $length % 2;   # Make sure it's an even number.
-               $length = $length / 2;
-            }
-
-            # Handle overlong strings.
+      if (($TYPESWITHLENGTH{$datatype} or $CLRTYPES{$datatype})) {
+          unless (defined $length) {
             my $maxlen = ($X->{SQL_version} =~ /^6\./ ? 255  :
                          ($UNICODETYPES{$datatype}    ? 4000 :
                                                         8000));
-            if ($length > $maxlen) {
-               if ($X->{SQL_version} =~ /^[678]\./) {
-                  $length = $maxlen;
+            my $valuelen = 1;
+
+            # Compute the length of the value.
+            if (defined $value) {
+               $valuelen = (length($value) or 1);
+
+               # For binary as string, length passed is only half of value.
+               if ($BINARYTYPES{$datatype} and $X->{BinaryAsStr}) {
+                  $valuelen -= 2 if $value =~ /^0x/ and $valuelen > 2;
+                  $valuelen++ if $valuelen % 2;   # Make sure it's an even number.
+                  $valuelen = $valuelen / 2;
                }
-               else {
-                  # On SQL 2005 and later we can use MAX for some datatypes
-                  $length = ($MAXTYPES{$datatype} ? -1 : $maxlen);
+            }
+
+            # For varchar etc, we can set the default length to be the
+            # maxlen, to always use the same value to avoid cache bloat.
+            if ($TYPESWITHFIXLEN{$datatype} and defined $value) {
+               # For fixed-length types (char etc) we use the length of the
+               # string, but warn the user that this is a bad habit.
+               $length = $valuelen;
+               if ($^W) {
+                  my $msg = "Warning: length not specified data type " .
+                            "'$datatype'.";
+                  $X->olledb_message(-1, 1, 10, $msg);
+               }
+
+               # Handle overlong strings.
+               if ($length > $maxlen) {
+                  if ($X->{SQL_version} =~ /^[678]\./) {
+                     $length = $maxlen;
+                  }
+                  else {
+                     # On SQL 2005 and later we can use MAX for some datatypes
+                     $length = ($MAXTYPES{$datatype} ? -1 : $maxlen);
+                  }
+               }
+            }
+            else {
+               # For varchar etc, we can use the max length for the type,
+               # and save the user from a warning.
+               $length = $maxlen;
+
+               # But on SQL 2005 and later, we should use the MAX types
+               # where applicable.
+               if (defined $value and $valuelen > $maxlen and
+                   $MAXTYPES{$datatype} and $X->{SQL_version} !~ /^[678]\./) {
+                  $length = -1;
                }
             }
          }
 
          # Form the data type string.
          unless (defined $dtypstr) {
-            $dtypstr = $datatype . '(' . (($length >= 0) ? $length : 'MAX') . ')';
+            $dtypstr = $datatype .
+                       ($TYPESWITHLENGTH{$datatype} ?
+                       ('(' . (($length >= 0) ? $length : 'MAX') . ')') : '');
          }
       }
-      elsif ($LARGETYPES{$datatype}) {
+      elsif ($LARGETYPES{$datatype} or
+             defined $dtypstr and $dtypstr =~ m!\(MAX\)!) {
          $length = -1;
       }
       else {
          $length = 0;
       }
 
-      # Set precision for decimal types if not provided.
+      # Set precision/scale for decimal types and new date/time types
+      # if not provided.
       if ($DECIMALTYPES{$datatype}) {
          if (not defined $precision or not defined $scale) {
             if ($^W and defined $value) {
@@ -1877,26 +2183,33 @@ sub setup_sqlcmd {
             $dtypstr = "$datatype($precision, $scale)";
          }
       }
-      else {
-         $precision = 0;
-         $scale     = 0;
+      elsif ($NEWDATETIMETYPES{$datatype}) {
+      # Things missing does not render a warning here, because the default
+      # is max scale.
+         $scale = 7 if not defined $scale;
+         unless (defined $dtypstr) {
+            $dtypstr = "$datatype($scale)";
+         }
       }
 
       # Check that typeinfo not provided when not applicable, and that is
-      # specified for UDT.
+      # specified for UDT
       if ($TYPEINFOTYPES{$datatype}) {
-         if ($datatype eq 'UDT' and not defined $typeinfo) {
-            my $msg = "No actual user type specified for UDT parameter '$parname'.";
+         if ($datatype ne 'xml' and not defined $typeinfo) {
+            my $msg = "No actual user type specified for $datatype parameter '$parname'.";
             $X->olledb_message(-1, 1, 16, $msg);
             $X->cancelbatch;
             return 0;
          }
 
-         if ($datatype eq 'UDT') {
-             $dtypstr  = $typeinfo;
-         }
-         elsif ($datatype eq 'xml') {
+         if ($datatype eq 'xml') {
              $dtypstr = $datatype . ($typeinfo ? "($typeinfo)" : "");
+         }
+         elsif ($datatype eq 'table') {
+            $dtypstr  = "$typeinfo READONLY";
+         }
+         else {
+            $dtypstr  = $typeinfo;
          }
       }
       elsif (defined $typeinfo) {
@@ -1907,9 +2220,25 @@ sub setup_sqlcmd {
          $dtypstr = $datatype;
       }
 
-      # Do conversion of value and parameter name
+      # If the parameter is a table parameter, get the type information
+      # from cache.
+      if ($datatype eq 'table') {
+         my $tbldef = $X->get_table_type_info($typeinfo, 1);
+         if (not $tbldef) {
+            my $msg = "Not able to find information about table type '$typeinfo'.";
+            $X->olledb_message(-1, 1, 16, $msg);
+            $X->cancelbatch;
+            return 0;
+         }
+         push(@tabledefs, $tbldef);
+      }
+
+      # Do conversion of value and parameter name and data types. Typeinfo
+      # for tables will be converted later.
       $X->do_conversion('to_server', $value);
       $X->do_conversion('to_server', $parname);
+      $X->do_conversion('to_server', $dtypstr);
+      $X->do_conversion('to_server', $typeinfo);
 
       # And save the parameter.
       push(@parameters, [$datatype, $length, $parname, 1, 0, $value,
@@ -1921,7 +2250,8 @@ sub setup_sqlcmd {
 
       # Add to the parameter string for logging.
       $paramvalues .= (defined $paramvalues ? ", " : '') .
-                       $parname . " = " . $X->valuestring($datatype, $value);
+                       $parname . " = " .
+                       $X->valuestring($datatype, $value, $parname);
    }
 
    unless ($X->{SQL_version} =~ /^6\./) {
@@ -1940,13 +2270,12 @@ sub setup_sqlcmd {
       $X->initbatch($executesql);
 
       # Enter parameter for the statement. On SQL 2005, we can use
-      # nvarchar(max), but not on SQL7/2000.
-      my $len = ($X->{SQL_version} =~ /^[78]\./ ? length($sql) : -1);
-      $X->enterparameter('nvarchar', $len, '@stmt', 1, 0, $sql);
+      # nvarchar(max), but not SQL7/2000 we have to resort to ntext.
+      my $stmtdtype = ($X->{SQL_version} =~ /^[78]\./ ? 'ntext' : 'nvarchar');
+      $X->enterparameter($stmtdtype, -1, '@stmt', 1, 0, $sql);
 
       # Enter the parameter for parameter list.
-      $len = ($X->{SQL_version} =~ /^[78]\./ ? length($paramdecls) : -1);
-      $X->enterparameter('nvarchar', $len, '@parameters', 1, 0, $paramdecls);
+      $X->enterparameter($stmtdtype, -1, '@parameters', 1, 0, $paramdecls);
    }
    else {
       # On 6.5, sp_executesql is not available, so we don't replace the
@@ -1962,11 +2291,240 @@ sub setup_sqlcmd {
 
    # Enter all the "real" parameters.
    foreach my $p (@parameters) {
-      $X->enterparameter(@$p);
+      unless ($$p[0] eq 'table') {
+         $X->enterparameter(@$p);
+      }
+      else {
+         my $tabledef = shift(@tabledefs);
+         my $ret = $X->do_table_parameter($$p[2], $$p[8], $tabledef, $$p[5]);
+         if (not $ret) {
+            $X->cancelbatch();
+            return 0;
+         }
+      }
    }
 
    return 1;
 }
+
+#------------------------- get_table_type_info---------------------------
+# Gets information about a table type from the cache or from the database
+# if it's not there.
+sub get_table_type_info {
+    my($X, $tabletype, $isparamsql) = @_;
+
+    # First crack the type name into pieces.
+    my ($server, $typedb, $typeschema, $typename);
+    $X->parsename($tabletype, 1, $server, $typedb, $typeschema, $typename);
+
+    # Cannot have a server name in the type specification.
+    if ($server) {
+       my $msg =  "Type name '$tabletype' contains a server portion. " .
+                  "This is illegal.";
+       $X->olledb_message(-1, 1, 16, $msg);
+       return undef;
+    }
+
+    # Nor a database name for ad-hoc sql.
+    if ($isparamsql and $typedb) {
+       my $msg =  "Type name '$tabletype' contains a database portion. " .
+                  "This is illegal for ad-hoc batches.";
+       $X->olledb_message(-1, 1, 16, $msg);
+       return undef;
+    }
+
+    # Since sql_sp always passes database.schema.type, we cannot have
+    # database without a schema. Assert this, because we rely on this below.
+    if ($typedb and not $typeschema) {
+        $X->olle_croak("Internal error: There is a typedb ('$typedb'), " .
+                       "but no type schema?\n");
+    }
+
+    if (not defined $X->{tabletypes}{$tabletype}) {
+       # First get the type id. The trick with sp_executesql is because
+       # type_id does not support database names. We use type_id to look
+       # both the default schema and the dbo schema.
+       my $typeid;
+       my $gettypeid = <<SQLEND;
+          EXECUTE $typedb..sp_executesql
+                  N'SELECT type_id(\@tn)', N'\@tn nvarchar(257)',  \@tn = ?
+SQLEND
+       $typeid = $X->internal_sql($gettypeid,
+                                 [['nvarchar', "$typeschema.$typename"]],
+                                  SCALAR, SINGLEROW);
+
+       my $getcols = <<SQLEND;
+       SELECT c.name,
+              typename = CASE c.system_type_id
+                              WHEN 240 THEN 'UDT'
+                              ELSE type_name(c.system_type_id)
+                          END,
+              c.precision, c.scale, c.max_length,
+              needsdefault = CASE WHEN c.is_identity = 1 THEN 1
+                                  WHEN c.is_computed = 1 THEN 1
+                                  WHEN type_name(c.system_type_id) IN
+                                        ('timestamp', 'rowversion') THEN 1
+                                  ELSE 0
+                            END,
+              typeinfo =
+              CASE c.system_type_id
+                   WHEN 240
+                   THEN  coalesce(nullif(\@typedb, ''),
+                                  quotename(db_name())) + '.' +
+                         quotename(s1.name) + '.' + quotename(t.name)
+                   WHEN 241
+                   THEN  coalesce(nullif(\@typedb, ''),
+                                  quotename(db_name())) + '.' +
+                         quotename(s2.name) + '.' + quotename(x.name)
+              END
+       FROM   $typedb.sys.table_types tt
+       JOIN   $typedb.sys.schemas s0 ON tt.schema_id = s0.schema_id
+       JOIN   $typedb.sys.all_columns c ON tt.type_table_object_id = c.object_id
+       LEFT   JOIN ($typedb.sys.types t
+                   JOIN  $typedb.sys.schemas s1 ON t.schema_id = s1.schema_id)
+           ON  c.user_type_id = t.user_type_id
+          AND  t.is_assembly_type = 1
+       LEFT   JOIN ($typedb.sys.xml_schema_collections x
+                    JOIN  $typedb.sys.schemas s2 ON x.schema_id = s2.schema_id)
+           ON  c.xml_collection_id = x.xml_collection_id
+       WHERE  tt.user_type_id = \@typeid
+       ORDER BY c.column_id
+SQLEND
+
+       # Trim the SQL from extraneous spaces, to save network bandwidth.
+       $getcols =~ s/\s{2,}/ /g;
+
+       # Get the data, and save it the internal cache.
+       my $tbldef = $X->internal_sql($getcols,
+                                    {'@typedb' => ['nvarchar', $typedb],
+                                     '@typeid' => ['int', $typeid]},
+                                    HASH);
+
+       # Only save to the cache if we actually found something.
+       if (@$tbldef) {
+          $X->{'tabletypes'}{$tabletype} = $tbldef;
+       }
+
+
+       # Clear SP_call
+       undef $X->{ErrInfo}{SP_call};
+    }
+
+    return $X->{tabletypes}{$tabletype};
+}
+
+#------------------------- do_table_parameter -------------------------
+# Does all work needed to handle a table parameter: retrieves the type
+# definition unless it's in the cache, defines the table, and inserts
+# the rows in $value into the parameter.
+sub do_table_parameter {
+    my ($X, $paramname, $tabletype, $typedef, $value) = @_;
+
+    my (@columns, $isempty);
+
+    # If $value is undef or an empty array, we can pass DEFAULT for the
+    # table and don't have to bother with loading the table definition.
+    if (not defined $value) {
+       $isempty = 1;
+    }
+    elsif (not ref $value eq 'ARRAY') {
+       my $msg = "Illegal value '$value' passed for table parameter " .
+                 "'$paramname'; The value must be an array reference.";
+       $X->olledb_message(-1, 1, 16, $msg);
+       return 0;
+    }
+    else {
+       $isempty = scalar(@$value) == 0;
+    }
+
+    # If the table is empty, define the parameter and quit.
+    if ($isempty) {
+       return $X->enterparameter('table', 0, $paramname, 1, 0, undef, undef, undef,
+                                 $tabletype);
+    }
+
+    # Enter the table parameter.
+    my $ret = $X->enterparameter('table', scalar(@$typedef), $paramname, 1, 0,
+                                 undef, undef, undef, $tabletype);
+    return 0 if not $ret;
+
+    # Define the table.
+    foreach my $coldef (@$typedef) {
+       my $colname      = $coldef->{'name'};
+       my $coltype      = $coldef->{'typename'};
+       my $maxlen       = $coldef->{'max_length'};
+       my $precision    = $coldef->{'precision'};
+       my $scale        = $coldef->{'scale'};
+       my $needsdefault = $coldef->{'needsdefault'};
+       my $typeinfo     = $coldef->{'typeinfo'};
+
+       # Set max length for some types where the query does not give the best
+       # fit.
+       if ($LARGETYPES{$coltype}) {
+          $maxlen = -1;
+       }
+       elsif ($UNICODETYPES{$coltype} and $maxlen > 0) {
+          $maxlen = $maxlen / 2;
+       }
+
+       # Precision and scale should be set only for some types
+       undef $precision unless $DECIMALTYPES{$coltype};
+       undef $scale unless $DECIMALTYPES{$coltype} or $NEWDATETIMETYPES{$coltype};
+
+       $X->do_conversion('to_server', $colname);
+       $X->do_conversion('to_server', $typeinfo);
+
+       $X->definetablecolumn($paramname, $colname, $coltype, $maxlen,
+                             $precision, $scale, $needsdefault, $typeinfo);
+
+       # Save column name for logging.
+       push(@columns, $colname) unless $needsdefault;
+    }
+
+    # Set up for logging.
+    my $logstmt = "DECLARE $paramname $tabletype;\nINSERT $paramname(";
+    $logstmt .= join(', ', map({s/\]/]]/g; "[$_]"} @columns));
+    $logstmt .= ") VALUES\n";
+    my @logrows;
+
+    foreach my $r (@$value) {
+        my (@columnvalues);
+
+        # First check that the row has legal format.
+        my $reftype = ref $r;
+        unless ($reftype =~ /^(ARRAY|HASH)$/) {
+           my $msg = "Illegal value '$r' for row in table parameter " .
+                     "'$paramname'. This must be an array or hash reference.";
+           $X->olledb_message(-1, 1, 16, $msg);
+           $X->cancelbatch();
+           return 0;
+        }
+
+        my $row = $r;
+        $X->do_conversion('to_server', $row);
+        $X->inserttableparam($paramname, $row);
+
+        foreach my $ix (0..$#$typedef) {
+           next if $$typedef[$ix]->{'needsdefault'};
+           my $colname = $$typedef[$ix]->{'name'};
+           my $coltype = $$typedef[$ix]->{'typename'};
+
+           if ($reftype eq 'HASH') {
+              push(@columnvalues, $X->valuestring($coltype, $$row{$colname}));
+           }
+           elsif ($reftype eq 'ARRAY') {
+              push(@columnvalues, $X->valuestring($coltype, $$row[$ix]));
+           }
+        }
+
+        push(@logrows, "(" . join(', ', @columnvalues) . ")");
+    }
+
+    # And finally add the log stuff to the SP_call thing.
+    $logstmt .= join(",\n", @logrows);
+    $X->{ErrInfo}{SP_call} = $logstmt . "\n" . $X->{ErrInfo}{SP_call};
+}
+
 
 #---------------------- get_sqlserver_version -------------------------
 # Retieves the SQL Server version. Since this routine may be called from

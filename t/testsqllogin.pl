@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/testsqllogin.pl 4     07-07-07 16:43 Sommar $
+# $Header: /Perl/OlleDB/t/testsqllogin.pl 6     08-05-01 10:48 Sommar $
 #
 # This file is C<required> by all test scripts. It defines a sub that
 # connects to SQL Server, and changes current directory to the test
@@ -8,6 +8,17 @@
 #
 # $History: testsqllogin.pl $
 # 
+# *****************  Version 6  *****************
+# User: Sommar       Date: 08-05-01   Time: 10:48
+# Updated in $/Perl/OlleDB/t
+# Added parameter to permit test scripts to run without a default handle.
+#
+# *****************  Version 5  *****************
+# User: Sommar       Date: 08-03-23   Time: 23:28
+# Updated in $/Perl/OlleDB/t
+# Handle empty provider value, so that it does not yield warnings about
+# not being numeric.
+#
 # *****************  Version 4  *****************
 # User: Sommar       Date: 07-07-07   Time: 16:43
 # Updated in $/Perl/OlleDB/t
@@ -32,11 +43,34 @@
 
 sub testsqllogin
 {
+   my ($use_sql_init) = @_;
+
+   if (not defined $use_sql_init) {
+      $use_sql_init = 1;
+   }
+
+   # Crack the envioronment vairable.
    my ($login) = $ENV{'OLLEDBTEST'};
    my ($server, $user, $pw, $dummy, $provider);
    ($server, $user, $pw, $dummy, $dummy, $dummy, $provider) =
         split(/;/, $login) if defined $login;
-   return sql_init($server, $user, $pw, "tempdb", $provider);
+   undef $provider if defined $provider and $provider !~ /\S/;
+
+   if ($use_sql_init) {
+      return sql_init($server, $user, $pw, "tempdb", $provider);
+   }
+   else {
+      my $X = new Win32::SqlServer;
+      $X->{Provider} = $provider if defined $provider;
+      $X->setloginproperty('Server', $server);
+      if ($user) {
+         $X->setloginproperty('Username', $user);
+         $X->setloginproperty('Password', $pw);
+      }
+      $X->setloginproperty('Database', 'tempdb');
+      $X->connect();
+      return $X;
+  }
 }
 
 chdir dirname($0);
