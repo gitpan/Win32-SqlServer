@@ -1,10 +1,15 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/5_errors.t 24    08-05-04 22:51 Sommar $
+# $Header: /Perl/OlleDB/t/5_errors.t 25    08-08-17 23:30 Sommar $
 #
 # Tests sql_message_handler and errors raised by OlleDB itself.
 #
 # $History: 5_errors.t $
 # 
+# *****************  Version 25  *****************
+# User: Sommar       Date: 08-08-17   Time: 23:30
+# Updated in $/Perl/OlleDB/t
+# Changes in error message from SQLNCLI10.
+#
 # *****************  Version 24  *****************
 # User: Sommar       Date: 08-05-04   Time: 22:51
 # Updated in $/Perl/OlleDB/t
@@ -459,7 +464,7 @@ $expect_msgs = [{State    => "== 127",
                  Source   => "=~ /$PROVIDERNAME/"}];
 do_test($sql_call, 76, 1, $expect_print, $expect_msgs);
 
-# This one generates "Invalid character for cast specification"
+# This one generates a provider message.
 $X->sql(<<'SQLEND');
    CREATE PROCEDURE #date_sp @d smalldatetime,
                              @e datetime = '19870101' AS
@@ -468,12 +473,16 @@ SQLEND
 $sql_call = '$X->sql_sp("#date_sp", ["2079-12-01"])';
 $expect_print =
     ["=~ /^Message \\w{5}.*$PROVIDERNAME.*Severity:? 16/i",
-     "=~ /Invalid.*cast specification/",
+     ($X->{Provider} <= PROVIDER_SQLNCLI ?
+          "=~ /Invalid.*cast specification/" :
+          "=~ /Invalid date format/"),
      q!=~ / {3,5}1> EXEC #date_sp\s+\@d\s*=\s*'2079-12-01'/!];
 push(@$expect_msgs, {State    => '>= 1',
                      Errno    => '== 0',
                      Severity => '== 16',
-                     Text     => '=~ /Invalid.*cast specification/',
+                     Text     => ($X->{Provider} <= PROVIDER_SQLNCLI ?
+                                     "=~ /Invalid.*cast specification/" :
+                                     "=~ /Invalid date format/"),
                      Line     => '== 0',
                      SQLstate => '=~ /\w{5}/',
                      Source   => "=~ /$PROVIDERNAME/"});

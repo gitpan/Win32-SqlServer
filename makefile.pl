@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/makefile.pl 18    08-05-04 18:36 Sommar $
+# $Header: /Perl/OlleDB/makefile.pl 19    08-05-12 22:04 Sommar $
 #
 # Makefile.pl for MSSQL::OlleDB. Note that you may need to specify where
 # you ave the include files for OLE DB.
 #
 # $History: makefile.pl $
 # 
+# *****************  Version 19  *****************
+# User: Sommar       Date: 08-05-12   Time: 22:04
+# Updated in $/Perl/OlleDB
+# Exit 0 instead of die when things are bad.
+#
 # *****************  Version 18  *****************
 # User: Sommar       Date: 08-05-04   Time: 18:36
 # Updated in $/Perl/OlleDB
@@ -115,7 +120,8 @@ if ($clversion == 0) {
 elsif ($clversion < 13) {
    warn "You are using Visual C++ 6.0 or earlier. Unfortunately, OlleDB.xs\n";
    warn "performs an #include of SQLNCLI.H which does not compile with VC6.\n";
-   die  "No MAKEFILE generated.\n";
+   warn  "No MAKEFILE generated.\n";
+   exit 0
 }
 
 my $SQLDIR  = '\Program Files\Microsoft SQL Server\100\SDK';
@@ -129,7 +135,8 @@ foreach my $device ('C'..'Z') {
 if ($SQLDIR !~ /^[C-Z]:/) {
     warn "Can't find '$sqlnclih' on any disk.\n";
     warn 'Check setting of $SQLDIR in makefile.pl' . "\n";
-    die  "No MAKEFILE generated.\n";
+    warn "No MAKEFILE generated.\n";
+    exit 0;
 }
 
 my $archlibdir = ($ENV{PROCESSOR_ARCHITECTURE} eq 'AMD64' ? 'x64' : $ENV{PROCESSOR_ARCHITECTURE});

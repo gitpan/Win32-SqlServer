@@ -16,13 +16,13 @@
 -->
 </STYLE>
 <BODY>
-<H1 ALIGN="center">Win32::SqlServer 2.004</H1>
+<H1 ALIGN="center">Win32::SqlServer 2.005</H1>
 <UL>
 <P>
      This is Win32::SqlServer, a module for calling Microsoft <SMALL CLASS="allcaps">SQL</SMALL> Server from Perl
      through <SMALL CLASS="allcaps">OLE DB</SMALL>. </P>
 <P>
-     Copyright © 2004-2008 Erland Sommarskog.
+     Copyright © 2004-200<SPAN LANG="sv">9</SPAN> Erland Sommarskog.
      All rights reserved.<BR/></P>
 <P>
   This program is free software; you can redistribute it and/or modify it under
@@ -49,10 +49,10 @@ http://www.sommarskog.se/mssqlperl/index.html</A>.
 <P>To run Win32::SqlServer you need:</P>
 <UL>
 <LI> Perl 5.8.3 or later. (That is ActivePerl build 809 or later.)</LI>
-<LI> Windows NT4 SP6, Windows 2000, Windows XP, Windows 2003, Windows Vista or 
+<LI> Windows NT4 SP6, Windows 2000, Windows XP, Windows 2003, Windows Vista or
 Windows 2008.</LI>
 <LI> <SMALL CLASS="allcaps">SQL</SMALL> Server 6.5 or later.</LI>
-<LI> <SMALL CLASS="allcaps">MDAC</SMALL> 2.6 or <SMALL CLASS="allcaps">SQL</SMALL> 
+<LI> <SMALL CLASS="allcaps">MDAC</SMALL> 2.6 or <SMALL CLASS="allcaps">SQL</SMALL>
 Server Native Client.</LI>
 </UL>
 
@@ -79,25 +79,18 @@ I usually try to respond within 24-48 hours, but if I am on holiday I am.</P>
 <LI> The Platform <SMALL CLASS="allcaps">SDK</SMALL> for Windows, more
    precisely, the Core <SMALL CLASS="allcaps">SDK</SMALL> and the <SMALL CLASS="allcaps">MDAC SDK</SMALL>.
    The Platform <SMALL CLASS="allcaps">SDK</SMALL> comes with Visual Studio. You can
-   also download the 
-<A HREF="http://www.microsoft.com/downloads/details.aspx?FamilyId=F26B1AA4-741A-433A-9BE5-FA919850BDBF&amp;displaylang=en">Windows SDK for Windows Server 2008 and .NET Framework 3.5</A>. 
-(The link is the current as of this writing. Microsoft often twitches things 
+   also download the
+<A HREF="http://www.microsoft.com/downloads/details.aspx?FamilyId=F26B1AA4-741A-433A-9BE5-FA919850BDBF&amp;displaylang=en">Windows SDK for Windows Server 2008 and .NET Framework 3.5</A>.
+(The link is the current as of this writing. Microsoft often twitches things
 around, so you have to search for it.)</LI>
-<LI> The SDK (header files and link libraries) for SQL Server Native client that 
-comes with SQL 2008. (The SDK for SQL 2005 won&#39;t do.) With CTP6, the SDK is not 
-installed by default. To install it, you can run the SQL Server Native Client 
-setup wizard from the initial splash screen and select the SDK. You can also 
-install it by running this command:
-<PRE>   msiexec /i sqlncli.msi ADDLOCAL=ALL APPGUID={0CC618CE-F36A-415E-84B4-FB1BFF6967E1}</PRE>
-from SERVERS\SETUP on the installation DVD. Note: this applies to CTP6. I know 
-they are making rearrangements, so this could be different with the final 
-release of SQL 2008.</LI>
-<LI> Perl 5.8.3 or later.</LI>
+<LI> The SDK (header files and link libraries) for SQL Server Native client that
+comes with SQL 2008. (The SDK for SQL 2005 won&#39;t do.) </LI>
+   <LI> Perl 5.8.3 or later.</LI>
 <LI>
     <SMALL CLASS="allcaps">A C</SMALL>++ compiler, preferably Visual C++ 8.0 or later. (The C++ compiler that
-   comes with Visual Studio&nbsp;6 will <B>not</B> work.) If you don&#39;t have 
-	Visual Studio, the Windows SDK (see above), comes with one.</LI>
-<LI> A make facility. Microsoft&#39;s <SMALL CLASS="allcaps">NMAKE</SMALL> also 
+   comes with Visual Studio&nbsp;6 will <B>not</B> work.) If you don&#39;t have
+   Visual Studio, the Windows SDK (see above), comes with one.</LI>
+<LI> A make facility. Microsoft&#39;s <SMALL CLASS="allcaps">NMAKE</SMALL> also
 comes with the Windows SDK.</LI>
 </UL>
 
@@ -108,11 +101,15 @@ prompt.</P>
 <LI>Extract the zip file anywhere you like.</LI>
 <LI>Edit <B>makefile.pl</B> so that <CODE>$SQLDIR</CODE> points to where <B>sqlncli.h</B> is
    located.</LI>
-<LI><B>makefile.pl</B> also includes a <I>dynamic_lib</I> option, which I don&#39;t
-   know whether it will work with other compilers than Visual C++. For better
-   startup performance, you are encouraged to find the corresponding
-   command-line option for your compiler. However, you can remove it if you
-   don&#39;t care.</LI>
+<LI>If you use a different compiler from Visual C++, you need to review
+makefile.pl more closely. <B>makefile.pl</B> includes two linker options
+specifed with <I>dynamic_lib</I> option that are likely to work only with Visual C++.
+<B>/base</B> is only there to set a difference base address for better startup
+performance. <B>/delayload</B> is more important: it defers the loading of
+sqlncli10.dll until it&#39;s actually needed, or more precisely until you call
+OpenSqlFilestream. Without /delayload, Win32::SqlServer would not run on systems
+without SQL Server Native Client 10. If you use a different compiler than VC++,
+this is something you need to address.</LI>
 <LI>Note that <B>makefile.pl</B> explicitly lists which libraries to link with,
    and specifies the MT flag for the C compiler. This is to force use of the
    static C run-time library for Visual C++, which is what I want for the binary
@@ -130,9 +127,18 @@ prompt.</P>
    which the test scripts get information how to log into <SMALL CLASS="allcaps">SQL</SMALL> Server.</LI>
 <LI><KBD>MAKE install</KBD></LI>
 </OL>
+<H3><SPAN LANG="sv">Known Issues</SPAN></H3>
+<H4><SPAN LANG="sv">ActivePerl</SPAN></H4>
+<P><SPAN LANG="sv">Win32::SqlServer does not build for x86 with ActivePerl builds 1004 and 1005, because of a bug in
+ExtUtils::MM_Win32. I&#39;ve <A HREF="http://rt.perl.org/rt3//Public/Bug/Display.html?id=61492">reported the bug</A>, and it
+was closed as fixed well before build 1005 came out, but 1005 does not include the fix. To build Win32::SqlServer for
+x86 with ActivePerl, you need build 1002. (Maybe build 1003, I have not tested that build.)</SPAN></P>
+<P><SPAN LANG="sv">The bug does not affect building Win32::SqlServer for the x64 architecture.</SPAN></P>
+<H4><SPAN LANG="sv">Other Compilers than Visual C++</SPAN></H4>
+<P><SPAN LANG="sv">To be honest, I have no idea if that will work. I have certainly not tested, and nor do I plan to.</SPAN></P>
 <HR />
 <I>
-Last updated <!--$$Modtime:--> 08-05-05 23:34 <!-- $-->
+Last updated <!--$$Modtime:--> 09-06-21 19:46 <!-- $-->
 </I>
 </BODY>
 </HTML>

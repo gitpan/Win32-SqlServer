@@ -1,11 +1,17 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/Helpers/assemblies.pl 9     08-04-07 23:11 Sommar $
+# $Header: /Perl/OlleDB/t/Helpers/assemblies.pl 10    08-08-17 22:32 Sommar $
 #
 # This is file that is C<require> by several test scripts to create
 # two CLT types in the current database.
 #
 # $History: assemblies.pl $
 # 
+# *****************  Version 10  *****************
+# User: Sommar       Date: 08-08-17   Time: 22:32
+# Updated in $/Perl/OlleDB/t/Helpers
+# Need to have a wait loop to drop assembly types, as SQL Server defers
+# dropping of table parameters.
+#
 # *****************  Version 9  *****************
 # User: Sommar       Date: 08-04-07   Time: 23:11
 # Updated in $/Perl/OlleDB/t/Helpers
@@ -56,8 +62,9 @@ sub delete_assembly{
 
     $X->sql(<<SQLEND);
 DECLARE \@assembly_id int,
-        \@typename   sysname,
-        \@list       nvarchar(MAX)
+        \@typename    sysname,
+        \@list        nvarchar(MAX),
+        \@i           int
 
 SELECT \@assembly_id = assembly_id
 FROM   sys.assemblies
@@ -71,20 +78,36 @@ BEGIN
 
    IF \@typename IS NOT NULL
    BEGIN
-      SELECT \@list = substring(tablelist, 1, datalength(tablelist)/2 - 1)
-      FROM   (SELECT quotename(schema_name(o.schema_id)) + '.' +
-                    quotename(o.name) + ',' AS [text()]
-              FROM   sys.objects o
-              WHERE  EXISTS (SELECT *
-                             FROM  sys.columns c
-                             JOIN  sys.types t  ON c.user_type_id = t.user_type_id
-                             WHERE t.name = \@typename
-                               AND c.object_id = o.object_id)
-                AND  o.type = 'U'
-                AND o.name NOT LIKE '#[^#]%'
-              FOR XML PATH('')) AS Dummy(tablelist)
-      IF nullif(\@list, '') IS NOT NULL
+      SELECT \@i = 20
+
+      WHILE \@i > 0
+      BEGIN
+         SELECT \@list = substring(tablelist, 1, datalength(tablelist)/2 - 1)
+         FROM   (SELECT quotename(schema_name(o.schema_id)) + '.' +
+                       quotename(o.name) + ',' AS [text()]
+                 FROM   sys.objects o
+                 WHERE  EXISTS (SELECT *
+                                FROM  sys.columns c
+                                JOIN  sys.types t  ON c.user_type_id = t.user_type_id
+                                WHERE t.name = \@typename
+                                  AND c.object_id = o.object_id)
+                   AND  o.type = 'U'
+                 FOR XML PATH('')) AS Dummy(tablelist)
+
+         IF nullif(\@list, '') IS NULL
+            BREAK
+
+         -- There may be a table parameter lingering, that has not been
+         IF \@list LIKE '%#[0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]%'
+         BEGIN
+            WAITFOR DELAY '00:00:01'
+            SELECT \@i = \@i - 1
+            CONTINUE
+         END
+
          EXEC('DROP TABLE ' + \@list)
+         BREAK
+      END
 
       SELECT \@list = substring(proclist, 1, datalength(proclist)/2 - 1)
       FROM   (SELECT quotename(schema_name(o.schema_id)) + '.' +

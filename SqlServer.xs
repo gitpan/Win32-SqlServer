@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/SqlServer.xs 90    08-04-28 23:15 Sommar $
+ $Header: /Perl/OlleDB/SqlServer.xs 91    09-04-25 22:29 Sommar $
 
   The main flie for Win32::SqlServer. This file only includes the XS
   parts these days. All other code is in other files.
@@ -8,6 +8,12 @@
 
   $History: SqlServer.xs $
  * 
+ * *****************  Version 91  *****************
+ * User: Sommar       Date: 09-04-25   Time: 22:29
+ * Updated in $/Perl/OlleDB
+ * setupinternaldata was incorrectly defined to return int, which botched
+ * the pointer once address was > 7FFFFFFF.
+ *
  * *****************  Version 90  *****************
  * User: Sommar       Date: 08-04-28   Time: 23:15
  * Updated in $/Perl/OlleDB
@@ -144,7 +150,7 @@ olledb_message (olle_ptr, msgno, state, severity, msg)
    int    severity
    char * msg
 
-int
+void *
 setupinternaldata()
 
 void
@@ -195,7 +201,6 @@ xs_DESTROY(olle_ptr)
 // DESTROY here directly, because the Perl code has to take some extra
 // precautions.
     internaldata * mydata = get_internaldata(olle_ptr);
-
     if (mydata != NULL) {
        disconnect(olle_ptr);
 

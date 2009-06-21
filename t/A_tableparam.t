@@ -1,11 +1,17 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/A_tableparam.t 3     08-04-30 22:48 Sommar $
+# $Header: /Perl/OlleDB/t/A_tableparam.t 4     08-08-17 23:32 Sommar $
 #
 # This test script tests table parameters with sql_sp and sql in with
 # all data types.
 #
 # $History: A_tableparam.t $
 # 
+# *****************  Version 4  *****************
+# User: Sommar       Date: 08-08-17   Time: 23:32
+# Updated in $/Perl/OlleDB/t
+# Need trick when dropping XML collection from table parameter because of
+# deferred temp table drop in SQL 2008. We can now test NULL with UDTs.
+#
 # *****************  Version 3  *****************
 # User: Sommar       Date: 08-04-30   Time: 22:48
 # Updated in $/Perl/OlleDB/t
@@ -1055,6 +1061,7 @@ foreach my $ix (1..10000) {
 # Can't do log tables here - that takes forever!
 do_tests($X, 0, 'integer', 'large tables');
 
+drop_test_objects('integer');
 
 }
 #------------------------- CHARACTER --------------------------------
@@ -1789,7 +1796,26 @@ do_tests($X, 1, 'xml', 'NULL');
 drop_test_objects('xml');
     sql(<<SQLEND);
     IF EXISTS (SELECT * FROM sys.xml_schema_collections WHERE name = 'Olles SC')
-            DROP XML SCHEMA COLLECTION [Olles SC]
+    BEGIN
+       DECLARE \@i int = 20
+       WHILE \@i > 0
+       BEGIN
+          IF EXISTS (SELECT *
+                     FROM   sys.columns c
+                     JOIN   sys.xml_schema_collections xcs ON
+                            c.xml_collection_id = xcs.xml_collection_id
+                     WHERE xcs.name = 'Olles SC')
+          BEGIN
+              WAITFOR DELAY '00:00:01'
+              SELECT \@i -= 1
+          END
+          ELSE
+          BEGIN
+              DROP XML SCHEMA COLLECTION [Olles SC]
+              SELECT \@i = 0
+          END
+       END
+    END
 SQLEND
 
 }
@@ -1822,17 +1848,17 @@ $X->{BinaryAsStr} = 'x';
                geographycol => '%s eq %s');
 do_tests($X, 1, 'clr_builtin', 'Bin0x');
 
-@clr_table = ({hiercol      => '0x5D5C1F',   # Cannot use NULL for now, because of in SQLNCLI10.
+@clr_table = ({hiercol      => undef,
                geometrycol  => undef,
                geographycol => undef});
 
 $X->{BinaryAsStr} = 'x';
 %inparam    = (clr_builtin_table => \@clr_table);
-%expectcol  = (hiercol      => '0x5D5C1F58',
+%expectcol  = (hiercol      => undef,
                geometrycol  => undef,
                geographycol => undef);
 %expectpar  = ();
-%test       = (hiercol      => '%s eq %s',
+%test       = (hiercol      => 'not defined %s',
                geometrycol  => 'not defined %s',
                geographycol => 'not defined %s');
 do_tests($X, 1, 'clr_builtin', 'null');
@@ -1914,16 +1940,14 @@ $X->{BinaryAsStr} = '0';
 do_tests($X, 1, 'UDT', 'Binary as binary');
 
 
-# We don't test NULL for the small UDTs for the time being, since Native
-# Client does not do it right.
-@udt_table = ({cmplxcol  => pack('H*', '800000058000000700'),
-               pointcol  => pack('H*', '0180000012800000088000000A'),
-               stringcol => pack('H*', '00050000004E69737365'),
+@udt_table = ({cmplxcol  => undef,
+               pointcol  => undef,
+               stringcol => undef,
                maxcol    => undef,
                id        => 1});
-%expectcol = (cmplxcol   => '(5,7i)/',
-              pointcol   => '18:8:10/',
-              stringcol  => 'Nisse/',
+%expectcol = (cmplxcol   => 'NULL/',
+              pointcol   => 'NULL/',
+              stringcol  => 'NULL/',
               maxcol     => 'NULL/');
 %expectpar = ();
 %test      = (cmplxcol   => '%s eq %s',

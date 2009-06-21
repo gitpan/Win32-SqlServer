@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/4_conversion.t 7     08-05-04 21:33 Sommar $
+# $Header: /Perl/OlleDB/t/4_conversion.t 8     08-08-17 23:30 Sommar $
 #
 # Tests that it's possible to set up a conversion based on the local
 # OEM character set and the server charset. Mainly is this is test that
@@ -7,6 +7,11 @@
 #
 # $History: 4_conversion.t $
 # 
+# *****************  Version 8  *****************
+# User: Sommar       Date: 08-08-17   Time: 23:30
+# Updated in $/Perl/OlleDB/t
+# Must drop procedure before types can be dropped.
+#
 # *****************  Version 7  *****************
 # User: Sommar       Date: 08-05-04   Time: 21:33
 # Updated in $/Perl/OlleDB/t
@@ -590,6 +595,10 @@ else {
 $X->sql_unset_conversion;
 if ($sqlver >= 10) {
    $X->sql(<<SQLEND);
+   IF object_id(N'#test_shrimp_type') IS NOT NULL
+       DROP PROCEDURE #test_shrimp_type
+   IF object_id(N'#test_UDT_type') IS NOT NULL
+       DROP PROCEDURE #test_UDT_type
    IF type_id(N'${shrimp}_type') IS NOT NULL DROP TYPE ${shrimp}_type
    IF type_id(N'${shrimp}_UDT') IS NOT NULL DROP TYPE ${shrimp}_UDT
 SQLEND

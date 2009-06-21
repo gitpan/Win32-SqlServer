@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/internaldata.cpp 6     08-03-23 23:29 Sommar $
+ $Header: /Perl/OlleDB/internaldata.cpp 7     09-04-25 22:29 Sommar $
 
   This file holds routines setting up the internaldata struct, and
   also release memory allocated in it.
@@ -8,6 +8,12 @@
 
   $History: internaldata.cpp $
  * 
+ * *****************  Version 7  *****************
+ * User: Sommar       Date: 09-04-25   Time: 22:29
+ * Updated in $/Perl/OlleDB
+ * setupinternaldata was incorrectly defined to return int, which botched
+ * the pointer once address was > 7FFFFFFF.
+ *
  * *****************  Version 6  *****************
  * User: Sommar       Date: 08-03-23   Time: 23:29
  * Updated in $/Perl/OlleDB
@@ -135,7 +141,7 @@ void dump_properties(DBPROP init_properties[MAX_INIT_PROPERTIES],
 
 // This is purely a debug routine which is available, mainly to check for
 // leaks, but is normally not called from anywhere.
-static void dump_internaldata(internaldata * mydata)
+void dump_internaldata(internaldata * mydata)
 {
    dump_properties(mydata->init_properties, TRUE);
 
@@ -182,7 +188,7 @@ static void dump_internaldata(internaldata * mydata)
 
 // This routine allocates an internaldata structure and returns the pointer
 // as an integer value.
-int setupinternaldata()
+void * setupinternaldata()
 {
     internaldata  * mydata;  // Pointer to area for internal data.
 
@@ -256,7 +262,7 @@ int setupinternaldata()
        VariantCopy(&prop.vValue, &gbl_init_props[j].default_value);
     }
 
-    return (int) mydata;
+    return (void *) mydata;
 }
 
 // Retrieves the internal data pointer in opaque form and reinterprets

@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/internaldata.h 5     08-03-23 23:29 Sommar $
+ $Header: /Perl/OlleDB/internaldata.h 6     09-04-25 22:29 Sommar $
 
   This headerfile defines the internaldata struct and structs it uses.
   The internaldata is private to the C++/XS code and not exposed to Perl.
@@ -10,6 +10,12 @@
 
   $History: internaldata.h $
  * 
+ * *****************  Version 6  *****************
+ * User: Sommar       Date: 09-04-25   Time: 22:29
+ * Updated in $/Perl/OlleDB
+ * setupinternaldata was incorrectly defined to return int, which botched
+ * the pointer once address was > 7FFFFFFF.
+ *
  * *****************  Version 5  *****************
  * User: Sommar       Date: 08-03-23   Time: 23:29
  * Updated in $/Perl/OlleDB
@@ -177,9 +183,11 @@ typedef struct {
 extern void dump_properties(DBPROP init_properties[MAX_INIT_PROPERTIES],
                             BOOL   props_debug);
 
-extern int setupinternaldata();
+extern void * setupinternaldata();
 
 extern internaldata * get_internaldata(SV *olle_ptr);
+
+extern void dump_internaldata(internaldata * mydata);
 
 extern void free_resultset_data(internaldata *mydata);
 

@@ -1,10 +1,15 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/6_paramsql.t 17    08-05-04 22:41 Sommar $
+# $Header: /Perl/OlleDB/t/6_paramsql.t 18    08-08-17 23:31 Sommar $
 #
 # This test suite concerns sql with parameterised SQL statements.
 #
 # $History: 6_paramsql.t $
 # 
+# *****************  Version 18  *****************
+# User: Sommar       Date: 08-08-17   Time: 23:31
+# Updated in $/Perl/OlleDB/t
+# Coordinates have been swapped in geometry.
+#
 # *****************  Version 17  *****************
 # User: Sommar       Date: 08-05-04   Time: 22:41
 # Updated in $/Perl/OlleDB/t
@@ -839,7 +844,7 @@ $no_of_tests += 7;
 if ($X->{Provider} >= PROVIDER_SQLNCLI10) {
    blurb("spatial");
    $sqltext = 'SELECT @geom.STAsText(), @geog.STAsText();';
-   $expect = ['POINT (98 12)', 'POINT (59.656 18.36)'];
+   $expect = ['POINT (98 12)', 'POINT (18.36 59.656)'];
    $result = $X->sql_one($sqltext, {'@geom' => ['geometry', '0x0A000000010C00000000008058400000000000002840'],
                                     '@geog' => ['geography', '0xE6100000010C8716D9CEF7D34D405C8FC2F5285C3240']},
                                    LIST);

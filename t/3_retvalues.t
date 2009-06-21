@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/3_retvalues.t 13    08-05-04 22:35 Sommar $
+# $Header: /Perl/OlleDB/t/3_retvalues.t 14    08-08-17 20:00 Sommar $
 #
 # This test suite tests return values from sql_sp. Most of the tests
 # concerns UDFs.
 #
 # $History: 3_retvalues.t $
 # 
+# *****************  Version 14  *****************
+# User: Sommar       Date: 08-08-17   Time: 20:00
+# Updated in $/Perl/OlleDB/t
+# Another geography revision.
+#
 # *****************  Version 13  *****************
 # User: Sommar       Date: 08-05-04   Time: 22:35
 # Updated in $/Perl/OlleDB/t
@@ -474,7 +479,7 @@ blurb('geography');
 create_udf($X, 'geography', '@g geography', '@g.STPointN(1)');
 # geography::STLineFromText('LINESTRING(47.656 -122.360, 47.656 -122.343)', 4326);
 $X->sql_sp(TESTUDF, \$retvalue, [pack('H*', 'E610000001148716D9CEF7D34740D7A3703D0A975EC08716D9CEF7D34740CBA145B6F3955EC0')]);
-push(@testres, $retvalue eq pack('H*', 'E6100000010F8716D9CEF7D34740D7A3703D0A975EC0000000000000F8FF000000000000F8FF'));
+push(@testres, $retvalue eq pack('H*', 'E6100000010C8716D9CEF7D34740D7A3703D0A975EC0'));
 
 
 blurb('date');
