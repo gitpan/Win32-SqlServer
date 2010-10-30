@@ -7,7 +7,6 @@
 .allcaps {font-size: 90%;}
 -->
 </STYLE>
-</HEAD>
 <META HTTP-EQUIV="Content-Language" CONTENT="en-gb" />
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=utf-8" />
 <STYLE TYPE="text/css">
@@ -15,15 +14,16 @@
 .allcaps {font-size: 90%;}
 -->
 </STYLE>
+</HEAD>
 <BODY>
-<H1 ALIGN="center">Win32::SqlServer 2.005</H1>
+<H1 ALIGN="center">Win32::SqlServer 2.006</H1>
 <UL>
 <P>
      This is Win32::SqlServer, a module for calling Microsoft <SMALL CLASS="allcaps">SQL</SMALL> Server from Perl
      through <SMALL CLASS="allcaps">OLE DB</SMALL>. </P>
 <P>
-     Copyright © 2004-200<SPAN LANG="sv">9</SPAN> Erland Sommarskog.
-     All rights reserved.<BR/></P>
+     Copyright © 2004-2010 Erland Sommarskog.
+     All rights reserved.</P>
 <P>
   This program is free software; you can redistribute it and/or modify it under
   the same terms as Perl itself.
@@ -49,8 +49,7 @@ http://www.sommarskog.se/mssqlperl/index.html</A>.
 <P>To run Win32::SqlServer you need:</P>
 <UL>
 <LI> Perl 5.8.3 or later. (That is ActivePerl build 809 or later.)</LI>
-<LI> Windows NT4 SP6, Windows 2000, Windows XP, Windows 2003, Windows Vista or
-Windows 2008.</LI>
+<LI> Windows NT4 SP6, Windows 2000, Windows XP and later versions of Windows.</LI>
 <LI> <SMALL CLASS="allcaps">SQL</SMALL> Server 6.5 or later.</LI>
 <LI> <SMALL CLASS="allcaps">MDAC</SMALL> 2.6 or <SMALL CLASS="allcaps">SQL</SMALL>
 Server Native Client.</LI>
@@ -127,18 +126,20 @@ this is something you need to address.</LI>
    which the test scripts get information how to log into <SMALL CLASS="allcaps">SQL</SMALL> Server.</LI>
 <LI><KBD>MAKE install</KBD></LI>
 </OL>
-<H3><SPAN LANG="sv">Known Issues</SPAN></H3>
-<H4><SPAN LANG="sv">ActivePerl</SPAN></H4>
-<P><SPAN LANG="sv">Win32::SqlServer does not build for x86 with ActivePerl builds 1004 and 1005, because of a bug in
+<H3>Known Issues</H3>
+<H4>ActivePerl</H4>
+<P>Win32::SqlServer does not build for x86 with ActivePerl builds 1004 and 1005, because of a bug in
 ExtUtils::MM_Win32. I&#39;ve <A HREF="http://rt.perl.org/rt3//Public/Bug/Display.html?id=61492">reported the bug</A>, and it
 was closed as fixed well before build 1005 came out, but 1005 does not include the fix. To build Win32::SqlServer for
-x86 with ActivePerl, you need build 1002. (Maybe build 1003, I have not tested that build.)</SPAN></P>
-<P><SPAN LANG="sv">The bug does not affect building Win32::SqlServer for the x64 architecture.</SPAN></P>
-<H4><SPAN LANG="sv">Other Compilers than Visual C++</SPAN></H4>
-<P><SPAN LANG="sv">To be honest, I have no idea if that will work. I have certainly not tested, and nor do I plan to.</SPAN></P>
+x86 with ActivePerl, you need build 1002 or build 1007 or later. (Maybe builds 1003 
+and 1006 are OK too, I have not tested those builds.)</P>
+<P>The bug does not affect building Win32::SqlServer for the x64 architecture.</P>
+<H4>Other Compilers than Visual C++</H4>
+<P>To be honest, I have no idea if that will work. I have certainly not tested, and nor do I plan to. 
+This includes other Perl distriutions, such as Strawberry Perl. </P>
 <HR />
 <I>
-Last updated <!--$$Modtime:--> 09-06-21 19:46 <!-- $-->
+Last updated <!--$$Modtime:--> 10-10-29 20:45 <!-- $-->
 </I>
 </BODY>
 </HTML>

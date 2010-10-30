@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/connect.cpp 3     08-01-06 23:33 Sommar $
+ $Header: /Perl/OlleDB/connect.cpp 4     09-07-26 12:44 Sommar $
 
   Implements the connection routines on Win32::SqlServer.
 
@@ -7,6 +7,13 @@
 
   $History: connect.cpp $
  * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 09-07-26   Time: 12:44
+ * Updated in $/Perl/OlleDB
+ * Determining whether an SV is defined through my_sv_is_defined to as
+ * SvOK may return false, unless we first do SvGETMAGIC. This proved to be
+ * an issue when using table-valued parameters with threads::shared.
+ *
  * *****************  Version 3  *****************
  * User: Sommar       Date: 08-01-06   Time: 23:33
  * Updated in $/Perl/OlleDB
@@ -196,7 +203,7 @@ void setloginproperty(SV   * olle_ptr,
    VariantClear(&mydata->init_properties[ix].vValue);
 
    // Then set the value appropriately
-   if (prop_value && SvOK(prop_value)) {
+   if (my_sv_is_defined(prop_value)) {
       mydata->init_properties[ix].vValue.vt = gbl_init_props[ix].datatype;
 
       // First handle any specials. Currently there are two.

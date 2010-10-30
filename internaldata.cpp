@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/internaldata.cpp 7     09-04-25 22:29 Sommar $
+ $Header: /Perl/OlleDB/internaldata.cpp 8     09-07-26 12:44 Sommar $
 
   This file holds routines setting up the internaldata struct, and
   also release memory allocated in it.
@@ -8,6 +8,13 @@
 
   $History: internaldata.cpp $
  * 
+ * *****************  Version 8  *****************
+ * User: Sommar       Date: 09-07-26   Time: 12:44
+ * Updated in $/Perl/OlleDB
+ * Determining whether an SV is defined through my_sv_is_defined to as
+ * SvOK may return false, unless we first do SvGETMAGIC. This proved to be
+ * an issue when using table-valued parameters with threads::shared.
+ *
  * *****************  Version 7  *****************
  * User: Sommar       Date: 09-04-25   Time: 22:29
  * Updated in $/Perl/OlleDB
@@ -329,7 +336,7 @@ void free_resultset_data(internaldata *mydata) {
 
    if (mydata->column_keys != NULL) {
       for (DBORDINAL i = 0; i < mydata->no_of_cols; i++) {
-         if (mydata->column_keys[i] && SvOK(mydata->column_keys[i])) {
+         if (my_sv_is_defined(mydata->column_keys[i])) {
             SvREFCNT_dec(mydata->column_keys[i]);
          }
       }

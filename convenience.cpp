@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/convenience.cpp 2     08-02-24 21:59 Sommar $
+ $Header: /Perl/OlleDB/convenience.cpp 3     09-07-26 12:44 Sommar $
 
   This file holds general-purpose routines, mainly for converting
   between SV and BSTR and the like. All these are low-level, and do
@@ -9,6 +9,13 @@
 
   $History: convenience.cpp $
  * 
+ * *****************  Version 3  *****************
+ * User: Sommar       Date: 09-07-26   Time: 12:44
+ * Updated in $/Perl/OlleDB
+ * Determining whether an SV is defined through my_sv_is_defined to as
+ * SvOK may return false, unless we first do SvGETMAGIC. This proved to be
+ * an issue when using table-valued parameters with threads::shared.
+ *
  * *****************  Version 2  *****************
  * User: Sommar       Date: 08-02-24   Time: 21:59
  * Updated in $/Perl/OlleDB
@@ -203,4 +210,11 @@ void quotename(BSTR &str) {
 
    // And return the new.
    str = newstr;
+}
+
+// A wrapper on SvOK, which handles NULL pointers and potential "magic".
+BOOL my_sv_is_defined(SV * sv) {
+   if (sv == NULL) return FALSE;
+   SvGETMAGIC(sv);
+   return SvOK(sv);
 }

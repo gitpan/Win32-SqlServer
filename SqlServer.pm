@@ -1,11 +1,40 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/SqlServer.pm 67    09-06-21 17:11 Sommar $
+# $Header: /Perl/OlleDB/SqlServer.pm 72    10-10-29 20:50 Sommar $
 #
 # Copyright (c) 2004-2006 Erland Sommarskog
 #
 #
 # $History: SqlServer.pm $
 # 
+# *****************  Version 72  *****************
+# User: Sommar       Date: 10-10-29   Time: 20:50
+# Updated in $/Perl/OlleDB
+# New version!
+#
+# *****************  Version 71  *****************
+# User: Sommar       Date: 10-10-29   Time: 16:18
+# Updated in $/Perl/OlleDB
+# Handles for CLONE were stored correctly, which resulted in a memory
+# leak.
+#
+# *****************  Version 70  *****************
+# User: Sommar       Date: 10-02-27   Time: 21:22
+# Updated in $/Perl/OlleDB
+# Peek at the first argument to sql_init to permit it be called as
+# Win32::SqlServer.
+#
+# *****************  Version 69  *****************
+# User: Sommar       Date: 09-08-16   Time: 14:00
+# Updated in $/Perl/OlleDB
+# When generating values for the log file, make sure that bit columns
+# always have a value (we should handle empty string most of all).
+#
+# *****************  Version 68  *****************
+# User: Sommar       Date: 09-08-14   Time: 23:06
+# Updated in $/Perl/OlleDB
+# Corrected logging of TVPs, so that there is a new INSERT for each 1000
+# rows, as SQL Server does not permit more in the same VALUES clause.
+#
 # *****************  Version 67  *****************
 # User: Sommar       Date: 09-06-21   Time: 17:11
 # Updated in $/Perl/OlleDB
@@ -178,7 +207,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS
             %NEWDATETIMETYPES %MAXTYPES %TYPEINFOTYPES $VERSION);
 
 
-$VERSION = '2.005';
+$VERSION = '2.006';
 
 @ISA = qw(Exporter DynaLoader Tie::StdHash);
 
@@ -467,11 +496,8 @@ sub new {
    # %olle is our tied hash.
    my $X = tie %olle, $self;
 
-   # Save a reference that we created it. This is for CLONE, see below.
-   $my_objects{$X} = $X;
-
    # Initiate Win32::SqlServer properties.
-   $olle{"internaldata"}      =  setupinternaldata();
+   $olle{"internaldata"}      = setupinternaldata();
    $olle{"AutoConnect"}       = 0;
    $olle{"PropsDebug"}        = 0;
    $olle{"RowsAtATime"}       = 100;
@@ -487,8 +513,15 @@ sub new {
    # Initiate error handling.
    $olle{ErrInfo} = new_err_info();
 
-   # Return the blessed object.
-   bless \%olle, PACKAGENAME;
+   # Bless object.
+   my $ret = bless \%olle, PACKAGENAME;
+
+   # Save a reference to the object itself, keyed by the tied array.
+   # This is for CLONE, see below.
+   $my_objects{$ret} = $X;
+
+   # And return the blessed object.
+   return  $ret;
 }
 
 sub CLONE {
@@ -525,7 +558,8 @@ sub DESTROY {
 #--------------------  sql_init  ----------------------------------------
 sub sql_init {
 # Logs into SQL Server and returns an object to use for further communication
-# with the module.
+# with the module. We permit the user to use both :: and -> on call.
+    if (defined $_[0] and $_[0] eq PACKAGENAME) {shift @_};
     my ($server, $user, $pw, $db, $provider) = @_;
 
     my $X = new(PACKAGENAME);
@@ -1769,6 +1803,9 @@ sub valuestring {
        }
        return $N . sql_string($value);
     }
+    elsif ($datatype eq 'bit') {
+       return ($value ? 1 : 0);
+    }
     else {
        return $value;
     }
@@ -2487,9 +2524,10 @@ sub do_table_parameter {
     }
 
     # Set up for logging.
-    my $logstmt = "DECLARE $paramname $tabletype;\nINSERT $paramname(";
-    $logstmt .= join(', ', map({s/\]/]]/g; "[$_]"} @columns));
-    $logstmt .= ") VALUES\n";
+    my $logstmt = "DECLARE $paramname $tabletype;\n";
+    my $loginsert = "INSERT $paramname(" .
+                    join(', ', map({s/\]/]]/g; "[$_]"} @columns)) .
+                    ") VALUES\n";
     my @logrows;
 
     foreach my $r (@$value) {
@@ -2525,8 +2563,14 @@ sub do_table_parameter {
         push(@logrows, "(" . join(', ', @columnvalues) . ")");
     }
 
-    # And finally add the log stuff to the SP_call thing.
-    $logstmt .= join(",\n", @logrows);
+    # And finally add the log stuff to the SP_call thing. Since an
+    # INSERT VALUES can only take 1000 values, we need to split this up.
+    for my $i (0 .. int($#logrows / 1000)) {
+       my $first_ix = $i * 1000;
+       my $last_ix  = (($i + 1)*1000 < $#logrows) ? ($i * 1000 + 999) :
+                      $#logrows;
+       $logstmt .= $loginsert . join(",\n", @logrows[$first_ix .. $last_ix]);
+    }
     $X->{ErrInfo}{SP_call} = $logstmt . "\n" . $X->{ErrInfo}{SP_call};
 }
 

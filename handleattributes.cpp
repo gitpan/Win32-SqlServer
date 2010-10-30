@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/handleattributes.cpp 2     08-01-06 23:33 Sommar $
+ $Header: /Perl/OlleDB/handleattributes.cpp 3     09-07-26 12:44 Sommar $
 
   This file holds routines for getting and (in one case) retrieving
   handle attributes from the Win32::SqlServer hash. Many of them are
@@ -9,6 +9,13 @@
 
   $History: handleattributes.cpp $
  * 
+ * *****************  Version 3  *****************
+ * User: Sommar       Date: 09-07-26   Time: 12:44
+ * Updated in $/Perl/OlleDB
+ * Determining whether an SV is defined through my_sv_is_defined to as
+ * SvOK may return false, unless we first do SvGETMAGIC. This proved to be
+ * an issue when using table-valued parameters with threads::shared.
+ *
  * *****************  Version 2  *****************
  * User: Sommar       Date: 08-01-06   Time: 23:33
  * Updated in $/Perl/OlleDB
@@ -23,6 +30,7 @@
   ---------------------------------------------------------------------*/
 
 #include "CommonInclude.h"
+#include "convenience.h"
 #include "handleattributes.h"
 
 
@@ -63,11 +71,8 @@ static SV * fetch_option(SV * olle_ptr, hash_key_enum id) {
    SV  **svp;
    SV  * retsv = NULL;
    svp = fetch_from_hash(olle_ptr, id);
-   if (svp != NULL) {
-      SvGETMAGIC(*svp);
-      if (SvOK(*svp)) {
-         retsv = *svp;
-      }
+   if (svp != NULL && my_sv_is_defined(*svp)) {
+       retsv = *svp;
    }
    return retsv;
 }
@@ -216,7 +221,6 @@ SV * OptMsgCallback(SV * olle_ptr) {
     if (olle_ptr && SvOK(olle_ptr)) {
        if (callback_ptr = fetch_from_hash(olle_ptr, HV_msgcallback)) {
           callback = * callback_ptr;
-          SvGETMAGIC(callback);
        }
     }
     return callback;

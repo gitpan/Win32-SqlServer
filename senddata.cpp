@@ -1,15 +1,22 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/senddata.cpp 11    08-04-28 23:12 Sommar $
+ $Header: /Perl/OlleDB/senddata.cpp 12    09-07-26 12:44 Sommar $
 
   Implements the routines for sending data and command to SQL Server:
   initbatch, enterparameter and executebatch, including routines to
   convert from Perl variables to SQL Server data types, save datetime
   data; those are in datetime.cpp.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2009   Erland Sommarskog
 
   $History: senddata.cpp $
  * 
+ * *****************  Version 12  *****************
+ * User: Sommar       Date: 09-07-26   Time: 12:44
+ * Updated in $/Perl/OlleDB
+ * Determining whether an SV is defined through my_sv_is_defined to as
+ * SvOK may return false, unless we first do SvGETMAGIC. This proved to be
+ * an issue when using table-valued parameters with threads::shared.
+ *
  * *****************  Version 11  *****************
  * User: Sommar       Date: 08-04-28   Time: 23:12
  * Updated in $/Perl/OlleDB
@@ -256,7 +263,7 @@ static void get_xmlencoding (SV              * sv,
    int    scanret;
    char * str;
 
-   if (sv == NULL || ! SvOK(sv)) {
+   if (! my_sv_is_defined(sv)) {
       xmlcharsettype = utf8;
       charsetpos    = -1;
       return;
@@ -499,7 +506,7 @@ static void add_param_props (SV        * olle_ptr,
                              SV        * typeinfo)
 {
     // Drop out if there is no typeinfo.
-    if (! typeinfo || ! SvOK(typeinfo)) {
+    if (! my_sv_is_defined(typeinfo)) {
        return;
     }
 
@@ -658,9 +665,9 @@ void complete_binding (DBTYPE           datatype,
          break;
 
       case DBTYPE_NUMERIC : {
-            BYTE precision = (sv_precision && SvOK(sv_precision) ?
+            BYTE precision = (my_sv_is_defined(sv_precision) ?
                               SvIV(sv_precision) : 18);
-            BYTE scale     = (sv_scale && SvOK(sv_scale) ? SvIV(sv_scale) : 0);
+            BYTE scale     = (my_sv_is_defined(sv_scale) ? SvIV(sv_scale) : 0);
             param_info->ulParamSize = sizeof(DB_NUMERIC);
             param_info->bPrecision = precision;
             param_info->bScale     = scale;
@@ -681,7 +688,7 @@ void complete_binding (DBTYPE           datatype,
          break;
 
       case DBTYPE_DBTIME2 : {
-            BYTE scale     = (sv_scale && SvOK(sv_scale) ? SvIV(sv_scale) : 7);
+            BYTE scale     = (my_sv_is_defined(sv_scale) ? SvIV(sv_scale) : 7);
             BYTE precision = (scale == 0 ? 8 : scale + 9);
             param_info->ulParamSize = sizeof(DBTIME2);
             param_info->bPrecision = precision;
@@ -693,7 +700,7 @@ void complete_binding (DBTYPE           datatype,
          break;
 
       case DBTYPE_DBTIMESTAMP : {
-            BYTE scale     = (sv_scale && SvOK(sv_scale) ? SvIV(sv_scale) : 7);
+            BYTE scale     = (my_sv_is_defined(sv_scale) ? SvIV(sv_scale) : 7);
             BYTE precision = (scale == 0 ? 19 : scale + 20);
             param_info->ulParamSize = sizeof(DBTIMESTAMP);
             size_buffer += sizeof(DBTIMESTAMP);
@@ -713,7 +720,7 @@ void complete_binding (DBTYPE           datatype,
          break;
 
       case DBTYPE_DBTIMESTAMPOFFSET : {
-            BYTE scale     = (sv_scale && SvOK(sv_scale) ? SvIV(sv_scale) : 7);
+            BYTE scale     = (my_sv_is_defined(sv_scale) ? SvIV(sv_scale) : 7);
             BYTE precision = (scale == 0 ? 26 : scale + 27);
             param_info->ulParamSize = sizeof(DBTIMESTAMPOFFSET);
             size_buffer += sizeof(DBTIMESTAMPOFFSET);
@@ -974,7 +981,7 @@ void initbatch(SV * olle_ptr,
 
     // Save the command. If the command text is blank or the empty string,
     // we set the command text to one blank, to avoid error emssages.
-    if (SvOK(sv_cmdtext) && SvCUR(sv_cmdtext) > 0) {
+    if (my_sv_is_defined(sv_cmdtext) && SvCUR(sv_cmdtext) > 0) {
        mydata->pending_cmd = SV_to_BSTR(sv_cmdtext);
     }
     else {
@@ -1016,7 +1023,7 @@ int enterparameter(SV   * olle_ptr,
    }
 
    // Type name is mandatory.
-   if (! sv_nameoftype || ! SvOK(sv_nameoftype)) {
+   if (! my_sv_is_defined(sv_nameoftype)) {
       olle_croak(olle_ptr, "You must pass a legal type name to enterparameter. Cannot pass undef");
    }
    nameoftype = SvPV_nolen(sv_nameoftype);
@@ -1030,7 +1037,7 @@ int enterparameter(SV   * olle_ptr,
    }
 
    // Get maxlen.
-   if (sv_maxlen && SvOK(sv_maxlen)) {
+   if (my_sv_is_defined(sv_maxlen)) {
       maxlen = SvUV(sv_maxlen);
    }
    else {
@@ -1072,7 +1079,7 @@ int enterparameter(SV   * olle_ptr,
    this_param->isoutput = isoutput;
 
    // Is value NULL or not?
-   this_param->isnull = (! isinput || ! sv_value || ! SvOK(sv_value));
+   this_param->isnull = (! isinput || ! my_sv_is_defined(sv_value));
 
    // Increment number of out parameters if necessary.
    if (isoutput) {
@@ -1153,7 +1160,7 @@ int enterparameter(SV   * olle_ptr,
    }
 
    // Set up the bindings and parameter information for this parameter.
-   if (paramname && SvOK(paramname)) {
+   if (my_sv_is_defined(paramname)) {
       param_info->pwszName = SV_to_BSTR(paramname);
    }
    else {
@@ -1367,7 +1374,7 @@ static SV  * get_QN_hash(HV * hv,
    if (svp != NULL) {
        sv = *svp;
    }
-   if (sv && SvOK(sv)) {
+   if (my_sv_is_defined(sv)) {
       if (SvPOK(sv) && SvCUR(sv) >= 1) {
          ret = sv;
       }

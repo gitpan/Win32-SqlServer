@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/datetime.cpp 3     08-01-06 23:33 Sommar $
+ $Header: /Perl/OlleDB/datetime.cpp 4     09-07-26 12:44 Sommar $
 
   All routines converting between Perl values and the datetime data types
   in SQL Server.
@@ -8,6 +8,13 @@
 
   $History: datetime.cpp $
  * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 09-07-26   Time: 12:44
+ * Updated in $/Perl/OlleDB
+ * Determining whether an SV is defined through my_sv_is_defined to as
+ * SvOK may return false, unless we first do SvGETMAGIC. This proved to be
+ * an issue when using table-valued parameters with threads::shared.
+ *
  * *****************  Version 3  *****************
  * User: Sommar       Date: 08-01-06   Time: 23:33
  * Updated in $/Perl/OlleDB
@@ -93,7 +100,7 @@ static BOOL HV_to_datetimetypes (SV               * sv,
       if (svp != NULL)
           sv = *svp;
 
-      present_keys[ix] = (sv != NULL && SvOK(sv));
+      present_keys[ix] = my_sv_is_defined(sv);
       if (! present_keys[ix]) {
          if (! p->ismandatory) {
             continue;

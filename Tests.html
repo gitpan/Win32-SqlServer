@@ -118,7 +118,7 @@ procedures in tempdb, and on <SMALL CLASS="allcaps">SQL</SMALL> 2005 also an <SM
 procedures and user-defined functions for <A HREF="Win32-SqlServer.html#sql_sp">
 <NOBR>sql_sp()</NOBR></A>.</P>
 <P>
-<B>Number of tests</B>: 7 (on <SMALL CLASS="allcaps">SQL</SMALL> 6.5 and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;7), 33-43 (<SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, 
+<B>Number of tests</B>: 7 (on <SMALL CLASS="allcaps">SQL</SMALL> 6.5 and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;7), 33-43 (<SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2000 and <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005), 
 79 (SQL 2008).</P>
 <P>
 <B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: stored procedures and
@@ -212,7 +212,7 @@ other connection routines. </P>
 <B>Notes</B>: to perform all tests, this script requires that you have defined a
 second test server with the <SMALL CLASS="allcaps">OLLEDBTEST</SMALL> environment variable.</P>
 <P>
-<B>Number of tests</B>: 35, whereof three will be skipped if no second server
+<B>Number of tests</B>: 36, whereof three will be skipped if no second server
 is defined. Some tests are skipped depending on the <SMALL CLASS="allcaps">SQL</SMALL> Server and the provider.
 Only with <SMALL CLASS="allcaps">SQL</SMALL> 2005 or later and <SMALL CLASS="allcaps">SQL</SMALL> Native Client and a second server all tests will be
 performed. And even in that case, two tests will be skipped if <SMALL CLASS="allcaps">SQL</SMALL>
@@ -287,12 +287,13 @@ Z<B>_threads.t</B> </H3>
 <P>
 <B>Number of tests</B>: 24.</P>
 <P><B>Creates in <SMALL CLASS="allcaps">SQL</SMALL> Server</B>: nothing.</P>
-<P><B>Note</B>: this script often hangs, due to a bug in the Perl threads
+<P><B>Note</B>: this script often hangs in Perl 5.8, due to a bug in the Perl threads
 package. See <A HREF="http://rt.perl.org/rt3//Public/Bug/Display.html?id=39839">
 http://rt.perl.org/rt3//Public/Bug/Display.html?id=39839</A> for details. This 
 is why it has a name to make sure it&#39;s the last in the test suite. According 
-to the link, the issue has been fixed, but since the poster don&#39;t know why, and 
-this apparently is some race condition, I don&#39;t take that for granted.</P>
+to the link, the issue has been fixed, but since the poster don&#39;t know why and 
+this apparently is some race condition, I don&#39;t take that for granted. 
+However, I have not see the script hanging with Perl 5.10 and later.</P>
 <H2>Subdirectories to t</H2>
 <P>
 There are two subdirectories in the t directory:
@@ -313,7 +314,7 @@ generate output files.
 <P>
 <HR />
 <I>
-Last updated <!--$$Modtime:--> 08-05-04 18:40 <!-- $-->
+Last updated <!--$$Modtime:--> 10-10-29 17:48 <!-- $-->
 </I>
 </P>
 </BODY>

@@ -1,18 +1,41 @@
 ﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <HTML>
+<HEAD>
 <STYLE TYPE="text/css">
 <!--
 .allcaps {font-size: 90%;}
 -->
 </STYLE>
-<HEAD>
+
 <TITLE>History Win32::SqlServer</TITLE>
 </HEAD>
-<BODY>
 <BODY>
 <CENTER>
 <H1>History Win32::SqlServer</H1>
 </CENTER>
+<H3>2010-10-29 &#8211; 2.006</H3>
+<P>A couple of smaller changes and fixes:</P>
+<UL>
+  <LI>Binaries for ActivePerl 5.12 are now included.</LI>
+  <LI>You can now invoke <A HREF="Win32-SqlServer.html#sql_init"><NOBR>sql_init()</NOBR></A> as either 
+  <CODE><NOBR>Win32::SqlServer::sql_init()</NOBR></CODE> or <CODE><NOBR>Win32::SqlServer-&gt;sql_init()</NOBR></CODE>. Since 
+  <A HREF="Win32-SqlServer.html#sql_init"><NOBR>sql_init()</NOBR></A> is intended to be a static routine, 
+  the former is preferred, but several people tried the latter, misled by the 
+  manual that used <CODE><NOBR>-&gt;</NOBR></CODE> in 
+  one place (and <CODE>::</CODE> in another).</LI>
+  <LI>Bugfix: Fixed an issue where table-valued parameters and possibly other 
+  values did not work properly with <B>threads::shared</B>.</LI>
+  <LI>Bugfix: table-valued parameters did not work in the 64-bit version, once you had allocated 2&nbsp;GB of memory.</LI>
+  <LI>Fixed a memory leak that occurred that appeared if create Win32::SqlServer objects repeatedly, for instance in a loop.</LI>
+  <LI>Fixed issues with how the log file was generated for table-variable parameters and the bit data type.</LI>
+  <LI>Added an example to the entry for
+  <A HREF="Win32-SqlServer.html#CommandTimeout">CommandTimeout</A> in the manual 
+  how to check for timeout errors.</LI>
+</UL>
+<P><B>Note</B>: If you are using ActivePerl 5.10, please beware that the 
+included binaries do not run with earlier 10xx builds. I have not tested all 
+builds, but the binaries did not run with build 1003. They do run with build 
+1007.</P>
 <H3>2009-06-21 &#8211; 2.005</H3>
 <P>This release brings one single change: there was a bug in the 64-bit version, so if your Perl process allocated more 
 than 2&nbsp;GB of memory, Win:32::SqlServer failed to instantiate. This bug has been fixed. </P>
@@ -148,12 +171,10 @@ source distribution for further details.
 <P>This is the first release of MSSQL::OlleDB. It has version number 2.000 since
  it is a successor module to
  <A HREF="http://www.sommarskog.se/mssqlperl/mssql-sqllib.html">MSSQL::Sqllib</A>.</P>
-</HTML>
-<P>
-<P>
-<P>
+
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 09-06-21 14:16 <!-- $-->
+Last updated <!--$$Modtime:--> 10-10-30 18:46 <!-- $-->
 </I>
-<BODY>
+</BODY>
+</HTML>

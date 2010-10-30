@@ -259,7 +259,7 @@ result set(s).</P>
    for this.</P>
 <H3>Connection Routines</H3>
 <DL>
-<DT><B><CODE>$sqlsrv = Win32::SqlServer-&gt;sql_init($server, $user, $pw, $database,
+<DT><B><CODE>$sqlsrv = Win32::SqlServer::sql_init($server, $user, $pw, $database,
 $provider);</CODE></B></DT>
 <DD>Creates a Win32::SqlServer object and connects to the specified server and database.</DD>
 <DT>&nbsp;</DT>
@@ -1493,7 +1493,9 @@ which Win32::SqlServer exposes.</P>
    attribute.</DD>
 </DL>
 <P>All parameters are optional, but in order to specify <CODE>$database</CODE>
-only, you need to specify <CODE>undef</CODE> for the first three.</P>
+only, you need to specify <CODE>undef</CODE> for the first three. Since this is 
+a module routine, you are supposed to call it as Win32::SqlServer::<A HREF="#sql_init"><NOBR>sql_init()</NOBR></A>, 
+but for now Win32::SqlServer-&gt;<A HREF="#sql_init"><NOBR>sql_init()</NOBR></A> works as well.&nbsp; </P>
 <P>If the login fails, this aborts execution of the Perl script. You can only
    catch this condition with <CODE>eval</CODE>. If you want to handle log in
    failures in a <A HREF="#MsgHandler">message handler</A>, create the
@@ -4219,7 +4221,7 @@ into its own mould. To access the file, you would use the module
 <NOMEDDLE>Win32API::File</NOMEDDLE>.
 For a very brief introduction, there is an example at the end of this section.</P>
 <P>To use <NOBR><A HREF="#OpenSqlFilestream">OpenSqlFilestream()</A></NOBR>, you 
-must have SQL Server Native Client 10 installed. Unfortunately, Win32::SqlServer 
+must have <SMALL CLASS="allcaps">SQL</SMALL> Server Native Client 10 installed. Unfortunately, Win32::SqlServer 
 does not check for the provider version, so if you call <NOBR>
 <A HREF="#OpenSqlFilestream">OpenSqlFilestream()</A></NOBR> on a machine where
 <SMALL CLASS="allcaps">SQLNCLI10</SMALL> is not installed, your Perl script will 
@@ -4593,6 +4595,15 @@ it does not
 <P><SMALL CLASS="allcaps">ODBC, ADO</SMALL> and <SMALL CLASS="allcaps">ADO</SMALL> .Net
    all have a default timeout of 30 seconds, but in my opinion command timeouts are a really poor idea, and should only be used if you have
    a real reason.</P>
+<P>If you are <A HREF="#SaveMessages">saving messages</A> and have turned of the 
+default to die on errors, and want to test for whether a command timeout has 
+occured, this example demonstrates:</P>
+<PRE>my $msgs = $sqlsrv-&gt;{ErrInfo}{Messages};
+print &quot;Timeout expired!!!!\n&quot; if $$msgs[$#$msgs]-&gt;{SQLstate} eq &#39;HYT00&#39;;</PRE>
+<P>(You should test for the last message, since even if you cleared <B>
+<A HREF="#Messages">Messages</A></B> before the call, the batch may have 
+generated other messages prior to the timeout.) More about error handling in a 
+later section in this manual.</P>
 <H2><A NAME="DateFormat">DateFormat</A></H2>
 <P>
 <TABLE BORDER=1 CELLSPACING=0 CELLPADDING=0>
@@ -6081,7 +6092,7 @@ WAITFOR DELAY &#39;00:00:05&#39;</PRE>
  want, as long as you don&#39;t claim that you wrote it yourself.</P>
 <HR />
 <I>
-This file was last updated <!--$$Modtime:--> 08-05-04 22:29 <!-- $-->
+This file was last updated <!--$$Modtime:--> 10-02-21 5:53 <!-- $-->
 </I>
 </BODY>
 </HTML>

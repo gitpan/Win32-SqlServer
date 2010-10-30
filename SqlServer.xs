@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/SqlServer.xs 91    09-04-25 22:29 Sommar $
+ $Header: /Perl/OlleDB/SqlServer.xs 93    10-10-29 16:20 Sommar $
 
   The main flie for Win32::SqlServer. This file only includes the XS
   parts these days. All other code is in other files.
@@ -8,6 +8,20 @@
 
   $History: SqlServer.xs $
  * 
+ * *****************  Version 93  *****************
+ * User: Sommar       Date: 10-10-29   Time: 16:20
+ * Updated in $/Perl/OlleDB
+ * Added GetProcessWorkingSetSize only to be able to test for memory
+ * leaks. Any use of this routine outside this scope is unsupported. The
+ * procedure could be removed without notice.
+ *
+ * *****************  Version 92  *****************
+ * User: Sommar       Date: 09-07-26   Time: 12:44
+ * Updated in $/Perl/OlleDB
+ * Determining whether an SV is defined through my_sv_is_defined to as
+ * SvOK may return false, unless we first do SvGETMAGIC. This proved to be
+ * an issue when using table-valued parameters with threads::shared.
+ *
  * *****************  Version 91  *****************
  * User: Sommar       Date: 09-04-25   Time: 22:29
  * Updated in $/Perl/OlleDB
@@ -134,6 +148,7 @@
 #include "getdata.h"
 #include "tableparam.h"
 
+#include <psapi.h>
 
 MODULE = Win32::SqlServer           PACKAGE = Win32::SqlServer
 
@@ -457,7 +472,7 @@ CODE:
    SV_to_binary(sv_context, OptBinaryAsStr(olle_ptr), FALSE, context_ptr,
                 context_len);
 
-   if (sv_alloclen != NULL && SvOK(sv_alloclen)) {
+   if (my_sv_is_defined(sv_alloclen)) {
       alloclen_ptr = &alloclen;
 
       if (SvROK(sv_alloclen) &&
@@ -467,12 +482,12 @@ CODE:
          SV * sv;
 
          svp = hv_fetch(hv, "High", 4, 0);
-         if (svp != NULL && *svp != NULL && SvOK(*svp)) {
+         if (svp != NULL && my_sv_is_defined(*svp)) {
             alloclen.HighPart = SvUV(*svp);
          }
 
          svp = hv_fetch(hv, "Low", 3, 0);
-         if (svp != NULL && *svp != NULL && SvOK(*svp)) {
+         if (svp != NULL && my_sv_is_defined(*svp)) {
             alloclen.LowPart = SvUV(*svp);
          }
       }
@@ -541,6 +556,18 @@ int
 SQL_FILESTREAM_OPEN_FLAG_RANDOM_ACCESS()
 CODE:
 { RETVAL = SQL_FILESTREAM_OPEN_FLAG_RANDOM_ACCESS; }
+OUTPUT:
+   RETVAL
+
+long
+GetProcessWorkingSetSize()
+CODE:
+{
+   HANDLE h = GetCurrentProcess();
+   PROCESS_MEMORY_COUNTERS counters;
+   GetProcessMemoryInfo(h, &counters, sizeof(PROCESS_MEMORY_COUNTERS));
+   RETVAL = counters.WorkingSetSize;
+}
 OUTPUT:
    RETVAL
 

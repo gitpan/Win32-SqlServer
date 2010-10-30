@@ -1,11 +1,18 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/makefile.pl 19    08-05-12 22:04 Sommar $
+# $Header: /Perl/OlleDB/makefile.pl 20    10-10-29 16:20 Sommar $
 #
 # Makefile.pl for MSSQL::OlleDB. Note that you may need to specify where
 # you ave the include files for OLE DB.
 #
 # $History: makefile.pl $
 # 
+# *****************  Version 20  *****************
+# User: Sommar       Date: 10-10-29   Time: 16:20
+# Updated in $/Perl/OlleDB
+# Added GetProcessWorkingSetSize only to be able to test for memory
+# leaks. Any use of this routine outside this scope is unsupported. The
+# procedure could be removed without notice.
+#
 # *****************  Version 19  *****************
 # User: Sommar       Date: 08-05-12   Time: 22:04
 # Updated in $/Perl/OlleDB
@@ -151,7 +158,7 @@ WriteMakefile(
                       'datatypemap.obj init.obj internaldata.obj ' .
                       'errcheck.obj connect.obj utils.obj datetime.obj ' .
                       'tableparam.obj senddata.obj getdata.obj',
-    'LIBS'         => [":nosearch :nodefault $libfile delayimp.lib kernel32.lib user32.lib ole32.lib oleaut32.lib uuid.lib libcmt.lib"],
+    'LIBS'         => [":nosearch :nodefault $libfile psapi.lib delayimp.lib kernel32.lib user32.lib ole32.lib oleaut32.lib uuid.lib libcmt.lib"],
     'VERSION_FROM' => 'SqlServer.pm',
     'XS'           => { 'SqlServer.xs' => 'SqlServer.cpp' },
     'dist'         => {ZIP => '"C:\Program Files (x86)\Winzip\wzzip"',

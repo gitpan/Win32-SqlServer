@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/A_tableparam.t 4     08-08-17 23:32 Sommar $
+# $Header: /Perl/OlleDB/t/A_tableparam.t 5     09-08-16 13:58 Sommar $
 #
 # This test script tests table parameters with sql_sp and sql in with
 # all data types.
 #
 # $History: A_tableparam.t $
 # 
+# *****************  Version 5  *****************
+# User: Sommar       Date: 09-08-16   Time: 13:58
+# Updated in $/Perl/OlleDB/t
+# Modified test för bit to handle empty string as input.
+#
 # *****************  Version 4  *****************
 # User: Sommar       Date: 08-08-17   Time: 23:32
 # Updated in $/Perl/OlleDB/t
@@ -864,7 +869,7 @@ my(@firsttable, @secondtable);
                 tinyintcol  => 2});
 
 @secondtable = ([123456789.456789, 0.456789, 1],
-                [-0.456,           1,        1],
+                [-0.456,           1,        ''],
                 [2000,             2.2,      0]);
 
 %inparam   = (firsttable   => \@firsttable,
@@ -876,7 +881,7 @@ my(@firsttable, @secondtable);
               tinyintcol    => 133,
               floatcol      => sprintf("%1.6f", 123458700.000789),
               realcol       => 3.656789,
-              bitcol        => 2,
+              bitcol        => 1,
               rowcnt        => 8,
               intcolnull    => 1,
               bitcolnull    => 0);

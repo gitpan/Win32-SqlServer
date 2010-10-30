@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/tableparam.cpp 10    08-04-28 23:15 Sommar $
+ $Header: /Perl/OlleDB/tableparam.cpp 12    09-07-27 12:31 Sommar $
 
   Implements all support for table parameters.
 
@@ -7,6 +7,21 @@
 
   $History: tableparam.cpp $
  * 
+ * *****************  Version 12  *****************
+ * User: Sommar       Date: 09-07-27   Time: 12:31
+ * Updated in $/Perl/OlleDB
+ * There was a 64-bit bug when saving the table definition into the hash
+ * table. Changed for loop to while to remove compiler warning.
+ *
+ * *****************  Version 11  *****************
+ * User: Sommar       Date: 09-07-26   Time: 12:45
+ * Updated in $/Perl/OlleDB
+ * Determining whether an SV is defined through my_sv_is_defined to as
+ * SvOK may return false, unless we first do SvGETMAGIC. This proved to be
+ * an issue when using table-valued parameters with threads::shared. Also
+ * had to moify how the hash is traversed. hv_iterinit does not returns
+ * the number of keys for tied hashes and the like.
+ *
  * *****************  Version 10  *****************
  * User: Sommar       Date: 08-04-28   Time: 23:15
  * Updated in $/Perl/OlleDB
@@ -106,7 +121,7 @@ BOOL setup_tableparam(SV        * olle_ptr,
    }
 
    // Check that we have name for the type.
-   if (! tabletypename || ! SvOK(tabletypename)) {
+   if (! my_sv_is_defined(tabletypename)) {
       olle_croak(olle_ptr, "Name of type missing for table-valued parameter");
    }
 
@@ -138,7 +153,7 @@ BOOL setup_tableparam(SV        * olle_ptr,
       if (mydata->tableparams == NULL) {
          mydata->tableparams = newHV();
       }
-      SV * sv_tabledef = newSViv((LONG) tabledef);
+      SV * sv_tabledef = newSViv((IV) tabledef);
       hv_store_ent(mydata->tableparams, paramname, sv_tabledef, 0);
    }
 
@@ -155,7 +170,7 @@ static void add_column_props (SV           * olle_ptr,
     int         propscnt = 0;
 
     // Drop out if there is no typeinfo.
-    if (! typeinfo || ! SvOK(typeinfo)) {
+    if (! my_sv_is_defined(typeinfo)) {
        return;
     }
 
@@ -298,7 +313,7 @@ int definetablecolumn(SV * olle_ptr,
 
    // See if we have a table parameter to work with. The caller can specify
    // a name, or undef to work the the most recently added parameter.
-   if (tblname && SvOK(tblname)) {
+   if (my_sv_is_defined(tblname)) {
       HE * he = hv_fetch_ent(mydata->tableparams, tblname, 0, 0);
       if (he == NULL) {
          olle_croak(olle_ptr, "Attempt to define column for parameter %s, but this is not a table-valued parameter",
@@ -319,12 +334,12 @@ int definetablecolumn(SV * olle_ptr,
    }
 
    // Check we did get a column name
-   if (! colname || ! SvOK(colname)) {
+   if (! my_sv_is_defined(colname)) {
       olle_croak(olle_ptr, "No column name specified for column definition");
    }
 
    // And a type name.
-   if (! sv_nameoftype || ! SvOK(sv_nameoftype)) {
+   if (! my_sv_is_defined(sv_nameoftype)) {
       olle_croak(olle_ptr, "You must pass a legal type name to definetablecolumn. Cannot pass undef");
    }
    nameoftype = SvPV_nolen(sv_nameoftype);
@@ -343,7 +358,7 @@ int definetablecolumn(SV * olle_ptr,
 
 
    // Get maxlen.
-   if (sv_maxlen && SvOK(sv_maxlen)) {
+   if (my_sv_is_defined(sv_maxlen)) {
       maxlen = SvUV(sv_maxlen);
    }
    else {
@@ -508,7 +523,7 @@ static BOOL value_to_rowbuffer(SV           * olle_ptr,
    valueunion    colvalue;
 
    // Check for NULL for an easy way out.
-   if (sv_value == NULL || ! SvOK(sv_value)) {
+   if (! my_sv_is_defined(sv_value)) {
       * status_ptr = DBSTATUS_S_ISNULL;
       return TRUE;
    }
@@ -561,7 +576,7 @@ int inserttableparam(SV * olle_ptr,
 
    // See if we have a table parameter to work with. The caller can specify
    // a name, or undef to work the the most recently added parameter.
-   if (tblname && SvOK(tblname)) {
+   if (my_sv_is_defined(tblname)) {
       HE * he = hv_fetch_ent(mydata->tableparams, tblname, 0, 0);
       if (he == NULL) {
          olle_croak(olle_ptr, "Cannot call inserttableparam for parameter %s; this is not a table-valued parameter",
@@ -582,7 +597,7 @@ int inserttableparam(SV * olle_ptr,
    }
 
    // Determine if the input area is a hash or an array.
-   if (inputref != NULL && SvROK(inputref)) {
+   if (my_sv_is_defined(inputref) && SvROK(inputref)) {
       if (strncmp(SvPV_nolen(inputref), "HASH(", 5) == 0) {
          input_hv = (HV *) SvRV(inputref);
       }
@@ -606,16 +621,16 @@ int inserttableparam(SV * olle_ptr,
 
    // Now we handle the input area.
    if (input_av != NULL) {
-      int arraylen = av_len(input_av);
-      if (arraylen + 1 > tbldef->no_of_cols & PL_dowarn) {
+      int arraylen = av_len(input_av) + 1;
+      if (arraylen > tbldef->no_of_cols & PL_dowarn) {
          olledb_message(olle_ptr, -1, 1, 10,
                         L"Warning: input array for inserttableparam has %d elements, but there are only %d columns in the table definition.",
-                        arraylen + 1, tbldef->no_of_cols);
+                        arraylen, tbldef->no_of_cols);
       }
 
       for (int colix = 0;
-               colix < (arraylen + 1 <= tbldef->no_of_cols ?
-                        arraylen + 1 : tbldef->no_of_cols); colix++) {
+               colix < (arraylen <= tbldef->no_of_cols ?
+                        arraylen : tbldef->no_of_cols); colix++) {
         if (tbldef->usedefault[colix]) {
            continue;
         }
@@ -632,9 +647,9 @@ int inserttableparam(SV * olle_ptr,
       }
    }
    else if (input_hv != NULL) {
-      int no_of_keys = hv_iterinit(input_hv);
-      while (no_of_keys--) {
-         HE    *  he;
+      // Iterate over all keys in the hash.
+      hv_iterinit(input_hv);
+      while (HE * he = hv_iternext(input_hv)) {
          char  *  key;
          I32      keylen;
          SV    ** svp;
@@ -643,8 +658,6 @@ int inserttableparam(SV * olle_ptr,
          SV    *  sv_value = NULL;
 
          // Get next key in iteration.
-         he = hv_iternext(input_hv);
-         if (he == NULL) continue;
          key = hv_iterkey(he, &keylen);
 
          // Lookup this key in our colnamemap.
@@ -655,7 +668,7 @@ int inserttableparam(SV * olle_ptr,
 
          // If we don't know this key value, skip and issue a warning if
          // Perl warnings are enabled.
-         if (sv_colno == NULL || ! SvOK(sv_colno)) {
+         if (! my_sv_is_defined(sv_colno)) {
             if (PL_dowarn) {
                olledb_message(olle_ptr, -1, 1, 10,
                "Warning: input hash to inserttableparam includes key '%s', but no such column has been defined for this table parameter.",

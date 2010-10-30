@@ -1,10 +1,36 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/9_loginproperties.t 19    08-03-23 23:28 Sommar $
+# $Header: /Perl/OlleDB/t/9_loginproperties.t 24    10-10-29 17:51 Sommar $
 #
 # This test suite tests that setloginproperty, Autoclose and CommandTimeout.
 #
 # $History: 9_loginproperties.t $
 # 
+# *****************  Version 24  *****************
+# User: Sommar       Date: 10-10-29   Time: 17:51
+# Updated in $/Perl/OlleDB/t
+# Cut two tests, since we cannot assume that we can use Window auth. 
+#
+# *****************  Version 23  *****************
+# User: Sommar       Date: 10-10-29   Time: 17:28
+# Updated in $/Perl/OlleDB/t
+# Cut test 4, because on SQL 2008 error message if SQL auth is not
+# enabled is the same as if it is enabled.
+#
+# *****************  Version 22  *****************
+# User: Sommar       Date: 10-10-29   Time: 16:10
+# Updated in $/Perl/OlleDB/t
+# Final fix to the sql_init tests.
+#
+# *****************  Version 21  *****************
+# User: Sommar       Date: 10-10-29   Time: 15:25
+# Updated in $/Perl/OlleDB/t
+# Reworked the tests for sql_init.
+#
+# *****************  Version 20  *****************
+# User: Sommar       Date: 10-10-29   Time: 9:38
+# Updated in $/Perl/OlleDB/t
+# Added tests to handle the various forms of sql_init.
+#
 # *****************  Version 19  *****************
 # User: Sommar       Date: 08-03-23   Time: 23:28
 # Updated in $/Perl/OlleDB/t
@@ -116,7 +142,8 @@ sub setup_testc {
     # Creates a test connection object with some common initial settings.
     my ($userpw) = @_;
     $userpw = 1 if not defined $userpw;
-    my $testc = new Win32::SqlServer;
+    my $testc;
+    $testc = new Win32::SqlServer;
     $testc->{Provider} = $provider if defined $provider;
     $testc->setloginproperty('Server', $mainserver) if $mainserver;
     if ($userpw and $mainuser) {
@@ -140,11 +167,12 @@ $| = 1;
 
 chdir dirname($0);
 
-print "1..35\n";
+print "1..36\n";
 
-# Set up a monitor connection
+# Set up a monitor connection and get login configuration.
 my $monitor = sql_init($mainserver, $mainuser, $mainpw, undef, $provider);
 my ($monitorsqlver) = split(/\./, $monitor->{SQL_version});
+my %loginconfig = $monitor->sql_one("EXEC master..xp_loginconfig 'login mode'");
 
 # This is the connection we use for tests.
 my $testc;
@@ -194,52 +222,26 @@ else {
 }
 $testc->disconnect;
 
-# Tests for Windows authentication and SQL authentication.
-my %loginconfig = $monitor->sql_one("EXEC master..xp_loginconfig 'login mode'");
-
-# Get a new test connection with a fresh start.
-$testc = setup_testc(0);
-$testc->setloginproperty('Username', 'Slabanketti');
-$testc->setloginproperty('Password', 'Once in a lifetime');
-$testc->connect();
-$errmsg = $testc->{ErrInfo}{Messages}[0]{'text'};
-if ($loginconfig{'config_value'} !~ /^Windows/) {
-   if ($errmsg =~ /[Ll]ogin failed/) {
-      print "ok 4\n";
-   }
-   else {
-      print "not ok 4 # $errmsg\n";
-   }
-}
-else {
-   if ($errmsg  =~ /trusted .+ connection/) {
-       print "ok 4\n";
-   }
-   else {
-       print "not ok 4\n";
-   }
-}
-
 # Test database property. And try autoconnect, while we're at it.
 $testc = setup_testc;
 $testc->{AutoConnect} = 1;
 my $db = $testc->sql_one('SELECT db_name()');
 # Do we have tempdb as default?
 if ($db eq 'tempdb') {
-   print "ok 5\n";
+   print "ok 4\n";
 }
 else {
-   print "not ok 5 # $db\n";
+   print "not ok 4 # $db\n";
 }
 
 # Test explicit database.
 $testc->setloginproperty('Database', 'master');
 $db = $testc->sql_one('SELECT db_name()');
 if ($db eq 'master') {
-   print "ok 6\n";
+   print "ok 5\n";
 }
 else {
-   print "not ok 6 # $db\n";
+   print "not ok 5 # $db\n";
 }
 
 # Test server property. Here we can't test the default value, as there might
@@ -263,10 +265,10 @@ if ($secondserver and $secondserver ne $mainserver) {
    my $newsqlver = $testc->{SQL_version};
    my %thissqlver = $testc->sql_one("EXEC master..xp_msver 'Productversion'");
    if ($thissqlver{'Character_Value'} eq $newsqlver) {
-      print "ok 7\n";
+      print "ok 6\n";
    }
    else {
-      print "not ok 7\n";
+      print "not ok 6\n";
    }
 
    # But did we really change servers? (We can't test for SERVERNAME, as
@@ -274,10 +276,10 @@ if ($secondserver and $secondserver ne $mainserver) {
    my $servername1 = $monitor->sql_one('SELECT @@servername', SCALAR);
    my $servername2 = $testc->sql_one('SELECT @@servername', SCALAR);
    if ($servername1 ne $servername2) {
-      print "ok 8\n";
+      print "ok 7\n";
    }
    else {
-      print "not ok 8\n";
+      print "not ok 7\n";
    }
 
    # And change back. Now we execute a command before we look at SQL_version.
@@ -291,16 +293,16 @@ if ($secondserver and $secondserver ne $mainserver) {
    }
    %thissqlver = $testc->sql_one("EXEC master..xp_msver 'Productversion'");
    if ($thissqlver{'Character_Value'} eq $testc->{SQL_version}) {
-      print "ok 9\n";
+      print "ok 8\n";
    }
    else {
-      print "not ok 9\n";
+      print "not ok 8\n";
    }
 }
 else {
+   print "ok 6 # skip, no second server.\n";
    print "ok 7 # skip, no second server.\n";
    print "ok 8 # skip, no second server.\n";
-   print "ok 9 # skip, no second server.\n";
 }
 
 # Time for a new object. We're going to test connection pooling now.
@@ -316,10 +318,10 @@ $inputbuffer = $monitor->sql("DBCC INPUTBUFFER($spid) WITH NO_INFOMSGS",
                              SINGLESET, HASH);
 my $colname = ($monitorsqlver == 6 ? 'Input Buffer' : 'EventInfo');
 if ($$inputbuffer[0] and $$inputbuffer[0]{$colname} =~ /^PRINT 'Cornershot'/) {
-   print "ok 10\n";
+   print "ok 9\n";
 }
 else {
-   print "not ok 10 # $$inputbuffer[0]{$colname}";
+   print "not ok 9 # $$inputbuffer[0]{$colname}";
 }
 
 # Pooling off.
@@ -341,10 +343,10 @@ $inputbuffer = $monitor->sql("DBCC INPUTBUFFER($spid) WITH NO_INFOMSGS",
                              SINGLEROW, HASH);
 if ($monitor->{ErrInfo}{Messages} and
     $monitor->{ErrInfo}{Messages}[0]{'text'} =~ /(Invalid SPID|does not process input)/i) {
-   print "ok 11\n";
+   print "ok 10\n";
 }
 else {
-   print "not ok 11\n";
+   print "not ok 10\n";
 }
 $monitor->{ErrInfo}{MaxSeverity} = 10;
 $monitor->{ErrInfo}{PrintMsg} = 1;
@@ -366,10 +368,10 @@ $inputbuffer = $monitor->sql("DBCC INPUTBUFFER($spid) WITH NO_INFOMSGS",
 $inputbuffer = $monitor->sql("DBCC INPUTBUFFER($spid) WITH NO_INFOMSGS",
                              SINGLESET, HASH);
 if ($$inputbuffer[0] and $$inputbuffer[0]{$colname} =~ /^PRINT 'Elfmeter'/) {
-   print "ok 12\n";
+   print "ok 11\n";
 }
 else {
-   print "not ok 12 # $$inputbuffer[0]{'EventInfo'}\n";
+   print "not ok 11 # $$inputbuffer[0]{'EventInfo'}\n";
 }
 $monitor->{ErrInfo}{PrintText} = 0;
 
@@ -378,23 +380,23 @@ $testc = setup_testc;
 $testc->{AutoConnect} = 1;
 my $name = $testc->sql_one('SELECT app_name()', SCALAR);
 if ($name eq '9_loginproperties.t') {
-   print "ok 13\n";
+   print "ok 12\n";
 }
 elsif ($monitorsqlver == 6 and $name eq substr('9_loginproperties.t', 0, 15)) {
-   print "ok 13\n";
+   print "ok 12\n";
 }
 else {
-   print "not ok 13 # $name\n";
+   print "not ok 12 # $name\n";
 }
 
 # And set explicit.
 $testc->setloginproperty('Appname', 'Papperstapet');
 $name = $testc->sql_one('SELECT app_name()', SCALAR);
 if ($name eq 'Papperstapet') {
-   print "ok 14\n";
+   print "ok 13\n";
 }
 else {
-   print "not ok 14 # $name\n";
+   print "not ok 13 # $name\n";
 }
 
 # Test setting language. This does not work well on 6.5.
@@ -402,14 +404,14 @@ if ($monitorsqlver > 6) {
    $testc->setloginproperty('Language', 'Spanish');
    $name = $testc->sql_one("SELECT convert(varchar, convert(datetime, '20030112'))");
    if ($name =~ /^Ene 12 2003/) {
-      print "ok 15\n";
+      print "ok 14\n";
    }
    else {
-      print "not ok 15 # $name\n";
+      print "not ok 14 # $name\n";
    }
 }
 else {
-   print "ok 15 # skip\n";
+   print "ok 14# skip\n";
 }
 
 
@@ -429,17 +431,17 @@ if ($monitorsqlver >= 8) {
    $testc->connect;
    $db = $testc->sql_one('SELECT db_name()');
    if ($db eq 'OlleDB test') {
-      print "ok 16\n";
+      print "ok 15\n";
    }
    else {
-      print "not ok 16 # $db\n";
+      print "not ok 15 # $db\n";
    }
    $testc->disconnect;
    $monitor->sql('DROP DATABASE [OlleDB test]');
    $monitor->{ErrInfo}{PrintText} = 0;
 }
 else {
-   print "ok 16 # skip\n";
+   print "ok 15 # skip\n";
 }
 
 # Network address. This works like server - maybe.
@@ -463,14 +465,14 @@ if (not exists($testc->{ErrInfo}{Messages})) {
    my $servername1 = $monitor->sql_one('SELECT @@servername', SCALAR);
    my $servername2 = $testc->sql_one('SELECT @@servername', SCALAR);
    if ($servername1 eq $servername2) {
-      print "ok 17\n";
+      print "ok 16\n";
    }
    else {
-      print "not ok 17 # servername = $servername2\n";
+      print "not ok 16 # servername = $servername2\n";
    }
 }
 else {
-   print "not ok 17 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
+   print "not ok 16 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
 }
 $testc->disconnect;
 
@@ -496,14 +498,14 @@ if ($monitorsqlver >= 9) {
    SELECT net_packet_size FROM sys.dm_exec_connections WHERE session_id = @@spid
 SQLEND
    if ($pktsize == 1280) {
-      print "ok 18\n";
+      print "ok 17\n";
    }
    else {
-      print "not ok 18 # $pktsize\n";
+      print "not ok 17 # $pktsize\n";
    }
 }
 else {
-   print "ok 18 # skip\n";
+   print "ok 17 # skip\n";
 }
 
 # Hostname. First test default, then to set name explicitly.
@@ -511,20 +513,20 @@ $testc = setup_testc;
 $testc->{AutoConnect} = 1;
 $name = $testc->sql_one('SELECT host_name()', SCALAR);
 if ($name eq Win32::NodeName) {
-   print "ok 19\n";
+   print "ok 18\n";
 }
 else {
-   print "not ok 19 # $name\n";
+   print "not ok 18 # $name\n";
 }
 
 # And set explicit.
 $testc->setloginproperty('hOsTnAmE', 'Nyckelpiga');
 $name = $testc->sql_one('SELECT host_name()', SCALAR);
 if ($name eq 'Nyckelpiga') {
-   print "ok 20\n";
+   print "ok 19\n";
 }
 else {
-   print "not ok 20 # $name\n";
+   print "not ok 19 # $name\n";
 }
 
 # Test connection string. If this attributes, all other defaults should
@@ -548,17 +550,17 @@ $testc->setloginproperty('ConnectionString', $connectstring);
 $testc->connect;
 $name = $testc->sql_one('SELECT host_name()', SCALAR);
 if ($name ne $nothostname) {
+   print "ok 20\n";
+}
+else {
+   print "not ok 20 # $name\n";
+}
+$name = $testc->sql_one('SELECT app_name()', SCALAR);
+if ($name !~ /^9_login/) {
    print "ok 21\n";
 }
 else {
    print "not ok 21 # $name\n";
-}
-$name = $testc->sql_one('SELECT app_name()', SCALAR);
-if ($name !~ /^9_login/) {
-   print "ok 22\n";
-}
-else {
-   print "not ok 22 # $name\n";
 }
 $testc->disconnect;
 
@@ -581,10 +583,10 @@ if ($monitor->{Provider} >= PROVIDER_SQLNCLI and $monitorsqlver >= 9 and
    $testc->setloginproperty('Pooling', 0);
    $testc->connect;
    if (not $testc->{ErrInfo}{Messages}) {
-       print "ok 23\n";
+       print "ok 22\n";
    }
    else {
-       print "not ok 23 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
+       print "not ok 22 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
    }
    $testc->disconnect();
 
@@ -595,10 +597,10 @@ if ($monitor->{Provider} >= PROVIDER_SQLNCLI and $monitorsqlver >= 9 and
    $testc->setloginproperty('Pooling', 0);
    $testc->connect;
    if (not $testc->{ErrInfo}{Messages}) {
-       print "ok 24\n";
+       print "ok 23\n";
    }
    else {
-       print "not ok 24 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
+       print "not ok 23 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
    }
    $testc->disconnect();
 
@@ -606,20 +608,28 @@ if ($monitor->{Provider} >= PROVIDER_SQLNCLI and $monitorsqlver >= 9 and
    $monitor->sql("DROP LOGIN [$testuser]");
 }
 else {
+   print "ok 22 # skip\n";
    print "ok 23 # skip\n";
-   print "ok 24 # skip\n";
 }
 
 # Test is_connected
 $testc = setup_testc;
 if (not $testc->isconnected()) {
+   print "ok 24\n";
+}
+else {
+   print "not ok 24\n";
+}
+
+$testc->connect();
+if ($testc->isconnected()) {
    print "ok 25\n";
 }
 else {
    print "not ok 25\n";
 }
 
-$testc->connect();
+$testc->cancelbatch();
 if ($testc->isconnected()) {
    print "ok 26\n";
 }
@@ -627,20 +637,12 @@ else {
    print "not ok 26\n";
 }
 
-$testc->cancelbatch();
-if ($testc->isconnected()) {
+$testc->disconnect();
+if (not $testc->isconnected()) {
    print "ok 27\n";
 }
 else {
    print "not ok 27\n";
-}
-
-$testc->disconnect();
-if (not $testc->isconnected()) {
-   print "ok 28\n";
-}
-else {
-   print "not ok 28\n";
 }
 
 # Don't pool this command, SQL 7 has problem with reusing connection
@@ -653,10 +655,10 @@ $testc->{ErrInfo}{PrintText} = 25;
 $testc->{ErrInfo}{CarpLevel} = 25;
 $testc->sql("RAISERROR('Testing Win32::SqlServer', 20, 1) WITH LOG");
 if (not $testc->isconnected()) {
-   print "ok 29\n";
+   print "ok 28\n";
 }
 else {
-   print "not ok 29\n";
+   print "not ok 28\n";
 }
 
 # Test DisconnectOn in ErrInfo.
@@ -664,29 +666,29 @@ $testc->setloginproperty('Pooling', 1);
 $testc->connect();
 $testc->sql("SELECT * FROM #nosuchtable");
 if ($testc->isconnected()) {
+   print "ok 29\n";
+}
+else {
+   print "not ok 29\n";
+}
+
+$testc->{CommandTimeout} = 1;
+$testc->sql("WAITFOR DELAY '00:00:05'");
+if ($testc->isconnected()) {
    print "ok 30\n";
 }
 else {
    print "not ok 30\n";
 }
 
-$testc->{CommandTimeout} = 1;
-$testc->sql("WAITFOR DELAY '00:00:05'");
-if ($testc->isconnected()) {
-   print "ok 31\n";
-}
-else {
-   print "not ok 31\n";
-}
-
 
 $testc->{ErrInfo}{DisconnectOn}{'208'}++;
 $testc->sql("SELECT * FROM #nosuchtable");
 if (not $testc->isconnected()) {
-   print "ok 32\n";
+   print "ok 31\n";
 }
 else {
-   print "not ok 32\n";
+   print "not ok 31\n";
 }
 
 $testc->connect();
@@ -694,10 +696,10 @@ $testc->{CommandTimeout} = 1;
 $testc->{ErrInfo}{DisconnectOn}{'HYT00'}++;
 $testc->sql("WAITFOR DELAY '00:00:05'");
 if (not $testc->isconnected()) {
-   print "ok 33\n";
+   print "ok 32\n";
 }
 else {
-   print "not ok 33\n";
+   print "not ok 32\n";
 }
 
 # This test may seem out of place, but the code will try to access the
@@ -707,10 +709,10 @@ $testc = setup_testc;
 $testc->{AutoConnect} = 1;
 $testc->sql('SELECT getdate()', COLINFO_FULL);
 if (not $testc->{ErrInfo}{Messages}) {
-    print "ok 34\n";
+    print "ok 33\n";
 }
 else {
-    print "not ok 34 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
+    print "not ok 33 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
 }
 
 undef $testc;
@@ -718,9 +720,34 @@ $testc = setup_testc;
 $testc->connect();
 $testc->sql('SELECT getdate()', COLINFO_FULL);
 if (not $testc->{ErrInfo}{Messages}) {
-    print "ok 35\n";
+    print "ok 34\n";
 }
 else {
-    print "not ok 35 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
+    print "not ok 34 # " . $testc->{ErrInfo}{Messages}[0]{'text'} . "\n";
 }
+
+# Testing sql_init in its various forms.
+undef $testc;
+$testc = Win32::SqlServer::sql_init($mainserver, $mainuser, $mainpw, undef, $provider);
+my $sqluser = $testc->sql_one('SELECT SYSTEM_USER', Win32::SqlServer::SCALAR);
+if (defined $mainuser and $sqluser eq $mainuser or $sqluser =~ /\\/) {
+   print "ok 35\n";
+}
+else {
+   print "not ok 35\n";
+}
+$testc->disconnect();
+
+
+undef $testc;
+$testc = Win32::SqlServer->sql_init($mainserver, $mainuser, $mainpw, undef, $provider);
+$sqluser = $testc->sql_one('SELECT SYSTEM_USER', Win32::SqlServer::SCALAR);
+if (defined $mainuser and $sqluser eq $mainuser or $sqluser =~ /\\/) {
+   print "ok 36\n";
+}
+else {
+   print "not ok 36\n";
+}
+$testc->disconnect();
+
 

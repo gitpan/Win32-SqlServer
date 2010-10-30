@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/2_datatypes.t 28    08-05-04 22:27 Sommar $
+# $Header: /Perl/OlleDB/t/2_datatypes.t 29    09-08-16 13:58 Sommar $
 #
 # This test script tests using sql_sp and sql_insert in all possible
 # ways and with testing use of all datatypes.
 #
 # $History: 2_datatypes.t $
 # 
+# *****************  Version 29  *****************
+# User: Sommar       Date: 09-08-16   Time: 13:58
+# Updated in $/Perl/OlleDB/t
+# Modified test för bit to handle empty string as input.
+#
 # *****************  Version 28  *****************
 # User: Sommar       Date: 08-05-04   Time: 22:27
 # Updated in $/Perl/OlleDB/t
@@ -1492,7 +1497,7 @@ do_tests($X, 1, 'integer', 'regular');
               tinyintcol    =>   "087",
               floatcol      =>   undef,
               realcol       =>   undef,
-              bitcol        =>   -1);
+              bitcol        =>   '');
 %expectcol = (intcol        =>   undef,,
               smallintcol   =>   undef,
               tinyintcol    =>   $tbl{tinyintcol} - 47,
