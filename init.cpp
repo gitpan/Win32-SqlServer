@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/init.cpp 3     08-04-30 22:46 Sommar $
+ $Header: /Perl/OlleDB/init.cpp 4     11-08-07 23:26 Sommar $
 
   This file holds code that is run when the module initialiases, and
   when a new OlleDB object is created. This file also declares global
@@ -7,9 +7,14 @@
   constants that are set up once and then never changed.
 
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: init.cpp $
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:26
+ * Updated in $/Perl/OlleDB
+ * Updated copyright message for $VERSION.
  * 
  * *****************  Version 3  *****************
  * User: Sommar       Date: 08-04-30   Time: 22:46
@@ -387,7 +392,7 @@ void initialize ()
    {
         char buff[256];
         sprintf_s(buff, 256,
-                  "This is Win32::SqlServer, version %s\n\nCopyright (c) 2005-2008 Erland Sommarskog\n",
+                  "This is Win32::SqlServer, version %s\n\nCopyright (c) 2005-2011 Erland Sommarskog\n",
                   XS_VERSION);
         sv_setnv(sv, atof(XS_VERSION));
         sv_setpv(sv, buff);

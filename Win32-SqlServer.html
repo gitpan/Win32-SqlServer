@@ -206,17 +206,13 @@ result set(s).</P>
 <H2><A NAME="Prerequisites">Prerequisites and Supported Platforms</A></H2>
 <DL>
    <DT><B>Hardware</B></DT>
-   <DD>x86 and AMD64 are supported. The module may build and run on
-   IA64 (Itanium), but without access to such a machine, I have not been able
-   to verify this.</DD>
+   <DD>x86 and AMD64 are supported. </DD>
    <DT>&nbsp;</DT>
    <DT><B>Perl</B></DT>
    <DD>Perl 5.8.3 or later is required. (This is ActivePerl build 809). </DD>
    <DT>&nbsp;</DT>
    <DT><B>Operating Systems</B></DT>
-   <DD>Windows NT4 SP6a, Windows 2000, Windows XP, Windows 2003, Windows
-   Vista and Windows 2008. The module <I>may</I> run on Windows 95/98/ME, but I
-   am not supporting these platforms. </DD>
+   <DD>All versions of Windows from Windows 2000 and later.  </DD>
    <DT>&nbsp;</DT>
    <DT><B>MDAC/SQL Server Native Client </B></DT>
    <DD>To connect to <SMALL CLASS="allcaps">SQL</SMALL> Server you need a <SMALL CLASS="allcaps">OLE DB</SMALL> Provider for <SMALL CLASS="allcaps">SQL</SMALL> Server. There
@@ -231,22 +227,22 @@ result set(s).</P>
    <LI><SMALL CLASS="allcaps">SQLNCLI - SQL</SMALL> (Server) Native Client. The provider that ships with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005, and
    you need at least <SMALL CLASS="allcaps">SQLNCLI</SMALL> to have full access to all features in <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005.</LI>
    <LI><SMALL CLASS="allcaps">SQLNCLI10</SMALL> - The provider that
-   ships with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008, and you need <SMALL CLASS="allcaps">SQLNCLI10</SMALL> for support of <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008
-   features.</LI>
+     ships with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008, and you need <SMALL CLASS="allcaps">SQLNCLI10</SMALL> for support of <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008
+     features.</LI>
    </UL>
-   </DD>
-   <DT></DT>
+I'm not yet supporting <small class="allcaps">SQLNCLI11</small>, the provider that ships with Denali, the next version of SQL Server. (There are not very many new features in Denali that requires the new provider anyway.) </DD>
+   <DT>&nbsp;</DT>
    <DT><B>SQL Server</B></DT>
    <DD>All versions from <SMALL CLASS="allcaps">SQL</SMALL> Server 6.5 and on
    are supported. </DD>
    <DT>&nbsp;</DT>
    <DT><B>Compiler</B></DT>
    <DD>If you want to compile Win32::SqlServer on your own, you need Visual Studio 2005 or
-   later. You will also need the <SMALL CLASS="allcaps">SDK</SMALL> file for <SMALL CLASS="allcaps">SQL</SMALL> Native Client
-   that comes with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008. Note that the
-   <SMALL CLASS="allcaps">SDK</SMALL> comes with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 will not do. (If you use any other compiler than
-   Visual C++, feel free to try. I have not tested that, nor do I support it.)
-   If you have downloaded a binary, you do not need any compiler.
+     later. You will also need the <SMALL CLASS="allcaps">SDK</SMALL> file for <SMALL CLASS="allcaps">SQL</SMALL> Native Client
+     that comes with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2008. Note that the
+     <SMALL CLASS="allcaps">SDK</SMALL> comes with <SMALL CLASS="allcaps">SQL</SMALL>&nbsp;2005 will not do. (If you use any other compiler than
+     Visual C++, feel free to try. I have not tested that, nor do I support it.)
+     If you have downloaded a binary, you do not need any compiler.
    </DD>
 </DL>
 <H2><A NAME="functionsummary">Summary of Functions</A></H2>
@@ -1494,8 +1490,8 @@ which Win32::SqlServer exposes.</P>
 </DL>
 <P>All parameters are optional, but in order to specify <CODE>$database</CODE>
 only, you need to specify <CODE>undef</CODE> for the first three. Since this is 
-a module routine, you are supposed to call it as Win32::SqlServer::<A HREF="#sql_init"><NOBR>sql_init()</NOBR></A>, 
-but for now Win32::SqlServer-&gt;<A HREF="#sql_init"><NOBR>sql_init()</NOBR></A> works as well.&nbsp; </P>
+a module routine, you are supposed to call it as <CODE><NOBR>Win32::SqlServer::sql_init()</NOBR></CODE>, 
+but for now <CODE><NOBR>Win32::SqlServer-&gt;sql_init()</NOBR></CODE> works as well.</P>
 <P>If the login fails, this aborts execution of the Perl script. You can only
    catch this condition with <CODE>eval</CODE>. If you want to handle log in
    failures in a <A HREF="#MsgHandler">message handler</A>, create the
@@ -4261,7 +4257,7 @@ description here is restricted to what you need to know when you use
    You can use the names <SMALL CLASS="allcaps">SQL_FILESTREAM_OPEN_FLAG_ASYNC</SMALL> etc, if you either
    prefix them as Win32::SqlServer::<SMALL CLASS="allcaps">SQL_FILESTREAM_OPEN_FLAG_ASYNC</SMALL> or use an
    <A HREF="#EXPORTTAGS">export tag</A>. Default is 0.</DD>
-   <DT></DT>
+   <DT>&nbsp;</DT>
    <DT><CODE>$alloclen</CODE></DT>
    <DD>Books Online says &quot;Specifies the initial allocation size of the data
    file in bytes. It is ignored in read mode.&quot; You can specify this parameter
@@ -4269,8 +4265,7 @@ description here is restricted to what you need to know when you use
    and <B>Low</B>. If you are using 64-bit Perl, you can always use an integer
    value. With 32-bit Perl, you cannot specify a value higher than 2^32 if you
    use an integer. By using the hash keys <B>High</B> and <B>Low</B>, you can
-   overcome this limitation. Caveat: I have not been able to find a way to
-   verify that this parameter actually has any effect.</DD>
+   overcome this limitation.</DD>
 </DL>
 <P>If the <NOMEDDLE>OpenSqlFilestream</NOMEDDLE> <SMALL CLASS="allcaps">API</SMALL> returns an error condition, Win32::SqlServer
 reports this through the <A HREF="#MsgHandler">current message handler</A>. The
@@ -4759,6 +4754,7 @@ an result
    for the machine. When you set the property to this value, Win32::SqlServer will
    automatically change it to one of the other three.</DD>
 </DL>
+<P>Note that if you connect to an older version of SQL Server, you may need to specify the provider explicitly, as SQL Server Native Client only supports connections two versions back. That is, if you have <small class="allcaps">SQLNCLI10</small> installed and need to connet SQL7, this will fail, unless you explicitly specify <small class="allcaps">PROVIDER_SQLOLEDB</small>.</P>
 <P>You cannot set this property when you are connected. You can check whether
    you are connected with the function <A HREF="#isconnected"><NOBR>isconnected()</NOBR></A>.</P>
 <H2>QueryNotification</H2>
@@ -6092,7 +6088,7 @@ WAITFOR DELAY &#39;00:00:05&#39;</PRE>
  want, as long as you don&#39;t claim that you wrote it yourself.</P>
 <HR />
 <I>
-This file was last updated <!--$$Modtime:--> 10-02-21 5:53 <!-- $-->
+This file was last updated <!--$$Modtime:--> 11-08-07 22:52 <!-- $-->
 </I>
 </BODY>
 </HTML>

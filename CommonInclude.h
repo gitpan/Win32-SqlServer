@@ -1,13 +1,18 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/CommonInclude.h 2     08-01-06 23:33 Sommar $
+ $Header: /Perl/OlleDB/CommonInclude.h 3     11-08-07 23:17 Sommar $
 
   This file is included by all files for Win32::SqlServer and it includes
   header files from Windows and Perl that are needed about everywhere.
   It also define some macros that are needed universally.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: CommonInclude.h $
+ * 
+ * *****************  Version 3  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:17
+ * Updated in $/Perl/OlleDB
+ * Use STRICT define for best practice.
  * 
  * *****************  Version 2  *****************
  * User: Sommar       Date: 08-01-06   Time: 23:33
@@ -28,6 +33,7 @@
 #define DBINITCONSTANTS
 #define INITGUID
 #define _SQLNCLI_OLEDB
+#define STRICT
 
 
 #include <windows.h>

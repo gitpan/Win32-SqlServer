@@ -1,14 +1,19 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/internaldata.h 6     09-04-25 22:29 Sommar $
+ $Header: /Perl/OlleDB/internaldata.h 7     11-08-07 23:27 Sommar $
 
   This headerfile defines the internaldata struct and structs it uses.
   The internaldata is private to the C++/XS code and not exposed to Perl.
 
   There are also routines to set it up and tear it down.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: internaldata.h $
+ * 
+ * *****************  Version 7  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:27
+ * Updated in $/Perl/OlleDB
+ * Suppress warnings about data truncation on x64.
  * 
  * *****************  Version 6  *****************
  * User: Sommar       Date: 09-04-25   Time: 22:29
@@ -62,7 +67,7 @@ typedef struct tableparam {
    IRowsetChange  * rowset_ptr;
    HACCESSOR        rowaccessor;
    IAccessor      * accessor_ptr;
-   ULONG            size_row_buffer;
+   size_t           size_row_buffer;
    DBPROP           defcolprop;      // Used if there are any usedefault.
 
    // These buffers are used inserttableparam only, but we allocate once
@@ -150,7 +155,7 @@ typedef struct {
     DBPARAMBINDINFO        * param_info;     // Information about parameters.
     DBBINDING              * param_bindings; // How parameters are bound in param_buffer.
     BYTE                   * param_buffer;   // Buffer for parameter values.
-    ULONG                    size_param_buffer;  // Size of that buffer.
+    size_t                   size_param_buffer;  // Size of that buffer.
     HACCESSOR                param_accessor;
     DBBINDSTATUS           * param_bind_status;
     HV                     * tableparams;    // Key: parameter name, data ptr to table-parameter data.
@@ -169,13 +174,13 @@ typedef struct {
     DBCOUNTITEM              current_rowno;  // Current row in rowbuffer.
 
     // Data with and about the columns.
-    DBORDINAL                no_of_cols;     // No of columns in current result set.
+    ULONG                    no_of_cols;     // No of columns in current result set.
     DBCOLUMNINFO           * column_info;
     WCHAR                  * colname_buffer; // Memory area for names in *colunm_info.
     DBBINDING              * col_bindings;
     DBBINDSTATUS           * col_bind_status;
     BYTE                   * data_buffer;    // Data buffer for a single row.
-    ULONG                    size_data_buffer;  // Size of that data buffer.
+    size_t                   size_data_buffer;  // Size of that data buffer.
     SV                    ** column_keys;    // We convert column names for hash keys once and save them.
 } internaldata;
 

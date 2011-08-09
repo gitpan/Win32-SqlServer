@@ -1,12 +1,17 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/internaldata.cpp 8     09-07-26 12:44 Sommar $
+ $Header: /Perl/OlleDB/internaldata.cpp 9     11-08-07 23:26 Sommar $
 
   This file holds routines setting up the internaldata struct, and
   also release memory allocated in it.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: internaldata.cpp $
+ * 
+ * *****************  Version 9  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:26
+ * Updated in $/Perl/OlleDB
+ * Fix warnings about unsafe comparisons revealed by /W3.
  * 
  * *****************  Version 8  *****************
  * User: Sommar       Date: 09-07-26   Time: 12:44
@@ -364,8 +369,8 @@ void free_tableparam_data(tableparam * table) {
          SysFreeString(coldesc->pwszTypeName);
          SysFreeString(coldesc->dbcid.uName.pwszName);
          if (coldesc->cPropertySets > 0) {
-            for (int j = 0; j < coldesc->cPropertySets; j++) {
-               for (int k = 0; k < coldesc->rgPropertySets[j].cProperties; k++) {
+            for (UINT j = 0; j < coldesc->cPropertySets; j++) {
+               for (UINT k = 0; k < coldesc->rgPropertySets[j].cProperties; k++) {
                    VariantClear(&(coldesc->rgPropertySets[j].rgProperties[k].vValue));
                }
                Safefree(coldesc->rgPropertySets[j].rgProperties);

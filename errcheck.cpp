@@ -1,12 +1,17 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/errcheck.cpp 3     09-07-26 12:44 Sommar $
+ $Header: /Perl/OlleDB/errcheck.cpp 4     11-08-07 23:23 Sommar $
 
   This file holds routines for checking for errors and reporting
   errors and messages.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: errcheck.cpp $
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:23
+ * Updated in $/Perl/OlleDB
+ * Suppress warning about data truncation on x64.
  * 
  * *****************  Version 3  *****************
  * User: Sommar       Date: 09-07-26   Time: 12:44
@@ -72,7 +77,7 @@ void msg_handler (SV        *olle_ptr,
 
     if (my_sv_is_defined(callback))  {  // a perl error handler has been installed */
         dSP;
-        int  retval;
+        IV  retval;
         int  count;
         SV * sv_srvname;
         SV * sv_msgtext;
@@ -212,7 +217,6 @@ void olledb_message (SV          * olle_ptr,
                      const char  * msg,
                      ...)
 {
-   va_list args;
    char expandmsg[4000];
    va_list(ap);
    va_start(ap, msg);
@@ -245,7 +249,7 @@ static void dump_error_info(SV            * olle_ptr,
       error_info_obj->GetDescription(&bstr_description);
 
       if (call_msg_handler) {
-         BSTR bstr_context = SysAllocStringLen(NULL, strlen(context) + 1);
+         BSTR bstr_context = SysAllocStringLen(NULL, (int) strlen(context) + 1);
          BSTR hres_str = SysAllocStringLen(NULL, 11);
          wsprintf(bstr_context, L"%S", context);
          wsprintf(hres_str, L"%08x", hresult);

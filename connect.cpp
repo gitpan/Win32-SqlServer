@@ -1,11 +1,16 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/connect.cpp 4     09-07-26 12:44 Sommar $
+ $Header: /Perl/OlleDB/connect.cpp 5     11-08-07 23:17 Sommar $
 
   Implements the connection routines on Win32::SqlServer.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: connect.cpp $
+ * 
+ * *****************  Version 5  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:17
+ * Updated in $/Perl/OlleDB
+ * Suppress warning about data truncation on x64.
  * 
  * *****************  Version 4  *****************
  * User: Sommar       Date: 09-07-26   Time: 12:44
@@ -245,7 +250,7 @@ void setloginproperty(SV   * olle_ptr,
                 break;
 
             case VT_I4 :
-                mydata->init_properties[ix].vValue.lVal = SvIV(prop_value);
+                mydata->init_properties[ix].vValue.lVal = (LONG) SvIV(prop_value);
                 break;
 
             case VT_BSTR :

@@ -1,12 +1,17 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/handleattributes.h 1     07-12-24 21:39 Sommar $
+ $Header: /Perl/OlleDB/handleattributes.h 2     11-08-07 23:25 Sommar $
 
   Routines for getting and (in one case) deleting handle attributes from
   the Win32::SqlServer hash. Many of them are format options.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: handleattributes.h $
+ * 
+ * *****************  Version 2  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:25
+ * Updated in $/Perl/OlleDB
+ * Suppress warnings about data truncation on x64.
  * 
  * *****************  Version 1  *****************
  * User: Sommar       Date: 07-12-24   Time: 21:39
@@ -54,7 +59,7 @@ extern BOOL OptAutoConnect (SV * olle_ptr);
 
 extern BOOL OptPropsDebug(SV * olle_ptr);
 
-extern int OptRowsAtATime(SV * olle_ptr);
+extern IV OptRowsAtATime(SV * olle_ptr);
 
 extern BOOL OptDecimalAsStr(SV * olle_ptr);
 
@@ -70,7 +75,7 @@ extern char * OptMsecFormat(SV * olle_ptr);
 
 extern SV * OptMsgCallback(SV * olle_ptr);
 
-extern int OptCommandTimeout(SV * olle_ptr);
+extern IV OptCommandTimeout(SV * olle_ptr);
 
 extern HV* OptQueryNotification(SV * olle_ptr);
 

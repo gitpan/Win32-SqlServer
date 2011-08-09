@@ -1,12 +1,22 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/datetime.cpp 4     09-07-26 12:44 Sommar $
+ $Header: /Perl/OlleDB/datetime.cpp 6     11-08-07 23:55 Sommar $
 
   All routines converting between Perl values and the datetime data types
   in SQL Server.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: datetime.cpp $
+ * 
+ * *****************  Version 6  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:55
+ * Updated in $/Perl/OlleDB
+ * Cannot use abs to be 64-bit safe.
+ * 
+ * *****************  Version 5  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:22
+ * Updated in $/Perl/OlleDB
+ * Suppress warnings about data truncation on x64.
  * 
  * *****************  Version 4  *****************
  * User: Sommar       Date: 09-07-26   Time: 12:44
@@ -96,7 +106,7 @@ static BOOL HV_to_datetimetypes (SV               * sv,
       SV    * sv = NULL;
 
       svp = hv_fetch(hv, datetime_keys[p->part],
-                     strlen(datetime_keys[p->part]), 0);
+                     (int) strlen(datetime_keys[p->part]), 0);
       if (svp != NULL)
           sv = *svp;
 
@@ -113,9 +123,9 @@ static BOOL HV_to_datetimetypes (SV               * sv,
          }
       }
 
-      int partvalue = SvIV(sv);
+      IV partvalue = SvIV(sv);
 
-      if (abs(partvalue) > 32767 && p->isshort ||
+      if (_abs64(partvalue) > 32767 && p->isshort ||
           partvalue < 0 && p->isunsigned) {
           olledb_message(olle_ptr, -1, 1, 10,
                          L"Part '%S' in datetime hash has illegal value %d.",
@@ -175,7 +185,7 @@ static BOOL get_time_zone (char            * str,
   BOOL happy_end = FALSE;
 
 
-  for (int ix = strlen - 1; ix >= 0; ix--) {
+  for (size_t ix = strlen - 1; ix >= 0; ix--) {
      char ch = str[ix];
      switch (state) {
         case afterdelim :
@@ -271,7 +281,7 @@ static BOOL parse_iso_string(char              * str,
   int                no_of_digits = 0;
   BOOL               savepart = FALSE;
 
-  for (int ix = 0; ix <= stringlen; ix++) {
+  for (STRLEN ix = 0; ix <= stringlen; ix++) {
      char ch = str[ix];
      if (ix < stringlen) {
         switch (state) {
@@ -833,11 +843,11 @@ static SV * datetimetypes_to_SV (SV               * olle_ptr,
                SV * month = newSViv(datetime.month);
                SV * day   = newSViv(datetime.day);
                hv_store(hv, datetime_keys[DT_year],
-                            strlen(datetime_keys[DT_year]), year, 0);
+                            (I32) strlen(datetime_keys[DT_year]), year, 0);
                hv_store(hv, datetime_keys[DT_month],
-                            strlen(datetime_keys[DT_month]), month, 0);
+                            (I32) strlen(datetime_keys[DT_month]), month, 0);
                hv_store(hv, datetime_keys[DT_day],
-                            strlen(datetime_keys[DT_day]), day, 0);
+                            (I32) strlen(datetime_keys[DT_day]), day, 0);
             }
 
             if (datatype != DBTYPE_DBDATE) {
@@ -846,22 +856,22 @@ static SV * datetimetypes_to_SV (SV               * olle_ptr,
                SV * second = newSViv(datetime.second);
                SV * fraction = newSVnv(datetime.fraction / 1000000.0);
                hv_store(hv, datetime_keys[DT_hour],
-                            strlen(datetime_keys[DT_hour]),     hour, 0);
+                            (I32) strlen(datetime_keys[DT_hour]),     hour, 0);
                hv_store(hv, datetime_keys[DT_minute],
-                            strlen(datetime_keys[DT_minute]),   minute, 0);
+                            (I32) strlen(datetime_keys[DT_minute]),   minute, 0);
                hv_store(hv, datetime_keys[DT_second],
-                            strlen(datetime_keys[DT_second]),   second, 0);
+                            (I32) strlen(datetime_keys[DT_second]),   second, 0);
                hv_store(hv, datetime_keys[DT_fraction],
-                            strlen(datetime_keys[DT_fraction]), fraction, 0);
+                            (I32) strlen(datetime_keys[DT_fraction]), fraction, 0);
             }
 
             if (datatype == DBTYPE_DBTIMESTAMPOFFSET) {
                SV * TZhour   = newSViv(datetime.timezone_hour);
                SV * TZminute = newSViv(datetime.timezone_minute);
                hv_store(hv, datetime_keys[DT_tzhour],
-                            strlen(datetime_keys[DT_tzhour]), TZhour, 0);
+                            (I32) strlen(datetime_keys[DT_tzhour]), TZhour, 0);
                hv_store(hv, datetime_keys[DT_tzminute],
-                            strlen(datetime_keys[DT_tzminute]), TZminute, 0);
+                            (I32) strlen(datetime_keys[DT_tzminute]), TZminute, 0);
             }
 
             perl_value = newSV(NULL);

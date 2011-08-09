@@ -1,11 +1,23 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/makefile.pl 20    10-10-29 16:20 Sommar $
+# $Header: /Perl/OlleDB/makefile.pl 22    11-08-07 23:27 Sommar $
 #
 # Makefile.pl for MSSQL::OlleDB. Note that you may need to specify where
 # you ave the include files for OLE DB.
 #
 # $History: makefile.pl $
 # 
+# *****************  Version 22  *****************
+# User: Sommar       Date: 11-08-07   Time: 23:27
+# Updated in $/Perl/OlleDB
+# Oops! The entry dynamic_lib was incorrect after removal of /base
+# option.
+# 
+# *****************  Version 21  *****************
+# User: Sommar       Date: 10-11-17   Time: 14:47
+# Updated in $/Perl/OlleDB
+# Added /W3 to the compiler flags - need to investigate those warnings
+# later.
+#
 # *****************  Version 20  *****************
 # User: Sommar       Date: 10-10-29   Time: 16:20
 # Updated in $/Perl/OlleDB
@@ -110,7 +122,7 @@
 
 
 use strict;
-
+use Config;
 use ExtUtils::MakeMaker;
 
 # Run CL to see if we are running some version of the Visual C++ compiler.
@@ -149,11 +161,25 @@ if ($SQLDIR !~ /^[C-Z]:/) {
 my $archlibdir = ($ENV{PROCESSOR_ARCHITECTURE} eq 'AMD64' ? 'x64' : $ENV{PROCESSOR_ARCHITECTURE});
 my $libfile = qq!"$SQLDIR\\LIB\\$archlibdir\\sqlncli10.lib"!;
 
+# Set specific flags we want for compilation.
+my $ccflags = $Config{'ccflags'};
+my $optimize = $Config{'optimize'};
+
+# Force -MT over -MD, so that I don't have to include the MSVCRT in the
+# binary distribitution.
+$ccflags =~ s/-MD\b/-MT/;
+$optimize =~ s/-MD\b/-MT/;
+
+# With /O1, one test fails with AS1401 and x86. Yes, one single test! Why?
+# Beats me.
+$ccflags =~ s/-O1\b/-O2/;
+$optimize =~ s/-O1\b/-O2/;
+
 WriteMakefile(
     'INC'          => ($SQLDIR ? qq!-I"$SQLDIR\\INCLUDE"! : ""),
     'NAME'         => 'Win32::SqlServer',
-    'CCFLAGS'     => '/MT', # Debug-flag: '/Zi',
-    'OPTIMIZE'     => '/O2',
+    'CCFLAGS'      => $ccflags,
+    'OPTIMIZE'     => $optimize,
     'OBJECT'       => 'SqlServer.obj handleattributes.obj convenience.obj ' .
                       'datatypemap.obj init.obj internaldata.obj ' .
                       'errcheck.obj connect.obj utils.obj datetime.obj ' .
@@ -163,7 +189,7 @@ WriteMakefile(
     'XS'           => { 'SqlServer.xs' => 'SqlServer.cpp' },
     'dist'         => {ZIP => '"C:\Program Files (x86)\Winzip\wzzip"',
                        ZIPFLAGS => '-r -P'},
-    'dynamic_lib'  => { OTHERLDFLAGS => '/base:"0x19860000" /DELAYLOAD:sqlncli10.dll'}
+    'dynamic_lib'  => { OTHERLDFLAGS => '/DELAYLOAD:sqlncli10.dll'}
     # Set base address to avoid DLL collision, makes startup speedier. Remove
     # if your compiler don't have this option.
 );

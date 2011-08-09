@@ -1,12 +1,17 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/datatypemap.cpp 3     08-02-10 17:12 Sommar $
+ $Header: /Perl/OlleDB/datatypemap.cpp 4     11-08-07 23:20 Sommar $
 
   This file defines the table that maps type names in SQL Server to
   type indicators in OLE DB.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: datatypemap.cpp $
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:20
+ * Updated in $/Perl/OlleDB
+ * Suppress warning about data truncation on x64.
  * 
  * *****************  Version 3  *****************
  * User: Sommar       Date: 08-02-10   Time: 17:12
@@ -45,7 +50,7 @@ static void add_type_entry(const char * name,
                            DBTYPE       indicator,
                            int         &ix)
 {
-   int new_ix = ix + strlen(name) + 1;
+   int new_ix = ix + (int) strlen(name) + 1;
 
    if (ix + strlen(name) + 1 > SIZE_TYPE_MAP) {
        croak ("Internal error: Adding %s at index ix = %d exceeds the size %d of the type map",
@@ -108,8 +113,8 @@ void fill_type_map ()
 DBTYPE lookup_type_map(const char * nameoftype)
 {
    char * tmp;
-   int    ix;
-   int    strsize =  strlen(nameoftype) + 10;
+   size_t ix;
+   size_t strsize =  strlen(nameoftype) + 10;
 
    New(902, tmp, strsize, char);
 

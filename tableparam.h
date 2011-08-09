@@ -1,11 +1,16 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/tableparam.h 3     08-02-10 23:19 Sommar $
+ $Header: /Perl/OlleDB/tableparam.h 4     11-08-07 23:31 Sommar $
 
   Implements all support for table parameters.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: tableparam.h $
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:31
+ * Updated in $/Perl/OlleDB
+ * Updated copyright.
  * 
  * *****************  Version 3  *****************
  * User: Sommar       Date: 08-02-10   Time: 23:19

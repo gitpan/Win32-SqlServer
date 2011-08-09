@@ -1,14 +1,19 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/senddata.h 3     08-04-28 23:12 Sommar $
+ $Header: /Perl/OlleDB/senddata.h 4     11-08-07 23:29 Sommar $
 
   Implements the routines for sending data and command to SQL Server:
   initbatch, enterparameter and executebatch, including routines to
   convert from Perl variables to SQL Server data types, save datetime
   data; those are in datetime.cpp.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: senddata.h $
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:29
+ * Updated in $/Perl/OlleDB
+ * Suppress warnings about data truncation on x64.
  * 
  * *****************  Version 3  *****************
  * User: Sommar       Date: 08-04-28   Time: 23:12
@@ -71,7 +76,7 @@ extern void complete_binding (DBTYPE           datatype,
                               DBLENGTH         maxlen,
                               SV             * sv_scale,
                               SV             * sv_precision,
-                              ULONG            &size_buffer,
+                              size_t          &size_buffer,
                               DBBINDING       * binding,
                               DBPARAMBINDINFO * param_info);
 
@@ -88,11 +93,11 @@ BOOL perl_to_sqlvalue(SV         * olle_ptr,
                       BSTR        &save_bstr);
 
 
-void write_to_databuffer(SV       * olle_ptr,
-                         BYTE     * buffer,
-                         UINT       offset,
-                         DBTYPE     typeind,
-                         valueunion value);
+void write_to_databuffer(SV           * olle_ptr,
+                         BYTE         * buffer,
+                         DBBYTEOFFSET   offset,
+                         DBTYPE         typeind,
+                         valueunion     value);
 
 
 extern void initbatch(SV * olle_ptr,

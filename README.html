@@ -16,13 +16,13 @@
 </STYLE>
 </HEAD>
 <BODY>
-<H1 ALIGN="center">Win32::SqlServer 2.006</H1>
+<H1 ALIGN="center">Win32::SqlServer 2.007</H1>
 <UL>
 <P>
      This is Win32::SqlServer, a module for calling Microsoft <SMALL CLASS="allcaps">SQL</SMALL> Server from Perl
      through <SMALL CLASS="allcaps">OLE DB</SMALL>. </P>
 <P>
-     Copyright © 2004-2010 Erland Sommarskog.
+     Copyright © 2004-2011 Erland Sommarskog.
      All rights reserved.</P>
 <P>
   This program is free software; you can redistribute it and/or modify it under
@@ -49,7 +49,7 @@ http://www.sommarskog.se/mssqlperl/index.html</A>.
 <P>To run Win32::SqlServer you need:</P>
 <UL>
 <LI> Perl 5.8.3 or later. (That is ActivePerl build 809 or later.)</LI>
-<LI> Windows NT4 SP6, Windows 2000, Windows XP and later versions of Windows.</LI>
+<LI> Windows 2000 and later versions of Windows.</LI>
 <LI> <SMALL CLASS="allcaps">SQL</SMALL> Server 6.5 or later.</LI>
 <LI> <SMALL CLASS="allcaps">MDAC</SMALL> 2.6 or <SMALL CLASS="allcaps">SQL</SMALL>
 Server Native Client.</LI>
@@ -102,9 +102,7 @@ prompt.</P>
    located.</LI>
 <LI>If you use a different compiler from Visual C++, you need to review
 makefile.pl more closely. <B>makefile.pl</B> includes two linker options
-specifed with <I>dynamic_lib</I> option that are likely to work only with Visual C++.
-<B>/base</B> is only there to set a difference base address for better startup
-performance. <B>/delayload</B> is more important: it defers the loading of
+specifed with <I>dynamic_lib</I> option that are likely to work only with Visual C++. <B>/delayload</B> is more important: it defers the loading of
 sqlncli10.dll until it&#39;s actually needed, or more precisely until you call
 OpenSqlFilestream. Without /delayload, Win32::SqlServer would not run on systems
 without SQL Server Native Client 10. If you use a different compiler than VC++,
@@ -139,7 +137,7 @@ and 1006 are OK too, I have not tested those builds.)</P>
 This includes other Perl distriutions, such as Strawberry Perl. </P>
 <HR />
 <I>
-Last updated <!--$$Modtime:--> 10-10-29 20:45 <!-- $-->
+Last updated <!--$$Modtime:--> 11-08-07 23:06 <!-- $-->
 </I>
 </BODY>
 </HTML>

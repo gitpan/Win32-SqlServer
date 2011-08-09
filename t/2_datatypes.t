@@ -1,10 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/2_datatypes.t 29    09-08-16 13:58 Sommar $
+# $Header: /Perl/OlleDB/t/2_datatypes.t 30    11-08-07 23:33 Sommar $
 #
 # This test script tests using sql_sp and sql_insert in all possible
 # ways and with testing use of all datatypes.
 #
 # $History: 2_datatypes.t $
+# 
+# *****************  Version 30  *****************
+# User: Sommar       Date: 11-08-07   Time: 23:33
+# Updated in $/Perl/OlleDB/t
+# Added tests for empty strings with sql_variant. Suppot different data
+# files for spatial data types depending on the SQL Server version.
 # 
 # *****************  Version 29  *****************
 # User: Sommar       Date: 09-08-16   Time: 13:58
@@ -2655,6 +2661,24 @@ do_tests($X, 0, 'sql_variant', 'char');
               outtype => '%s eq %s');
 do_tests($X, 0, 'sql_variant', 'varchar');
 
+%tbl       = (varcol  => "",
+              intype  => undef,
+              outtype => 'varchar');
+%expectcol = (varcol  => "",
+              intype  => 'varchar',
+              outtype => $tbl{'outtype'});
+%expectpar = (varcol  => "",
+              intype  => $expectcol{'intype'},
+              outtype => $tbl{'outtype'});
+%expectfile= (varcol  => "N'$tbl{'varcol'}'",
+              intype  => 'NULL',
+              outtype => "N'$tbl{'outtype'}'");
+%test      = (varcol  => '%s eq %s',
+              intype  => '%s eq %s',
+              outtype => '%s eq %s');
+do_tests($X, 0, 'sql_variant', 'varchar empty str');
+
+
 %tbl       = (varcol  => "abc\x{010B}\x{FFFD}",
               intype  => undef,
               outtype => 'nchar');
@@ -4230,7 +4254,7 @@ goto done_spatial if $X->{Provider} == PROVIDER_SQLOLEDB;
 clear_test_data;
 create_spatial($X, $X->{Provider} >= PROVIDER_SQLNCLI10);
 
-{ open(F, '../helpers/spatial.data') or warn "Could not read file 'spatial data': $!\n";
+{ open(F, "../helpers/spatial.data.$sqlver") or warn "Could not read file 'spatial data': $!\n";
   my @file = <F>;
   close F;
   my ($geometry, $geometrycol, $geometrypar,

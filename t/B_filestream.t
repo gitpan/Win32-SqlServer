@@ -1,9 +1,14 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/B_filestream.t 5     08-05-04 18:47 Sommar $
+# $Header: /Perl/OlleDB/t/B_filestream.t 6     11-08-07 23:34 Sommar $
 #
 # Tests for OpenSqlFilestream.
 #
 # $History: B_filestream.t $
+# 
+# *****************  Version 6  *****************
+# User: Sommar       Date: 11-08-07   Time: 23:34
+# Updated in $/Perl/OlleDB/t
+# Added better test of the $alloclen parameter.
 # 
 # *****************  Version 5  *****************
 # User: Sommar       Date: 08-05-04   Time: 18:47
@@ -42,6 +47,7 @@ $| = 1;
 
 my $X = testsqllogin();
 my ($sqlver) = split(/\./, $X->{SQL_version});
+my $x86 = ($ENV{'PROCESSOR_ARCHITECTURE'} eq 'x86');
 
 if ($sqlver < 10) {
    print "1..0 # Skipped: FileStream not available on SQL 2005 and earlier.\n";
@@ -68,7 +74,7 @@ if ($username !~ /\\/) {
    exit;
 }
 
-print "1..8\n";
+print "1..9\n";
 
 # Create a test database with a filestream filegroup.
 $X->sql(<<'SQLEND');
@@ -111,6 +117,16 @@ INSERT fstest (guid, name, data)
          (newid(), 'Kolme', cast(@kolme AS varbinary(MAX)))
 
 SQLEND
+
+# Testing set up. Set up message handling, so that the script does not stop
+# on errors.
+$X->{ErrInfo}{MaxSeverity} = 16;
+$X->{ErrInfo}{PrintLines} = 17;
+$X->{ErrInfo}{PrintText} = 17;
+$X->{ErrInfo}{PrintMsg} = 17;
+$X->{ErrInfo}{SaveMessages} = 1;
+
+
 
 # We're all set for testing. Let's try reading data.
 my ($path, $context, $fh, $buffer, $ret);
@@ -201,9 +217,9 @@ FROM   fstest
 WHERE  name = 'Kolme'
 SQLEND
 
+# Test some more flags and also a reasonable value for $alloclen.
 $fh = $X->OpenSqlFilestream($path, FILESTREAM_READWRITE, $context,
-                            SQL_FILESTREAM_OPEN_FLAG_RANDOM_ACCESS,
-                            {High => 2, Low => 1000000});
+                            SQL_FILESTREAM_OPEN_FLAG_RANDOM_ACCESS, 10000);
 if ($fh > 0) {
    print "ok 7\n";
 }
@@ -231,6 +247,46 @@ else {
    print "not ok 8\n";
 }
 
+($path, $context) = $X->sql(<<SQLEND, LIST, SINGLEROW);
+BEGIN TRANSACTION
+SELECT data.PathName(), get_filestream_transaction_context()
+FROM   fstest
+WHERE  name = 'Kolme'
+SQLEND
+
+# To test that the $alloclen parameter really works we ask for so much space
+# that it just has to fail.
+my $alloclen;
+if ($x86) {
+	$alloclen = {High => 20000, Low => 0};
+}
+else {
+    $alloclen = int(80E12);
+}
+
+$fh = $X->OpenSqlFilestream($path, FILESTREAM_READWRITE, $context, 0,
+                            $alloclen);
+if ($fh > 0) {
+   print "not ok 9  # You don't have a 80 TB disk, do you?\n";
+}
+else {
+   my $errmsg = $X->{ErrInfo}{Messages}[0];
+   if ($errmsg and
+	   $errmsg->{Source} eq 'OpenSqlFilestream' and
+       $errmsg->{Errno} = -112 and
+	   $errmsg->{Severity} = 16) { 
+       print "ok 9\n";
+   }
+   else {
+	   print "not ok 9\n";
+   }	  
+}
+
+# Close this transaction.
+Win32API::File::CloseHandle($fh);
+$X->sql('COMMIT TRANSACTION');
+
+undef $buffer;
 
 
 $X->sql('USE master');

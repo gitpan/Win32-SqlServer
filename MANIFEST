@@ -52,7 +52,8 @@ t/Helpers/Datehelp.bas          Source code for datetesthelper.
 t/Helpers/Datetesthelper.exe    Help program to test DATETIME_REGIONAL.
 t/Helpers/Datetesthelper.vbp    Visual Basic project for datetesthelper.
 t/Helpers/point.vb              Source code for CLR UDT.
-t/Helpers/spatial.data          Test data for spatial queries.
+t/Helpers/spatial.data.10       Test data for spatial queries for SQL 2008.
+t/Helpers/spatial.data.11       Test data for spatial queries for SQL 11.
 t/Helpers/spatial.queries       Queries to genereate spatial.data
 t/Helpers/udt_create.sql        SQL script to create the assemblies from DLLs.
 t/Helpers/Utf8String.cs         Source code for CLR UDT.

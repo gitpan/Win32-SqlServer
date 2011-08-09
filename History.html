@@ -13,6 +13,14 @@
 <CENTER>
 <H1>History Win32::SqlServer</H1>
 </CENTER>
+<H3>2011-08-07 &#8211; 2.007</H3>
+<ul>
+  <li>Binaries for ActivePerl 5.14 are now included.</li>
+  <li>Bugfix: if an sql_variant column or output parameter held a value of the char or varchar data types, the value could have extraneous characters at the end. This was particularly prevalent if the value was the empty string.</li>
+  <li>Fixed an error where the handle returned from OpenSqlFilestream was truncated in 64-bit if the handle was &gt;= 2<sup>31</SUP>.</li>
+  <li>Various internal cleanups to avoid warnings when compiling for 64-bit.</li>
+  <li>Various enhancements to test scripts for Denali and servers with non-1252 collations.</li>
+</ul>
 <H3>2010-10-29 &#8211; 2.006</H3>
 <P>A couple of smaller changes and fixes:</P>
 <UL>
@@ -174,7 +182,7 @@ source distribution for further details.
 
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 10-10-30 18:46 <!-- $-->
+Last updated <!--$$Modtime:--> 11-08-07 23:00 <!-- $-->
 </I>
 </BODY>
 </HTML>

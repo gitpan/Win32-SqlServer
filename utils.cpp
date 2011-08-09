@@ -1,13 +1,18 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/utils.cpp 3     08-05-01 23:54 Sommar $
+ $Header: /Perl/OlleDB/utils.cpp 4     11-08-07 23:31 Sommar $
 
   This file includes various utility routines. In difference to
   the convenience routines, these may call the error handler and
   that. Several of these are called from Perl code as well.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: utils.cpp $
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:31
+ * Updated in $/Perl/OlleDB
+ * Suppress warnings about data truncation on x64.
  * 
  * *****************  Version 3  *****************
  * User: Sommar       Date: 08-05-01   Time: 23:54
@@ -349,7 +354,7 @@ void codepage_convert(SV     * olle_ptr,
    BSTR     bstr;
    STRLEN   inputlen;
    char   * input;
-   STRLEN   outlen;
+   int      outlen;
    char   * output;
 
    // Get out if this is not a string.
@@ -368,12 +373,12 @@ void codepage_convert(SV     * olle_ptr,
    // First find out how long the Unicode string will be, by calling
    // MultiByteToWideChar without a buffer. Not that we always set flags to
    // 0 here, since it works with all code pages.
-   widelen = MultiByteToWideChar(from_cp, 0, input, inputlen, NULL, 0);
+   widelen = MultiByteToWideChar(from_cp, 0, input, (int) inputlen, NULL, 0);
 
    if (widelen > 0) {
       // Allocate Unicode string and convert to Unicode.
       bstr = SysAllocStringLen(NULL, widelen);
-      ret = MultiByteToWideChar(from_cp, 0, input, inputlen, bstr, widelen);
+      ret = MultiByteToWideChar(from_cp, 0, input, (int) inputlen, bstr, widelen);
    }
    else {
       ret = 0;

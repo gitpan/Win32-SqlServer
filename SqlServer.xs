@@ -1,12 +1,17 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/SqlServer.xs 93    10-10-29 16:20 Sommar $
+ $Header: /Perl/OlleDB/SqlServer.xs 94    11-08-07 23:30 Sommar $
 
   The main flie for Win32::SqlServer. This file only includes the XS
   parts these days. All other code is in other files.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: SqlServer.xs $
+ * 
+ * *****************  Version 94  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:30
+ * Updated in $/Perl/OlleDB
+ * Suppress/fix warnings about data truncation on x64.
  * 
  * *****************  Version 93  *****************
  * User: Sommar       Date: 10-10-29   Time: 16:20
@@ -451,7 +456,7 @@ void codepage_convert(olle_ptr, string, from_cp, to_cp)
   unsigned int   from_cp
   unsigned int   to_cp
 
-int
+void *
 OpenSqlFilestream (olle_ptr, path, access, sv_context, options=0, sv_alloclen = NULL)
    SV         * olle_ptr
    SV         * path
@@ -479,16 +484,15 @@ CODE:
           strncmp(SvPV_nolen(sv_alloclen), "HASH(", 5) == 0) {
          HV * hv = (HV *) SvRV(sv_alloclen);
          SV ** svp;
-         SV * sv;
 
          svp = hv_fetch(hv, "High", 4, 0);
          if (svp != NULL && my_sv_is_defined(*svp)) {
-            alloclen.HighPart = SvUV(*svp);
+            alloclen.HighPart = (LONG) SvUV(*svp);
          }
 
          svp = hv_fetch(hv, "Low", 3, 0);
          if (svp != NULL && my_sv_is_defined(*svp)) {
-            alloclen.LowPart = SvUV(*svp);
+            alloclen.LowPart = (DWORD) SvUV(*svp);
          }
       }
       else {
@@ -511,7 +515,7 @@ CODE:
    if (h == INVALID_HANDLE_VALUE) {
       BSTR  msg = SysAllocStringLen(NULL, 200);
       FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, msgno, 0, msg, 200, NULL);
-      for (int ix = wcslen(msg) - 1; msg[ix] == L'\n' || msg[ix] == L'\r'; ix--) {
+      for (SIZE_T ix = wcslen(msg) - 1; msg[ix] == L'\n' || msg[ix] == L'\r'; ix--) {
           msg[ix] = L'\0';
       }
       msg_handler(olle_ptr, -msgno, 1, 16, msg,
@@ -519,7 +523,7 @@ CODE:
       SysFreeString(msg);
    }
 
-   RETVAL = (int) h;
+   RETVAL = h;
 }
 OUTPUT:
    RETVAL
@@ -559,7 +563,7 @@ CODE:
 OUTPUT:
    RETVAL
 
-long
+size_t
 GetProcessWorkingSetSize()
 CODE:
 {

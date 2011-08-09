@@ -1,14 +1,19 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/senddata.cpp 12    09-07-26 12:44 Sommar $
+ $Header: /Perl/OlleDB/senddata.cpp 13    11-08-07 23:28 Sommar $
 
   Implements the routines for sending data and command to SQL Server:
   initbatch, enterparameter and executebatch, including routines to
   convert from Perl variables to SQL Server data types, save datetime
   data; those are in datetime.cpp.
 
-  Copyright (c) 2004-2009   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: senddata.cpp $
+ * 
+ * *****************  Version 13  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:28
+ * Updated in $/Perl/OlleDB
+ * Suppress warnings about data truncation on x64 and more.
  * 
  * *****************  Version 12  *****************
  * User: Sommar       Date: 09-07-26   Time: 12:44
@@ -280,7 +285,7 @@ static void get_xmlencoding (SV              * sv,
    if (scanret) {
       // Get the position.
       char *tmp = strstr(str, encoding);
-      charsetpos = tmp - str;
+      charsetpos = (int) (tmp - str);
 
       // Then normalise to lowercase.
       _strlwr_s(encoding, 20);
@@ -456,7 +461,7 @@ BOOL SV_to_ssvariant (SV          * sv,
        }
        else {
           variant.vt = VT_SS_I4;
-          variant.lIntVal = val;
+          variant.lIntVal = (LONG) val;
        }
 #else
        // On 32-bit, we can only handle int, and larger values will go as floats.
@@ -490,8 +495,8 @@ BOOL SV_to_ssvariant (SV          * sv,
        memcpy(str, perl_ptr, strlen);
        str[strlen] = '\0';
        variant.vt = VT_SS_VARSTRING;
-       variant.CharVal.sActualLength = strlen;
-       variant.CharVal.sMaxLength = strlen;
+       variant.CharVal.sActualLength = (int) strlen;
+       variant.CharVal.sMaxLength = (int) strlen;
        variant.CharVal.pchCharVal = str;
        save_str = str;
     }
@@ -624,7 +629,7 @@ void complete_binding (DBTYPE           datatype,
                        DBLENGTH         maxlen,
                        SV             * sv_precision,
                        SV             * sv_scale,
-                       ULONG           &size_buffer,
+                       size_t          &size_buffer,
                        DBBINDING       * binding,
                        DBPARAMBINDINFO * param_info)
 {
@@ -666,8 +671,9 @@ void complete_binding (DBTYPE           datatype,
 
       case DBTYPE_NUMERIC : {
             BYTE precision = (my_sv_is_defined(sv_precision) ?
-                              SvIV(sv_precision) : 18);
-            BYTE scale     = (my_sv_is_defined(sv_scale) ? SvIV(sv_scale) : 0);
+                             (BYTE) SvIV(sv_precision) : 18);
+            BYTE scale     = (my_sv_is_defined(sv_scale) ?
+                             (BYTE) SvIV(sv_scale) : 0);
             param_info->ulParamSize = sizeof(DB_NUMERIC);
             param_info->bPrecision = precision;
             param_info->bScale     = scale;
@@ -688,7 +694,8 @@ void complete_binding (DBTYPE           datatype,
          break;
 
       case DBTYPE_DBTIME2 : {
-            BYTE scale     = (my_sv_is_defined(sv_scale) ? SvIV(sv_scale) : 7);
+            BYTE scale     = (my_sv_is_defined(sv_scale) ?
+                              (BYTE) SvIV(sv_scale) : 7);
             BYTE precision = (scale == 0 ? 8 : scale + 9);
             param_info->ulParamSize = sizeof(DBTIME2);
             param_info->bPrecision = precision;
@@ -700,7 +707,8 @@ void complete_binding (DBTYPE           datatype,
          break;
 
       case DBTYPE_DBTIMESTAMP : {
-            BYTE scale     = (my_sv_is_defined(sv_scale) ? SvIV(sv_scale) : 7);
+            BYTE scale     = (my_sv_is_defined(sv_scale) ?
+                              (BYTE) SvIV(sv_scale) : 7);
             BYTE precision = (scale == 0 ? 19 : scale + 20);
             param_info->ulParamSize = sizeof(DBTIMESTAMP);
             size_buffer += sizeof(DBTIMESTAMP);
@@ -720,7 +728,8 @@ void complete_binding (DBTYPE           datatype,
          break;
 
       case DBTYPE_DBTIMESTAMPOFFSET : {
-            BYTE scale     = (my_sv_is_defined(sv_scale) ? SvIV(sv_scale) : 7);
+            BYTE scale     = (my_sv_is_defined(sv_scale) ?
+                              (BYTE) SvIV(sv_scale) : 7);
             BYTE precision = (scale == 0 ? 26 : scale + 27);
             param_info->ulParamSize = sizeof(DBTIMESTAMPOFFSET);
             size_buffer += sizeof(DBTIMESTAMPOFFSET);
@@ -802,7 +811,7 @@ BOOL perl_to_sqlvalue(SV         * olle_ptr,
          break;
 
       case DBTYPE_I4 :
-         sqlvalue.intval = SvIV(sv_value);
+         sqlvalue.intval = (LONG) SvIV(sv_value);
          break;
 
       case DBTYPE_I8 :
@@ -963,7 +972,6 @@ void initbatch(SV * olle_ptr,
                SV * sv_cmdtext)
 {
     internaldata  * mydata = get_internaldata(olle_ptr);
-    HRESULT         ret;
 
     if (! sv_cmdtext) {
        olle_croak(olle_ptr, "Parameter sv_cmdtext to submitcmd missing.");
@@ -1215,7 +1223,7 @@ int enterparameter(SV   * olle_ptr,
       // means "empty table" which we indicate as isnull for the being.
       if (maxlen > 0) {
          this_param->isnull = FALSE;
-         value_OK = setup_tableparam(olle_ptr, paramname, this_param, maxlen,
+         value_OK = setup_tableparam(olle_ptr, paramname, this_param, (ULONG) maxlen,
                                      typeinfo);
       }
    }
@@ -1263,11 +1271,11 @@ int enterparameter(SV   * olle_ptr,
 // Writes a parameter/column value to the buffer at the specified
 // offset.
 //--------------------------------------------------------------------
-void write_to_databuffer(SV       * olle_ptr,
-                        BYTE     * buffer,
-                        UINT       offset,
-                        DBTYPE     typeind,
-                        valueunion value)
+void write_to_databuffer(SV        * olle_ptr,
+                        BYTE       * buffer,
+                        DBBYTEOFFSET offset,
+                        DBTYPE       typeind,
+                        valueunion   value)
 {
    void  *  buffer_ptr = &(buffer[offset]);
 
@@ -1370,7 +1378,7 @@ static SV  * get_QN_hash(HV * hv,
    SV   * sv = NULL;
    SV   * ret = NULL;
 
-   svp = hv_fetch(hv, key, strlen(key), 0);
+   svp = hv_fetch(hv, key, (int) strlen(key), 0);
    if (svp != NULL) {
        sv = *svp;
    }
@@ -1389,7 +1397,7 @@ static SV  * get_QN_hash(HV * hv,
 static void set_rowset_properties (SV           * olle_ptr,
                                    internaldata * mydata)
 {
-    int                  optCommandTimeout = OptCommandTimeout(olle_ptr);
+    IV                   optCommandTimeout = OptCommandTimeout(olle_ptr);
     HV                 * optQN = OptQueryNotification(olle_ptr);
     ICommandProperties * property_ptr;
     DBPROP               property[3];
@@ -1406,7 +1414,7 @@ static void set_rowset_properties (SV           * olle_ptr,
        property[0].colid        = DB_NULLID;
        VariantInit(&property[0].vValue);
        property[0].vValue.vt    = VT_I4;
-       property[0].vValue.lVal  = optCommandTimeout;
+       property[0].vValue.lVal  = (LONG) optCommandTimeout;
 
        property_set[0].guidPropertySet = DBPROPSET_ROWSET;
        property_set[0].cProperties     = 1;
@@ -1469,7 +1477,7 @@ static void set_rowset_properties (SV           * olle_ptr,
           property[no_of_props].colid        = DB_NULLID;
           VariantInit(&property[no_of_props].vValue);
           property[no_of_props].vValue.vt    = VT_UI4;
-          property[no_of_props].vValue.ulVal  = SvIV(sv_timeout);
+          property[no_of_props].vValue.ulVal  = (ULONG) SvIV(sv_timeout);
           no_of_props++;
        }
 
@@ -1742,7 +1750,7 @@ int executebatch(SV   *olle_ptr,
        }
     }
 
-    if (SUCCEEDED(ret)) {
+	if (SUCCEEDED(ret)) {
        // Now execute the command. Again, proceed on all errors, so we get by
        // the famous "multi-step errors".
        ret = mydata->cmdtext_ptr->Execute(NULL, IID_IMultipleResults,

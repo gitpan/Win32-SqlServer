@@ -1,13 +1,18 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/handleattributes.cpp 3     09-07-26 12:44 Sommar $
+ $Header: /Perl/OlleDB/handleattributes.cpp 4     11-08-07 23:25 Sommar $
 
   This file holds routines for getting and (in one case) retrieving
   handle attributes from the Win32::SqlServer hash. Many of them are
   format options.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: handleattributes.cpp $
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:25
+ * Updated in $/Perl/OlleDB
+ * Suppress warnings about data truncation on x64.
  * 
  * *****************  Version 3  *****************
  * User: Sommar       Date: 09-07-26   Time: 12:44
@@ -56,13 +61,13 @@ typedef enum hash_key_enum
 static SV **fetch_from_hash (SV* olle_ptr, hash_key_enum id) {
    HV * hv;
    hv = (HV *) SvRV(olle_ptr);
-   return hv_fetch(hv, hash_keys[id], strlen(hash_keys[id]), FALSE);
+   return hv_fetch(hv, hash_keys[id], (I32) strlen(hash_keys[id]), FALSE);
 }
 
 static void delete_from_hash(SV *olle_ptr, hash_key_enum id) {
    HV * hv;
    hv = (HV *) SvRV(olle_ptr);
-   hv_delete(hv, hash_keys[id], strlen(hash_keys[id]), G_DISCARD);
+   hv_delete(hv, hash_keys[id], (I32) strlen(hash_keys[id]), G_DISCARD);
 }
 
 static SV * fetch_option(SV * olle_ptr, hash_key_enum id) {
@@ -112,9 +117,9 @@ BOOL OptPropsDebug(SV * olle_ptr) {
    return retval;
 }
 
-int OptRowsAtATime(SV * olle_ptr) {
+IV OptRowsAtATime(SV * olle_ptr) {
    SV * sv;
-   int retval = 100;
+   IV retval = 100;
    if (sv = fetch_option(olle_ptr, HV_rowsatatime)) {
       retval = SvIV(sv);
       if (retval <= 0) {
@@ -226,9 +231,9 @@ SV * OptMsgCallback(SV * olle_ptr) {
     return callback;
 }
 
-int OptCommandTimeout(SV * olle_ptr) {
+IV OptCommandTimeout(SV * olle_ptr) {
    SV * sv;
-   int retval = 0;
+   IV retval = 0;
    if (sv = fetch_option(olle_ptr, HV_cmdtimeout)) {
       retval = SvIV(sv);
    }

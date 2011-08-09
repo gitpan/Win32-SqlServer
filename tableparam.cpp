@@ -1,11 +1,16 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/tableparam.cpp 12    09-07-27 12:31 Sommar $
+ $Header: /Perl/OlleDB/tableparam.cpp 13    11-08-07 23:30 Sommar $
 
   Implements all support for table parameters.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: tableparam.cpp $
+ * 
+ * *****************  Version 13  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:30
+ * Updated in $/Perl/OlleDB
+ * Suppress warnings about data truncation on x64.
  * 
  * *****************  Version 12  *****************
  * User: Sommar       Date: 09-07-27   Time: 12:31
@@ -610,7 +615,7 @@ int inserttableparam(SV * olle_ptr,
    // did not supply all.
    memset(tbldef->row_buffer, 0, tbldef->size_row_buffer);
    for (int i = 0; i < tbldef->no_of_cols; i++) {
-       ULONG offset = tbldef->colbindings[i].obStatus;
+       DBBYTEOFFSET offset = tbldef->colbindings[i].obStatus;
        DBSTATUS * status = (DBSTATUS *) (&tbldef->row_buffer[offset]);
        * status = DBSTATUS_S_ISNULL;
    }
@@ -622,7 +627,7 @@ int inserttableparam(SV * olle_ptr,
    // Now we handle the input area.
    if (input_av != NULL) {
       int arraylen = av_len(input_av) + 1;
-      if (arraylen > tbldef->no_of_cols & PL_dowarn) {
+      if ((arraylen > tbldef->no_of_cols) & PL_dowarn) {
          olledb_message(olle_ptr, -1, 1, 10,
                         L"Warning: input array for inserttableparam has %d elements, but there are only %d columns in the table definition.",
                         arraylen, tbldef->no_of_cols);
@@ -678,7 +683,7 @@ int inserttableparam(SV * olle_ptr,
          }
 
          // Get the column index.
-         colix = SvIV(sv_colno) - 1;
+         colix = (int) SvIV(sv_colno) - 1;
 
          // If this is a column with a default, we issue a warning and move on
          // to the next column.

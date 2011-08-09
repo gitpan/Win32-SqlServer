@@ -1,10 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/A_tableparam.t 5     09-08-16 13:58 Sommar $
+# $Header: /Perl/OlleDB/t/A_tableparam.t 6     11-08-07 23:34 Sommar $
 #
 # This test script tests table parameters with sql_sp and sql in with
 # all data types.
 #
 # $History: A_tableparam.t $
+# 
+# *****************  Version 6  *****************
+# User: Sommar       Date: 11-08-07   Time: 23:34
+# Updated in $/Perl/OlleDB/t
+# Added test for empty strings with sql_variant. Different data files for
+# the spatial data types depending on the SQL Server version.
 # 
 # *****************  Version 5  *****************
 # User: Sommar       Date: 09-08-16   Time: 13:58
@@ -1679,14 +1685,15 @@ my @vartable;
              [5, 12345678],
              [6, 1e202],
              [7, "abc\x{010B}\x{FFFD}"],
-             [8, "Lycksele"]);
+             [8, "Lycksele"],
+	     [9, '']);
 
 %inparam   = (vartable => \@vartable);
 %expectcol = (basetype => "date;datetimeoffset;datetime2;time;int;" .
-                          "float;nvarchar;varchar;",
+                          "float;nvarchar;varchar;varchar;",
               varcol   => "2008-03-22;2008-03-22 18:30:00.0000000 +01:00;" .
                           "2008-03-22 18:30:00.0003100;00:00:00.0000001;" .
-                          "12345678;1e+202;abc\x{010B}\x{FFFD};Lycksele;");
+                          "12345678;1e+202;abc\x{010B}\x{FFFD};Lycksele;;");
 %expectpar = ();
 %test      = (basetype => "%s eq %s",
               varcol   => "%s eq %s");
@@ -1830,7 +1837,7 @@ SQLEND
 clear_test_data;
 create_clr_builtin;
 
-open(F, '../helpers/spatial.data') or warn "Could not read file 'spatial data': $!\n";
+open(F, "../helpers/spatial.data.$sqlver") or warn "Could not read file 'spatial data': $!\n";
 my @file = <F>;
 close F;
 my ($geometry, $geometrycol, $geometrypar,

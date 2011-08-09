@@ -1,13 +1,18 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/convenience.cpp 3     09-07-26 12:44 Sommar $
+ $Header: /Perl/OlleDB/convenience.cpp 4     11-08-07 23:19 Sommar $
 
   This file holds general-purpose routines, mainly for converting
   between SV and BSTR and the like. All these are low-level, and do
   not have access to error handling. Such code should be in utils.cpp.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: convenience.cpp $
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:19
+ * Updated in $/Perl/OlleDB
+ * Suppress warning about data truncation and other on x64.
  * 
  * *****************  Version 3  *****************
  * User: Sommar       Date: 09-07-26   Time: 12:44
@@ -48,7 +53,7 @@ BSTR char_to_BSTR(char     * str,
    if (inlen > 0) {
       // First find out how long the wide string will be, by calling
       // MultiByteToWideChar without a buffer.
-      widelen = MultiByteToWideChar(decoding, flags, str, inlen, NULL, 0);
+      widelen = MultiByteToWideChar(decoding, flags, str, (int) inlen, NULL, 0);
 
       // Any BOM requires space.
       if (add_BOM) {
@@ -69,7 +74,7 @@ BSTR char_to_BSTR(char     * str,
       }
 
       // And now for the real thing.
-      ret = MultiByteToWideChar(decoding, flags, str, inlen, tmp, widelen);
+      ret = MultiByteToWideChar(decoding, flags, str, (int) inlen, tmp, widelen);
 
       if (! ret) {
          err = GetLastError();
@@ -134,7 +139,7 @@ char * BSTR_to_char (BSTR bstr) {
 // string is assumed to be NULL-terminated.
 SV * BSTR_to_SV (BSTR  bstr,
                  int   bstrlen) {
-   STRLEN buflen;
+   int    buflen;
    char * tmp;
    int    ret;
    SV   * sv;
@@ -191,8 +196,8 @@ LONG pow10(unsigned int n) {
 void quotename(BSTR &str) {
    UINT oldlen = SysStringLen(str);
    BSTR newstr = SysAllocStringLen(NULL, 2*oldlen + 2);
-   int oldix = 0;
-   int newix = 0;
+   UINT oldix = 0;
+   UINT newix = 0;
 
    newstr[newix++] = L'[';
    for (oldix = 0; oldix < oldlen; oldix++) {

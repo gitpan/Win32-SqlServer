@@ -1,14 +1,25 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/getdata.cpp 3     08-01-07 0:22 Sommar $
+ $Header: /Perl/OlleDB/getdata.cpp 5     11-08-07 23:24 Sommar $
 
   Implements the routines for getting data and metadata from SQL Server:
   nextresultset, getcolumninfo, nextrow, getoutputparams. Includes routines
   to Server data types to Perl values, save datetime data; those are in
   datetime.cpp.
 
-  Copyright (c) 2004-2008   Erland Sommarskog
+  Copyright (c) 2004-2011   Erland Sommarskog
 
   $History: getdata.cpp $
+ * 
+ * *****************  Version 5  *****************
+ * User: Sommar       Date: 11-08-07   Time: 23:24
+ * Updated in $/Perl/OlleDB
+ * Suppress warnings about data truncation on x64.
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 11-07-29   Time: 23:27
+ * Updated in $/Perl/OlleDB
+ * Fixed bug that caused sql_variant with empty varchar strings to be
+ * returned incorrectly.
  * 
  * *****************  Version 3  *****************
  * User: Sommar       Date: 08-01-07   Time: 0:22
@@ -101,7 +112,7 @@ int nextresultset (SV * olle_ptr,
                                              &(mydata->column_info),
                                              &(mydata->colname_buffer));
        check_for_errors(olle_ptr, "columns_info_ptr->GetColumnInfo", ret);
-       mydata->no_of_cols = no_of_cols;
+       mydata->no_of_cols = (ULONG) no_of_cols;
 
        // Don't need this interface any more.
        columns_info_ptr->Release();
@@ -394,7 +405,7 @@ void getcolumninfo (SV   * olle_ptr,
                           hashref, arrayref, return_hash, return_array);
 
     // Iterate over all columns.
-    for (DBORDINAL j = 0; j < mydata->no_of_cols; j++) {
+    for (ULONG j = 0; j < mydata->no_of_cols; j++) {
         DBCOLUMNINFO * colinfo = &mydata->column_info[j];
 
         // A hash with information about this column.
@@ -551,14 +562,14 @@ void getcolumninfo (SV   * olle_ptr,
         sv_datatype = newSVpvn(datatypestr, strlen(datatypestr));
 
         // Save keys into the hash.
-        hv_store(hv, "Colno",     strlen("Colno"),     sv_colno, 0);
-        hv_store(hv, "Name",      strlen("Name"),      sv_colname, 0);
-        hv_store(hv, "Type",      strlen("Type"),      sv_datatype, 0);
-        hv_store(hv, "Maxlength", strlen("Maxlength"), sv_maxlength, 0);
-        hv_store(hv, "Precision", strlen("Precision"), sv_precision, 0);
-        hv_store(hv, "Scale",     strlen("Scale"),     sv_scale, 0);
-        hv_store(hv, "Maybenull", strlen("Maybenull"), sv_maybenull, 0);
-        hv_store(hv, "Readonly",  strlen("Readonly"),  sv_readonly, 0);
+        hv_store(hv, "Colno",     (I32) strlen("Colno"),     sv_colno, 0);
+        hv_store(hv, "Name",      (I32) strlen("Name"),      sv_colname, 0);
+        hv_store(hv, "Type",      (I32) strlen("Type"),      sv_datatype, 0);
+        hv_store(hv, "Maxlength", (I32) strlen("Maxlength"), sv_maxlength, 0);
+        hv_store(hv, "Precision", (I32) strlen("Precision"), sv_precision, 0);
+        hv_store(hv, "Scale",     (I32) strlen("Scale"),     sv_scale, 0);
+        hv_store(hv, "Maybenull", (I32) strlen("Maybenull"), sv_maybenull, 0);
+        hv_store(hv, "Readonly",  (I32) strlen("Readonly"),  sv_readonly, 0);
 
         // Create a hash reference.
         SV * hvref = newSV(NULL);
@@ -776,8 +787,8 @@ static SV * ssvariant_to_SV(SV          * olle_ptr,
 
        case VT_SS_STRING    :
        case VT_SS_VARSTRING :
-          perl_value = newSVpv(ssvar.CharVal.pchCharVal,
-                               ssvar.CharVal.sActualLength);
+          perl_value = newSVpvn(ssvar.CharVal.pchCharVal,
+                                ssvar.CharVal.sActualLength);
           OLE_malloc_ptr->Free(ssvar.CharVal.pchCharVal);
           if (ssvar.NCharVal.pwchReserved != NULL) {
              OLE_malloc_ptr->Free(ssvar.NCharVal.pwchReserved);
@@ -1017,7 +1028,7 @@ static void extract_data(SV           * olle_ptr,
                 // For XML there is BOM, that we should ignore.
                 WCHAR ** strptr =  ((WCHAR **) &data_buffer[value_offset]);
                 WCHAR * xmlptr =  * strptr;
-                perl_value = BSTR_to_SV(xmlptr + 1, value_len / 2 - 1);
+                perl_value = BSTR_to_SV(xmlptr + 1, (I32) (value_len / 2) - 1);
                 OLE_malloc_ptr->Free(* strptr);
                 * strptr = NULL;
                 break;
@@ -1025,7 +1036,7 @@ static void extract_data(SV           * olle_ptr,
 
              case DBTYPE_WSTR  : {
                 WCHAR ** strptr =  ((WCHAR **) &data_buffer[value_offset]);
-                perl_value = BSTR_to_SV(* strptr, value_len / 2);
+                perl_value = BSTR_to_SV(* strptr, (I32) (value_len / 2));
                 OLE_malloc_ptr->Free(* strptr);
                 * strptr = NULL;
                 break;
@@ -1066,7 +1077,7 @@ int nextrow (SV   * olle_ptr,
 {
     internaldata * mydata = get_internaldata(olle_ptr);
     formatoptions  formatopts = getformatoptions(olle_ptr);
-    int            optRowsAtATime = OptRowsAtATime(olle_ptr);
+    IV             optRowsAtATime = OptRowsAtATime(olle_ptr);
     HRESULT        ret;
     HROW         * row_handle_ptr;
     BOOL           have_hash;
@@ -1144,7 +1155,7 @@ int nextrow (SV   * olle_ptr,
                              hashref, arrayref, return_hash, return_array);
 
        // Iterate over all columns.
-       for (DBORDINAL j = 0; j < mydata->no_of_cols; j++) {
+       for (ULONG j = 0; j < mydata->no_of_cols; j++) {
            // Extract the data into colvalue.
            extract_data(olle_ptr, formatopts, FALSE,
                         mydata->column_info[j].pwszName,
@@ -1194,8 +1205,8 @@ void getoutputparams (SV * olle_ptr,
     internaldata  * mydata = get_internaldata(olle_ptr);
     formatoptions   formatopts = getformatoptions(olle_ptr);
     paramdata     * current_param;
-    DBORDINAL       parno = 0;
-    DBORDINAL       outparno = 0;
+    ULONG           parno = 0;
+    ULONG           outparno = 0;
     BOOL            have_hash;
     BOOL            have_array;
     HV            * return_hash;

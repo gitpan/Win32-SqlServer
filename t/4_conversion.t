@@ -1,11 +1,17 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/4_conversion.t 8     08-08-17 23:30 Sommar $
+# $Header: /Perl/OlleDB/t/4_conversion.t 9     11-08-07 23:33 Sommar $
 #
 # Tests that it's possible to set up a conversion based on the local
 # OEM character set and the server charset. Mainly is this is test that
 # we can access Win32::Registry properly.
 #
 # $History: 4_conversion.t $
+# 
+# *****************  Version 9  *****************
+# User: Sommar       Date: 11-08-07   Time: 23:33
+# Updated in $/Perl/OlleDB/t
+# Check the code page for the server collation, and skip test if it is
+# not CP1252.
 # 
 # *****************  Version 8  *****************
 # User: Sommar       Date: 08-08-17   Time: 23:30
@@ -91,7 +97,6 @@ else {
    $unknown_oem = $client_cs;
 }
 
-print "1..35\n";
 
 my $X = testsqllogin(0);
 my ($sqlver) = split(/\./, $X->{SQL_version});
@@ -104,6 +109,38 @@ if ($sqlver >= 9) {
    WHERE  name = 'clr enabled'
 SQLEND
 }
+
+# Investigate the code page for the server collation. The test only runs 
+# if this is 1252, since we don't what distortions that happens with other
+# charsets.
+if ($sqlver >= 8) {
+   my ($codepage) = $X->sql_one(<<SQLEND, Win32::SqlServer::SCALAR);
+    SELECT collationproperty(
+                convert(nvarchar(1000), serverproperty('Collation')), 
+           'CodePage')
+SQLEND
+   if ($codepage != 1252) {
+      print "1..0 # Skipped: Code page for server collation is not 1252.\n";
+      exit;
+   }
+}
+else {
+   # On SQL7 and earlier we get the value from syscurconfigs and syscharsets. The
+   # latter is a crazy table, but csid = 1 means Latin-1, and that is what we care
+   # about.
+   my ($csid) = $X->sql_one(<<SQLEND, Win32::SqlServer::SCALAR);
+   SELECT ch.csid
+   FROM   master.dbo.syscurconfigs cf
+   JOIN   master.dbo.syscharsets ch ON cf.value = ch.id
+   WHERE  cf.config = 1123
+SQLEND
+   unless ($csid == 1) {
+      print "1..0 # Skipped: Server sort order is not Latin-1.\n";
+      exit;
+   }
+}
+   
+print "1..35\n";
 
 
 # First create a table to two procedures to read and write to a table.
