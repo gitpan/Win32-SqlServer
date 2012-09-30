@@ -1,12 +1,23 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/SqlServer.xs 94    11-08-07 23:30 Sommar $
+ $Header: /Perl/OlleDB/SqlServer.xs 96    12-09-23 22:53 Sommar $
 
   The main flie for Win32::SqlServer. This file only includes the XS
   parts these days. All other code is in other files.
 
-  Copyright (c) 2004-2011   Erland Sommarskog
+  Copyright (c) 2004-2012   Erland Sommarskog
 
   $History: SqlServer.xs $
+ * 
+ * *****************  Version 96  *****************
+ * User: Sommar       Date: 12-09-23   Time: 22:53
+ * Updated in $/Perl/OlleDB
+ * Moved OpenSqlFilestream to a file of its own.
+ * 
+ * *****************  Version 95  *****************
+ * User: Sommar       Date: 12-08-08   Time: 23:22
+ * Updated in $/Perl/OlleDB
+ * The profile of olledb_message has changed, char * replaced with SV* to
+ * handle Unicode data correctly. parsname now has a return value.
  * 
  * *****************  Version 94  *****************
  * User: Sommar       Date: 11-08-07   Time: 23:30
@@ -80,7 +91,7 @@
  * User: Sommar       Date: 07-11-12   Time: 23:04
  * Updated in $/Perl/OlleDB
  * Oops. Never called OptSqlVersion in initbatch. For conversion to
- * datetime classic with sqlåvariant require Year, Month and Day in hash.
+ * datetime classic with sqlï¿½variant require Year, Month and Day in hash.
  *
  * *****************  Version 81  *****************
  * User: Sommar       Date: 07-11-11   Time: 20:19
@@ -152,8 +163,10 @@
 #include "senddata.h"
 #include "getdata.h"
 #include "tableparam.h"
+#include "filestream.h"
 
 #include <psapi.h>
+
 
 MODULE = Win32::SqlServer           PACKAGE = Win32::SqlServer
 
@@ -168,7 +181,7 @@ olledb_message (olle_ptr, msgno, state, severity, msg)
    int    msgno
    int    state
    int    severity
-   char * msg
+   SV   * msg
 
 void *
 setupinternaldata()
@@ -435,7 +448,7 @@ OUTPUT:
    RETVAL
 
 
-void
+int
 parsename(olle_ptr, sv_namestr, retain_quotes, sv_server, sv_db, sv_schema, sv_object)
    SV * olle_ptr
    SV * sv_namestr
@@ -464,67 +477,6 @@ OpenSqlFilestream (olle_ptr, path, access, sv_context, options=0, sv_alloclen = 
    SV *         sv_context
    unsigned int options
    SV *         sv_alloclen
-CODE:
-{
-   BSTR            bstr_path = SV_to_BSTR(path);
-   DBLENGTH        context_len;
-   BYTE          * context_ptr;
-   SQL_FILESTREAM_DESIRED_ACCESS acc = (SQL_FILESTREAM_DESIRED_ACCESS) access;
-   LARGE_INTEGER   alloclen = {0, 0};
-   PLARGE_INTEGER  alloclen_ptr = NULL;
-   int             msgno;
-
-   SV_to_binary(sv_context, OptBinaryAsStr(olle_ptr), FALSE, context_ptr,
-                context_len);
-
-   if (my_sv_is_defined(sv_alloclen)) {
-      alloclen_ptr = &alloclen;
-
-      if (SvROK(sv_alloclen) &&
-          strncmp(SvPV_nolen(sv_alloclen), "HASH(", 5) == 0) {
-         HV * hv = (HV *) SvRV(sv_alloclen);
-         SV ** svp;
-
-         svp = hv_fetch(hv, "High", 4, 0);
-         if (svp != NULL && my_sv_is_defined(*svp)) {
-            alloclen.HighPart = (LONG) SvUV(*svp);
-         }
-
-         svp = hv_fetch(hv, "Low", 3, 0);
-         if (svp != NULL && my_sv_is_defined(*svp)) {
-            alloclen.LowPart = (DWORD) SvUV(*svp);
-         }
-      }
-      else {
-#ifdef _WIN64
-         alloclen.QuadPart = SvUV(sv_alloclen);
-#else
-         alloclen.HighPart = 0;
-         alloclen.LowPart = SvUV(sv_alloclen);
-#endif
-      }
-   }
-
-   HANDLE h = OpenSqlFilestream(bstr_path, acc, options, context_ptr,
-                                context_len, alloclen_ptr);
-   msgno = GetLastError();
-
-   SysFreeString(bstr_path);
-   Safefree(context_ptr);
-
-   if (h == INVALID_HANDLE_VALUE) {
-      BSTR  msg = SysAllocStringLen(NULL, 200);
-      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, msgno, 0, msg, 200, NULL);
-      for (SIZE_T ix = wcslen(msg) - 1; msg[ix] == L'\n' || msg[ix] == L'\r'; ix--) {
-          msg[ix] = L'\0';
-      }
-      msg_handler(olle_ptr, -msgno, 1, 16, msg,
-                  NULL, NULL, 0, NULL, L"OpenSqlFilestream", 1, 1);
-      SysFreeString(msg);
-   }
-
-   RETVAL = h;
-}
 OUTPUT:
    RETVAL
 

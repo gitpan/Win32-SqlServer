@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/utils.h 1     07-12-24 21:39 Sommar $
+ $Header: /Perl/OlleDB/utils.h 2     12-08-08 23:24 Sommar $
 
   This file includes various utility routines. In difference to
   the convenience routines, these may call the error handler and
@@ -9,19 +9,24 @@
 
   $History: utils.h $
  * 
+ * *****************  Version 2  *****************
+ * User: Sommar       Date: 12-08-08   Time: 23:24
+ * Updated in $/Perl/OlleDB
+ * parsename now has a return value.
+ * 
  * *****************  Version 1  *****************
  * User: Sommar       Date: 07-12-24   Time: 21:39
  * Created in $/Perl/OlleDB
   ---------------------------------------------------------------------*/
 
 
-extern void parsename(SV   * olle_ptr,
-                      SV   * sv_namestr,
-                      int    retain_quotes,
-                      SV   * sv_server,
-                      SV   * sv_db,
-                      SV   * sv_schema,
-                      SV   * sv_object);
+extern int parsename(SV   * olle_ptr,
+                     SV   * sv_namestr,
+                     int    retain_quotes,
+                     SV   * sv_server,
+                     SV   * sv_db,
+                     SV   * sv_schema,
+                     SV   * sv_object);
 
 
 extern void replaceparamholders (SV * olle_ptr,

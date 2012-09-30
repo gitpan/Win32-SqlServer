@@ -1,11 +1,28 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/connect.cpp 5     11-08-07 23:17 Sommar $
+ $Header: /Perl/OlleDB/connect.cpp 8     12-09-23 22:52 Sommar $
 
   Implements the connection routines on Win32::SqlServer.
 
-  Copyright (c) 2004-2011   Erland Sommarskog
+  Copyright (c) 2004-2012   Erland Sommarskog
 
   $History: connect.cpp $
+ * 
+ * *****************  Version 8  *****************
+ * User: Sommar       Date: 12-09-23   Time: 22:52
+ * Updated in $/Perl/OlleDB
+ * Updated Copyright note.
+ * 
+ * *****************  Version 7  *****************
+ * User: Sommar       Date: 12-08-15   Time: 21:28
+ * Updated in $/Perl/OlleDB
+ * New model for checking the number of properties depending on the
+ * provider. New login property ApplicationIntent that requires
+ * validation.
+ * 
+ * *****************  Version 6  *****************
+ * User: Sommar       Date: 12-07-20   Time: 23:49
+ * Updated in $/Perl/OlleDB
+ * Add support for SQLNCLI11.
  * 
  * *****************  Version 5  *****************
  * User: Sommar       Date: 11-08-07   Time: 23:17
@@ -60,6 +77,11 @@ BOOL do_connect (SV    * olle_ptr,
 
     switch (mydata->provider) {
        // At this point provider_default should never appear.
+       case provider_sqlncli11 :
+         clsid = &clsid_sqlncli11;
+         provider_name = "SQLNCLI11";
+         break;
+
        case provider_sqlncli10 :
          clsid = &clsid_sqlncli10;
          provider_name = "SQLNCLI10";
@@ -99,21 +121,18 @@ BOOL do_connect (SV    * olle_ptr,
        croak("Internal error: init_ptr->QueryInterface to create Property object failed with hresult %x", ret);
     }
 
-    // If we are using SQLOLEDB, we should reduce the number of SSPROPS,
-    // because some are in Native Client only. Since there are old SQLOLEDB
-    // we don't support, we have a special check for these.
-    if (mydata->provider == provider_sqloledb) {
-       mydata->init_propsets[ssinit_props].cProperties = no_of_sqloledb_ssprops;
+    // Set the number of SSPROPS depending on the provider.
+    mydata->init_propsets[ssinit_props].cProperties =  
+                                          no_of_ssprops(mydata->provider);
 
-       // Set all dwStatus to -1 for the first two propsets, this helps to
-       // detect that some properties were not set, because we're in for an
-       // old version of SQLOLEDB.
-       for (int p = oleinit_props; p <= ssinit_props; p++) {
-          for (UINT i = init_propset_info[p].start;
-               i < mydata->init_propsets[p].cProperties +
-                  init_propset_info[p].start; i++) {
-             mydata->init_properties[i].dwStatus = -1;
-          }
+    // Set all dwStatus to -1 for the first two propsets, this helps to
+    // detect that some properties were not set, because we're in for an
+    // old version of SQLOLEDB.
+    for (int p = oleinit_props; p <= ssinit_props; p++) {
+       for (UINT i = init_propset_info[p].start;
+            i < mydata->init_propsets[p].cProperties +
+               init_propset_info[p].start; i++) {
+          mydata->init_properties[i].dwStatus = -1;
        }
     }
 
@@ -203,6 +222,18 @@ void setloginproperty(SV   * olle_ptr,
         gbl_init_props[ix].property_id == SSPROP_INIT_NETWORKADDRESS)) {
       drop_SQLversion(olle_ptr);
    }
+
+   // The property ApplicationIntent requires validation.
+   if (gbl_init_props[ix].propset_enum == ssinit_props &&
+       gbl_init_props[ix].property_id == SSPROP_INIT_APPLICATIONINTENT) {
+       char * appintent = SvPV_nolen(prop_value);
+       if (_stricmp(appintent, "readwrite") != 0 &&
+           _stricmp(appintent, "readonly") != 0) {
+              croak("Illegal value '%s' passed for the '%s' property",
+                    appintent, prop_name);
+       }
+   }
+        
 
    // First clear the current value and set property to VT_EMPTY.
    VariantClear(&mydata->init_properties[ix].vValue);

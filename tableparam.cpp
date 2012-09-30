@@ -1,11 +1,21 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/tableparam.cpp 13    11-08-07 23:30 Sommar $
+ $Header: /Perl/OlleDB/tableparam.cpp 15    12-09-23 22:52 Sommar $
 
   Implements all support for table parameters.
 
-  Copyright (c) 2004-2011   Erland Sommarskog
+  Copyright (c) 2004-2012   Erland Sommarskog
 
   $History: tableparam.cpp $
+ * 
+ * *****************  Version 15  *****************
+ * User: Sommar       Date: 12-09-23   Time: 22:52
+ * Updated in $/Perl/OlleDB
+ * Updated Copyright note.
+ * 
+ * *****************  Version 14  *****************
+ * User: Sommar       Date: 12-08-08   Time: 23:21
+ * Updated in $/Perl/OlleDB
+ * parsename now has a return value.
  * 
  * *****************  Version 13  *****************
  * User: Sommar       Date: 11-08-07   Time: 23:30
@@ -189,7 +199,9 @@ static void add_column_props (SV           * olle_ptr,
     DBPROPID  objectpropid;
 
     // First extract components from typeinfo.
-    parsename(olle_ptr, typeinfo, 0, server, database, schema, object);
+    if (! parsename(olle_ptr, typeinfo, 0, server, database, schema, object)) {
+       return;
+    }
 
     // If there was a server, cry foul.
     if (sv_len(server) > 0) {

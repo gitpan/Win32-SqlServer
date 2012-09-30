@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/8_columninfo.t 4     07-11-11 19:10 Sommar $
+# $Header: /Perl/OlleDB/t/8_columninfo.t 5     12-07-19 0:20 Sommar $
 #
 # This test suite tests the data type information returned by
 # getcolumninfo.
 #
 # $History: 8_columninfo.t $
 # 
+# *****************  Version 5  *****************
+# User: Sommar       Date: 12-07-19   Time: 0:20
+# Updated in $/Perl/OlleDB/t
+# Force collation to avoid problems on servers with an SC collation.
+#
 # *****************  Version 4  *****************
 # User: Sommar       Date: 07-11-11   Time: 19:10
 # Updated in $/Perl/OlleDB/t
@@ -36,7 +41,7 @@ require &dirname($0) . '\testsqllogin.pl';
 require '..\helpers\assemblies.pl';
 
 use vars qw($verbose $sql @result $type $prec $scale $len $no_of_tests
-            $clr_enabled);
+            $clr_enabled $collate);
 
 $verbose = shift @ARGV;
 
@@ -46,6 +51,8 @@ $| = 1;
 
 my $X = testsqllogin();
 my ($sqlver) = split(/\./, $X->{SQL_version});
+
+$collate = ($sqlver >= 8 ? 'COLLATE Latin1_General_CS_AS' : '');
 
 print "1..36\n";
 
@@ -329,8 +336,8 @@ else {
 }
 
 # Character data types
-$sql = <<'SQLEND';
-CREATE TABLE #a (a char(23) NOT NULL)
+$sql = <<SQLEND;
+CREATE TABLE #a (a char(23) $collate NOT NULL)
 SELECT a FROM #a
 DROP TABLE #a
 SQLEND
@@ -344,8 +351,8 @@ else {
    print "not ok 19 # <$type> <$len>\n";
 }
 
-$sql = <<'SQLEND';
-CREATE TABLE #a (a varchar(53) NOT NULL)
+$sql = <<SQLEND;
+CREATE TABLE #a (a varchar(53) $collate NOT NULL)
 SELECT a FROM #a
 DROP TABLE #a
 SQLEND
@@ -359,8 +366,8 @@ else {
    print "not ok 20 # <$type> <$len>\n";
 }
 
-$sql = <<'SQLEND';
-CREATE TABLE #a (a text NOT NULL)
+$sql = <<SQLEND;
+CREATE TABLE #a (a text $collate NOT NULL)
 SELECT a FROM #a
 DROP TABLE #a
 SQLEND
@@ -375,8 +382,8 @@ else {
 }
 
 if ($sqlver >= 9) {
-   $sql = <<'SQLEND';
-   CREATE TABLE #a (a varchar(MAX) NOT NULL)
+   $sql = <<SQLEND;
+   CREATE TABLE #a (a varchar(MAX) $collate NOT NULL)
    SELECT a FROM #a
    DROP TABLE #a
 SQLEND
@@ -395,8 +402,8 @@ else {
 }
 
 if ($sqlver >= 7) {
-   $sql = <<'SQLEND';
-   CREATE TABLE #a (a nchar(1) NOT NULL)
+   $sql = <<SQLEND;
+   CREATE TABLE #a (a nchar(1) $collate NOT NULL)
    SELECT a FROM #a
    DROP TABLE #a
 SQLEND
@@ -410,8 +417,8 @@ SQLEND
       print "not ok 23 # <$type> <$len>\n";
    }
 
-   $sql = <<'SQLEND';
-   CREATE TABLE #a (a nvarchar(7) NOT NULL)
+   $sql = <<SQLEND;
+   CREATE TABLE #a (a nvarchar(7) $collate NOT NULL)
    SELECT a FROM #a
    DROP TABLE #a
 SQLEND
@@ -425,8 +432,8 @@ SQLEND
       print "not ok 24 # <$type> <$len>\n";
    }
 
-   $sql = <<'SQLEND';
-   CREATE TABLE #a (a ntext NOT NULL)
+   $sql = <<SQLEND;
+   CREATE TABLE #a (a ntext $collate NOT NULL)
    SELECT a FROM #a
    DROP TABLE #a
 SQLEND
@@ -447,8 +454,8 @@ else {
 }
 
 if ($sqlver >= 9) {
-   $sql = <<'SQLEND';
-   CREATE TABLE #a (a nvarchar(MAX) NOT NULL)
+   $sql = <<SQLEND;
+   CREATE TABLE #a (a nvarchar(MAX) $collate NOT NULL)
    SELECT a FROM #a
    DROP TABLE #a
 SQLEND

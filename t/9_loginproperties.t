@@ -1,9 +1,21 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/9_loginproperties.t 24    10-10-29 17:51 Sommar $
+# $Header: /Perl/OlleDB/t/9_loginproperties.t 26    12-08-19 14:53 Sommar $
 #
 # This test suite tests that setloginproperty, Autoclose and CommandTimeout.
 #
 # $History: 9_loginproperties.t $
+# 
+# *****************  Version 26  *****************
+# User: Sommar       Date: 12-08-19   Time: 14:53
+# Updated in $/Perl/OlleDB/t
+# Turns out that the character value from xp_msver has trailing blanks,
+# which matters so that we retrieve SQL_version from @@version.
+# 
+# *****************  Version 25  *****************
+# User: Sommar       Date: 12-08-15   Time: 21:29
+# Updated in $/Perl/OlleDB/t
+# New checks for the new login property ApplicationIntent and checks of
+# what happens when you change the provider with an existing object.
 # 
 # *****************  Version 24  *****************
 # User: Sommar       Date: 10-10-29   Time: 17:51
@@ -167,7 +179,7 @@ $| = 1;
 
 chdir dirname($0);
 
-print "1..36\n";
+print "1..44\n";
 
 # Set up a monitor connection and get login configuration.
 my $monitor = sql_init($mainserver, $mainuser, $mainpw, undef, $provider);
@@ -264,6 +276,9 @@ if ($secondserver and $secondserver ne $mainserver) {
    # Get SQL version first thing we do.
    my $newsqlver = $testc->{SQL_version};
    my %thissqlver = $testc->sql_one("EXEC master..xp_msver 'Productversion'");
+   if ($newsqlver =~ /^6\./) {
+      $thissqlver{'Character_Value'} =~ s/\s+$//;
+   }
    if ($thissqlver{'Character_Value'} eq $newsqlver) {
       print "ok 6\n";
    }
@@ -292,6 +307,9 @@ if ($secondserver and $secondserver ne $mainserver) {
       $testc->setloginproperty('IntegratedSecurity', "SSPI");
    }
    %thissqlver = $testc->sql_one("EXEC master..xp_msver 'Productversion'");
+   if ($monitorsqlver == 6) {
+      $thissqlver{'Character_Value'} =~ s/\s+$//;
+   }
    if ($thissqlver{'Character_Value'} eq $testc->{SQL_version}) {
       print "ok 8\n";
    }
@@ -411,7 +429,7 @@ if ($monitorsqlver > 6) {
    }
 }
 else {
-   print "ok 14# skip\n";
+   print "ok 14 # skip\n";
 }
 
 
@@ -529,8 +547,8 @@ else {
    print "not ok 19 # $name\n";
 }
 
-# Test connection string. If this attributes, all other defaults should
-# be lost.
+# Test connection string. If this attribut changeses, all other defaults 
+# should be lost.
 $testc = setup_testc;
 my $connectstring = "Database=tempdb;";
 $connectstring .= "Server=$mainserver;" if $mainserver;
@@ -750,4 +768,103 @@ else {
 }
 $testc->disconnect();
 
+# Testing the ApplicationIntent property. We test this for all providers,
+# since the behaviour should be the same in all cases. (We have no
+# possibility to test that the stated intent is respected, as we can't
+# creaste Availability Groups easily.
+$testc = setup_testc;
+$testc->setloginproperty('ApplicationIntent', 'READWRITE');
+$testc->connect();
+if ($testc->isconnected()) {
+   print "ok 37\n";
+}
+else {
+   print "not ok 37\n";
+}
 
+$testc = setup_testc;
+$testc->setloginproperty('ApplicationIntent', 'readOnly');
+$testc->connect();
+if ($testc->isconnected()) {
+   print "ok 38\n";
+}
+else {
+   print "not ok 38\n";
+}
+
+$testc = setup_testc;
+my $crap = Win32::NodeName();
+eval(q!$testc->setloginproperty('ApplicationIntent', $crap)!);
+if ($@ =~ /Illegal.*\'\Q$crap\E\'/) { 
+   print "ok 39\n";
+}
+else {
+   print "not ok 39\n";
+}
+
+# Now we will test changing providers. We cannot do this if the 
+# provider already is SQLOLEDB, because that's what we're changing to.
+# Also, we need to use DMVs in SQL 2005 and later.
+if ($monitor->{Provider} != PROVIDER_SQLOLEDB and
+    $monitorsqlver >= 9) {
+   $testc = setup_testc;
+   $testc->setloginproperty('appname', 'Lantluft');
+   $testc->setloginproperty('HOSTNAME', 'Nettocourtage');
+   $testc->connect();
+   my $query = <<'SQLEND';
+      SELECT app_name(), host_name(), client_version
+      FROM   sys.dm_exec_sessions
+      WHERE  session_id = @@spid
+SQLEND
+   my ($app, $host, $oledbver_save) = $testc->sql_one($query, LIST);
+   if ($app eq 'Lantluft' and $host eq 'Nettocourtage') {
+      print "ok 40\n";
+   }
+   else {
+      print "not ok 40  # <$app> <$host>\n";
+   }
+
+   $testc->disconnect();
+   $testc->{Provider} = PROVIDER_SQLOLEDB;
+   $testc->connect();
+   my $this_oledbver;
+   ($app, $host, $this_oledbver) = $testc->sql_one($query, LIST);
+   if ($app eq 'Lantluft' and $host eq 'Nettocourtage') {
+      print "ok 41\n";
+   }
+   else {
+      print "not ok 41  # <$app> <$host>\n";
+   }
+   
+   if ($this_oledbver == 4) {
+      print "ok 42\n";
+   }
+   else {
+      print "not ok 42  # OLEDB ver = $this_oledbver\n";
+   }
+
+   $testc->disconnect();
+   $testc->{Provider} = $monitor->{Provider};
+   $testc->connect();
+   ($app, $host, $this_oledbver) = $testc->sql_one($query, LIST);
+   if ($app eq 'Lantluft' and $host eq 'Nettocourtage') {
+      print "ok 43\n";
+   }
+   else {
+      print "not ok 43  # <$app> <$host>\n";
+   }
+   
+   if ($this_oledbver == $oledbver_save) {
+      print "ok 44\n";
+   }
+   else {
+      print "not ok 44 # OLEDB ver = $this_oledbver\n";
+   }
+}
+else {
+   print "ok 40 # skip\n";
+   print "ok 41 # skip\n";
+   print "ok 42 # skip\n";
+   print "ok 43 # skip\n";
+   print "ok 44 # skip\n";
+}

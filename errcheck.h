@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/errcheck.h 2     08-01-06 23:33 Sommar $
+ $Header: /Perl/OlleDB/errcheck.h 3     12-08-08 23:20 Sommar $
 
   This file holds routines for checking for errors and reporting
   errors and messages.
@@ -7,6 +7,12 @@
   Copyright (c) 2004-2008   Erland Sommarskog
 
   $History: errcheck.h $
+ * 
+ * *****************  Version 3  *****************
+ * User: Sommar       Date: 12-08-08   Time: 23:20
+ * Updated in $/Perl/OlleDB
+ * Added an overload of olledb_message that accepts an SV* - good for
+ * calls from Perl.
  * 
  * *****************  Version 2  *****************
  * User: Sommar       Date: 08-01-06   Time: 23:33
@@ -54,6 +60,12 @@ extern void olledb_message (SV          * olle_ptr,
                             int           severity,
                             const char  * msg,
                             ...);
+
+extern void olledb_message (SV    * olle_ptr,
+                            int     msgno,
+                            int     state,
+                            int     severity,
+                            SV    * msg);
 
 
 extern void check_for_errors(SV *          olle_ptr,

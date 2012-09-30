@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/init.cpp 4     11-08-07 23:26 Sommar $
+ $Header: /Perl/OlleDB/init.cpp 8     12-09-27 22:45 Sommar $
 
   This file holds code that is run when the module initialiases, and
   when a new OlleDB object is created. This file also declares global
@@ -7,9 +7,30 @@
   constants that are set up once and then never changed.
 
 
-  Copyright (c) 2004-2011   Erland Sommarskog
+  Copyright (c) 2004-2012   Erland Sommarskog
 
   $History: init.cpp $
+ * 
+ * *****************  Version 8  *****************
+ * User: Sommar       Date: 12-09-27   Time: 22:45
+ * Updated in $/Perl/OlleDB
+ * Updated year in variable $Win32::SqlServer::Version.
+ * 
+ * *****************  Version 7  *****************
+ * User: Sommar       Date: 12-09-23   Time: 22:52
+ * Updated in $/Perl/OlleDB
+ * Updated Copyright note.
+ * 
+ * *****************  Version 6  *****************
+ * User: Sommar       Date: 12-08-15   Time: 21:27
+ * Updated in $/Perl/OlleDB
+ * One new login property for SQL 2012 and two new for SQL 2008. Now track
+ * the number of properties per version of  the OLE DB provider.
+ * 
+ * *****************  Version 5  *****************
+ * User: Sommar       Date: 12-07-20   Time: 23:50
+ * Updated in $/Perl/OlleDB
+ * Add support for SQLNCLI11.
  * 
  * *****************  Version 4  *****************
  * User: Sommar       Date: 11-08-07   Time: 23:26
@@ -60,14 +81,17 @@ FILE *dbgfile = NULL;
 CLSID  clsid_sqloledb  = CLSID_NULL;
 CLSID  clsid_sqlncli   = CLSID_NULL;
 CLSID  clsid_sqlncli10 = CLSID_NULL;
+CLSID  clsid_sqlncli11 = CLSID_NULL;
 
 // This global array holds definition of all initialisation properties
 // for OLE DB.
 init_property gbl_init_props[MAX_INIT_PROPERTIES];
 
-// This global holds how many of the SSINIT properties that applies to
-// SQLOLEDB - there are some that only applies to SQL Native Client.
-int no_of_sqloledb_ssprops;
+// Number of properties per provider:
+int no_of_ssprops_sqloledb  = -1;
+int no_of_ssprops_sqlncli   = -1;
+int no_of_ssprops_sqlncli10 = -1;
+int no_of_ssprops_sqlncli11 = -1;
 
 // This array holds where each property set starts in gbl_init_props;
 propset_info_struct init_propset_info[NO_OF_INIT_PROPSETS];
@@ -133,6 +157,7 @@ static BSTR get_hostname() {
 static void add_init_property (const char *  name,
                                init_propsets propset_enum,
                                DBPROPID      propid,
+                               BOOL          is_sqloledb,
                                VARTYPE       datatype,
                                BOOL          default_empty,
                                const WCHAR * default_str,
@@ -152,6 +177,7 @@ static void add_init_property (const char *  name,
    strcpy_s(gbl_init_props[ix].name, INIT_PROPNAME_LEN, name);
    gbl_init_props[ix].propset_enum = propset_enum;
    gbl_init_props[ix].property_id  = propid;
+   gbl_init_props[ix].is_sqloledb  = is_sqloledb;
    gbl_init_props[ix].datatype     = datatype;
    VariantInit(&gbl_init_props[ix].default_value);
 
@@ -207,72 +233,83 @@ static void setup_init_properties ()
    init_propset_info[oleinit_props].no_of_props = 0;
 
    add_init_property("IntegratedSecurity", oleinit_props, DBPROP_AUTH_INTEGRATED,
-                     VT_BSTR, FALSE, L"SSPI", NULL, ix);
+                     TRUE, VT_BSTR, FALSE, L"SSPI", NULL, ix);
    add_init_property("Password", oleinit_props, DBPROP_AUTH_PASSWORD,
-                     VT_BSTR, TRUE, NULL, NULL, ix);
+                     TRUE, VT_BSTR, TRUE, NULL, NULL, ix);
    add_init_property("Username", oleinit_props, DBPROP_AUTH_USERID,
-                     VT_BSTR, TRUE, NULL, NULL, ix);
+                     TRUE, VT_BSTR, TRUE, NULL, NULL, ix);
    add_init_property("Database", oleinit_props, DBPROP_INIT_CATALOG,
-                     VT_BSTR, FALSE, L"tempdb", NULL, ix);
+                     TRUE, VT_BSTR, FALSE, L"tempdb", NULL, ix);
    add_init_property("Server", oleinit_props, DBPROP_INIT_DATASOURCE,
-                     VT_BSTR, FALSE, L"(local)", NULL, ix);
+                     TRUE, VT_BSTR, FALSE, L"(local)", NULL, ix);
    add_init_property("GeneralTimeout", oleinit_props, DBPROP_INIT_GENERALTIMEOUT,
-                     VT_I4, FALSE, NULL, 0, ix);
+                     TRUE, VT_I4, FALSE, NULL, 0, ix);
    add_init_property("LCID", oleinit_props, DBPROP_INIT_LCID,
-                      VT_I4, FALSE, NULL, GetUserDefaultLCID(), ix);
+                     TRUE, VT_I4, FALSE, NULL, GetUserDefaultLCID(), ix);
    add_init_property("Pooling", oleinit_props, DBPROP_INIT_OLEDBSERVICES,
-                     VT_I4, FALSE, NULL, DBPROPVAL_OS_RESOURCEPOOLING, ix);
+                     TRUE, VT_I4, FALSE, NULL, DBPROPVAL_OS_RESOURCEPOOLING, ix);
    add_init_property("Prompt", oleinit_props, DBPROP_INIT_PROMPT,
-                     VT_I2, FALSE, NULL, DBPROMPT_NOPROMPT, ix);
+                     TRUE, VT_I2, FALSE, NULL, DBPROMPT_NOPROMPT, ix);
    add_init_property("ConnectionString", oleinit_props, DBPROP_INIT_PROVIDERSTRING,
-                     VT_BSTR, TRUE, NULL, NULL, ix);
+                     TRUE, VT_BSTR, TRUE, NULL, NULL, ix);
    add_init_property("ConnectTimeout", oleinit_props, DBPROP_INIT_TIMEOUT,
-                     VT_I4, FALSE, NULL, 15, ix);
+                     TRUE, VT_I4, FALSE, NULL, 15, ix);
 
    // DBPROPSET_SQLSERVERDBINIT, SQLOLEDB specific proprties.
    init_propset_info[ssinit_props].start = ix;
    init_propset_info[ssinit_props].no_of_props = 0;
 
    add_init_property("Appname", ssinit_props, SSPROP_INIT_APPNAME,
-                     VT_BSTR, FALSE, scriptname, NULL, ix);
+                     TRUE, VT_BSTR, FALSE, scriptname, NULL, ix);
    add_init_property("Autotranslate", ssinit_props, SSPROP_INIT_AUTOTRANSLATE,
-                     VT_BOOL, TRUE, NULL, NULL, ix);
+                     TRUE, VT_BOOL, TRUE, NULL, NULL, ix);
    add_init_property("Language", ssinit_props, SSPROP_INIT_CURRENTLANGUAGE,
-                     VT_BSTR, TRUE, NULL, NULL, ix);
+                     TRUE, VT_BSTR, TRUE, NULL, NULL, ix);
    add_init_property("AttachFilename", ssinit_props, SSPROP_INIT_FILENAME,
-                     VT_BSTR, TRUE, NULL, NULL, ix);
+                     TRUE, VT_BSTR, TRUE, NULL, NULL, ix);
    add_init_property("NetworkAddress", ssinit_props, SSPROP_INIT_NETWORKADDRESS,
-                     VT_BSTR, TRUE, NULL, NULL, ix);
+                     TRUE, VT_BSTR, TRUE, NULL, NULL, ix);
    add_init_property("Netlib", ssinit_props, SSPROP_INIT_NETWORKLIBRARY,
-                     VT_BSTR, TRUE, NULL, NULL, ix);
+                     TRUE, VT_BSTR, TRUE, NULL, NULL, ix);
    add_init_property("PacketSize", ssinit_props, SSPROP_INIT_PACKETSIZE,
-                     VT_I4, TRUE, NULL, NULL, ix);
+                     TRUE, VT_I4, TRUE, NULL, NULL, ix);
    add_init_property("UseProcForPrep", ssinit_props, SSPROP_INIT_USEPROCFORPREP,
-                     VT_I4, FALSE, NULL, SSPROPVAL_USEPROCFORPREP_OFF, ix);
+                     TRUE, VT_I4, FALSE, NULL, SSPROPVAL_USEPROCFORPREP_OFF, ix);
    add_init_property("Hostname", ssinit_props, SSPROP_INIT_WSID,
-                     VT_BSTR, FALSE, hostname, NULL, ix);
+                     TRUE, VT_BSTR, FALSE, hostname, NULL, ix);
    // Available first in 2.6.
    add_init_property("Encrypt", ssinit_props, SSPROP_INIT_ENCRYPT,
-                     VT_BOOL, TRUE, NULL, NULL, ix);
-
+                     TRUE, VT_BOOL, TRUE, NULL, NULL, ix);
    // The above properties are those that are in SQLOLEDB.
-   no_of_sqloledb_ssprops = init_propset_info[ssinit_props].no_of_props;
+   no_of_ssprops_sqloledb = init_propset_info[ssinit_props].no_of_props;
 
-   // These properties must come last, because there are supported by SQLNCLI
-   // only.
+   // These properties were added in SQL 2005.
    add_init_property("FailoverPartner", ssinit_props, SSPROP_INIT_FAILOVERPARTNER,
-                     VT_BSTR, TRUE, NULL, NULL, ix);
+                     FALSE, VT_BSTR, TRUE, NULL, NULL, ix);
    add_init_property("TrustServerCert", ssinit_props, SSPROP_INIT_TRUST_SERVER_CERTIFICATE,
-                     VT_BOOL, TRUE, NULL, NULL, ix);
+                     FALSE, VT_BOOL, TRUE, NULL, NULL, ix);
    add_init_property("OldPassword", ssinit_props, SSPROP_AUTH_OLD_PASSWORD,
-                     VT_BSTR, TRUE, NULL, NULL, ix);
+                     FALSE, VT_BSTR, TRUE, NULL, NULL, ix);
+   no_of_ssprops_sqlncli = init_propset_info[ssinit_props].no_of_props;
 
+   // These two were added with SQL 2008.
+   add_init_property("ServerSPN", ssinit_props, SSPROP_INIT_SERVERSPN,
+                     FALSE, VT_BSTR, TRUE, NULL, NULL, ix);
+   add_init_property("FailoverPartnerSPN", ssinit_props, SSPROP_INIT_FAILOVERPARTNERSPN,
+                     FALSE, VT_BSTR, TRUE, NULL, NULL, ix);
+   no_of_ssprops_sqlncli10 = init_propset_info[ssinit_props].no_of_props;
+
+   // And here is a single one that made into SQL 2012.
+   add_init_property("ApplicationIntent", ssinit_props, SSPROP_INIT_APPLICATIONINTENT,
+                     FALSE, VT_BSTR, FALSE, L"ReadWrite", NULL, ix);
+   no_of_ssprops_sqlncli11 = init_propset_info[ssinit_props].no_of_props;
+   
    // DBPROPSET_DATASOURCE, data-source properties.
    init_propset_info[datasrc_props].start = ix;
    init_propset_info[datasrc_props].no_of_props = 0;
 
    add_init_property("MultiConnections", datasrc_props, DBPROP_MULTIPLECONNECTIONS,
-                     VT_BOOL, FALSE, NULL, FALSE, ix);
+                     TRUE, VT_BOOL, FALSE, NULL, FALSE, ix);
 
    SysFreeString(scriptname);
    SysFreeString(hostname);
@@ -324,7 +361,8 @@ void initialize ()
    // Get classIDs for the possible providers.
    if (IsEqualCLSID(clsid_sqloledb, CLSID_NULL) &&
        IsEqualCLSID(clsid_sqlncli, CLSID_NULL)  &&
-       IsEqualCLSID(clsid_sqlncli10, CLSID_NULL)) {
+       IsEqualCLSID(clsid_sqlncli10, CLSID_NULL) && 
+       IsEqualCLSID(clsid_sqlncli11, CLSID_NULL)) {
 
       ret = CLSIDFromProgID(L"SQLOLEDB", &clsid_sqloledb);
       if (FAILED(ret)) {
@@ -339,6 +377,11 @@ void initialize ()
       ret = CLSIDFromProgID(L"SQLNCLI10", &clsid_sqlncli10);
       if (FAILED(ret)) {
          clsid_sqlncli10 = CLSID_NULL;
+      }
+
+      ret = CLSIDFromProgID(L"SQLNCLI11", &clsid_sqlncli11);
+      if (FAILED(ret)) {
+         clsid_sqlncli11 = CLSID_NULL;
       }
    }
 
@@ -392,7 +435,7 @@ void initialize ()
    {
         char buff[256];
         sprintf_s(buff, 256,
-                  "This is Win32::SqlServer, version %s\n\nCopyright (c) 2005-2011 Erland Sommarskog\n",
+                  "This is Win32::SqlServer, version %s\n\nCopyright (c) 2005-2012 Erland Sommarskog\n",
                   XS_VERSION);
         sv_setnv(sv, atof(XS_VERSION));
         sv_setpv(sv, buff);
@@ -401,10 +444,26 @@ void initialize ()
 }
 
 
+// Returns the number of properties in the SSPROP structure for the 
+// given provider.
+int no_of_ssprops(provider_enum provider) {
+   switch (provider) {
+      case provider_sqloledb  : return no_of_ssprops_sqloledb;
+      case provider_sqlncli   : return no_of_ssprops_sqlncli;
+      case provider_sqlncli10 : return no_of_ssprops_sqlncli10;
+      case provider_sqlncli11 : return no_of_ssprops_sqlncli11;
+      default :
+         croak("Internal error: Unexpected value %d passed to no_of_ssprops");
+         return 0;
+   }
+}
+
 // This routine returns the default provider, which is highest version of
 // SQL Native Client/SQLOLEDB that is installed.
 provider_enum default_provider(void) {
-  if (! IsEqualCLSID(clsid_sqlncli10, CLSID_NULL))
+  if (! IsEqualCLSID(clsid_sqlncli11, CLSID_NULL))
+      return provider_sqlncli11;
+  else if (! IsEqualCLSID(clsid_sqlncli10, CLSID_NULL))
       return provider_sqlncli10;
   else if (! IsEqualCLSID(clsid_sqlncli, CLSID_NULL))
       return provider_sqlncli;

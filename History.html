@@ -3,7 +3,7 @@
 <HEAD>
 <STYLE TYPE="text/css">
 <!--
-.allcaps {font-size: 90%;}
+.nowrap	{white-space: nowrap;}
 -->
 </STYLE>
 
@@ -13,6 +13,37 @@
 <CENTER>
 <H1>History Win32::SqlServer</H1>
 </CENTER>
+<H3>2012-08-25 &#8211; 2.008</H3>
+<P><B>Platform support:</B></P>
+<UL>
+  <LI>Win32::SqlServer now supports SQL Server Native Client 11 (That is, the version that ships with SQL 2012.)</LI>
+  <LI>Binaries for ActivePerl 5.16 are now included.</LI>
+  <LI><B>This is the last version of Win32::SqlServer to support SQL Server 6.5!</B></LI>
+</UL>
+<P><B>New Features:</B></P>
+<UL>
+  <LI>You can now use output parameters with <A HREF="Win32-SqlServer.html#sql">sql()</A> and <A HREF="Win32-SqlServer.html#sql_one">sql_one()</A>. To do this, pass a reference to a scalar, or, in the case of a datetime hash a reference to a hash.</LI>
+  <LI>In a parameter array to <A HREF="Win32-SqlServer.html#sql">sql()</A> and <A HREF="Win32-SqlServer.html#sql_one">sql_one()</A>, the type name can now be a the name of a user-defined type. This can be the name of a so-called alias type, a CLR UDT or a table type. Here is an example that shows both these features in play. Say that you previously have executed<code> CREATE TYPE custid_type FROM nchar(5)</CODE> previously in SQL Server. Now you can run:</LI>
+  <PRE>   my $cnt;
+   sql('SELECT @cnt = COUNT(*) FROM Orders WHERE CustomerID = @custid', 
+       {cnt    =&gt; ['int', \$cnt],
+        custid =&gt; ['custid_type. $custid]};
+   print &quot;There are $cnt orders.\n&quot;;</PRE>
+For full details, see the section <A HREF="Win32-SqlServer.html#parameterspecdetails"><I>Details on the Parameter Specification</I></A> in the manual.</LI>
+  <LI>Three new <A HREF="Win32-SqlServer.html#setloginproperty">loginproperties</A>: <B>ServerSPN</B>, <B>FailoverSPN</B> and <B>ApplicationIntent</B>.</LI>
+</UL>
+<P><B>Changed Behaviour:</B></P>
+<UL>
+  <LI>Win32::SqlServer now uses <B>@@version</B> to get the SQL Server version. Previously, Win32::SqlServer used <B>xp_msver</B>, but <B>xp_msver</B> is not available in SQL Azure, and I've gotten reports that sites have revoked permission on <B>xp_msver</B> in a security-lockdown craze. As a result of this change, the <B>SQL_version</B> property no longer has a lot of trailing spaces on SQL 6.5. (Which I was unaware of previously.)</LI>
+  <LI>Some occasional error messages have been changed.</LI>
+</UL>
+<P><B>Bugfixes</B>:</P>
+<UL>
+  <LI>Not all variations with quoted identifiers were handled correctly. The test script <B>7_objectnames.t</B> was supposed to test this, but there were bugs in the test script, why failing tests were not reported.</LI>
+  <LI>There might have been potential for SQL injection in queries that retrieves metadata as the database name was inlined. This has been addressed for SQL 7 and later by using <B>sp_executesql</B>. However, this change <B>does not apply to SQL 6.5</B> where the database name is still inlined. I should add that I have not found any actual way to make SQL injection this way.</LI>
+  <LI>Arguments with non-ASCII characters could be displayed incorrectly in error messages.</LI>
+  <LI>If you changed the provider for a Win32::SqlServer object after disconnecting and then reconnected, this was not always properly handled.</LI>
+</UL>
 <H3>2011-08-07 &#8211; 2.007</H3>
 <ul>
   <li>Binaries for ActivePerl 5.14 are now included.</li>
@@ -25,11 +56,11 @@
 <P>A couple of smaller changes and fixes:</P>
 <UL>
   <LI>Binaries for ActivePerl 5.12 are now included.</LI>
-  <LI>You can now invoke <A HREF="Win32-SqlServer.html#sql_init"><NOBR>sql_init()</NOBR></A> as either 
-  <CODE><NOBR>Win32::SqlServer::sql_init()</NOBR></CODE> or <CODE><NOBR>Win32::SqlServer-&gt;sql_init()</NOBR></CODE>. Since 
-  <A HREF="Win32-SqlServer.html#sql_init"><NOBR>sql_init()</NOBR></A> is intended to be a static routine, 
+  <LI>You can now invoke <A HREF="Win32-SqlServer.html#sql_init"><SPAN CLASS="nowrap">sql_init()</SPAN></A> as either 
+  <CODE><SPAN CLASS="nowrap">Win32::SqlServer::sql_init()</SPAN></CODE> or <CODE><SPAN CLASS="nowrap">Win32::SqlServer-&gt;sql_init()</SPAN></CODE>. Since 
+  <A HREF="Win32-SqlServer.html#sql_init"><SPAN CLASS="nowrap">sql_init()</SPAN></A> is intended to be a static routine, 
   the former is preferred, but several people tried the latter, misled by the 
-  manual that used <CODE><NOBR>-&gt;</NOBR></CODE> in 
+  manual that used <CODE><SPAN CLASS="nowrap">-&gt;</SPAN></CODE> in 
   one place (and <CODE>::</CODE> in another).</LI>
   <LI>Bugfix: Fixed an issue where table-valued parameters and possibly other 
   values did not work properly with <B>threads::shared</B>.</LI>
@@ -68,17 +99,17 @@ it is installed.</P>
 		See the section <A HREF="Win32-SqlServer.html#TVP">Working with Table 
 		Variables</A> for details for the high-level interface. For the 
 		mid-level interface there are two new routines:
-		<A HREF="Win32-SqlServer.html#definetablecolumn"><NOBR>
-		definetablecolumn()</NOBR></A> and <NOBR>
-		<A HREF="Win32-SqlServer.html#inserttableparam">inserttableparam()</A></NOBR>.</LI>
+		<A HREF="Win32-SqlServer.html#definetablecolumn"><SPAN CLASS="nowrap">
+		definetablecolumn()</SPAN></A> and <SPAN CLASS="nowrap">
+		<A HREF="Win32-SqlServer.html#inserttableparam">inserttableparam()</A></SPAN>.</LI>
 		<LI>The new data types <B><CODE>date</CODE></B>, <B><CODE>time</CODE></B>,
 		<CODE><B>datetime2</B></CODE> and <B><CODE>datetimeoffset</CODE></B>. 
 		See the section <A HREF="Win32-SqlServer.html#datetime">Date and Time 
 		Data Ttypes</A>. There are some incompatibilities in that 
 		Win32::SqlServer previous silently accepted if there was garbage at the 
 		end of an ISO-formatted date string. Not so any more.</LI>
-		<LI>FILESTREAM: Win32::SqlServer provides access to the <NOBR>
-		<A HREF="Win32-SqlServer.html#OpenSqlFilestream">OpenSqlFilesteam()</A></NOBR> 
+		<LI>FILESTREAM: Win32::SqlServer provides access to the <SPAN CLASS="nowrap">
+		<A HREF="Win32-SqlServer.html#OpenSqlFilestream">OpenSqlFilesteam()</A></SPAN> 
 		API, so that you can access FILESTREAM columns using Win32::API 
 		functions ReadFile and WriteFile.</LI>
 		<LI>Support for large UDTs, that is UDTs that can exceed 8000 bytes in 
@@ -92,8 +123,8 @@ it is installed.</P>
 <P><B>Other changes and bugfixes:</B></P>	
 <UL>
 	<LI>Behvaiour change: previously if you declared a varchar/nvarbinar/varbinary 
-	parameter to <NOBR><A HREF="Win32-SqlServer.html#sql">sql()</A></NOBR> 
-	without specifying the length, for instance <NOBR><CODE>[&#39;nvarchar&#39;, $value]</CODE></NOBR>, 
+	parameter to <SPAN CLASS="nowrap"><A HREF="Win32-SqlServer.html#sql">sql()</A></SPAN> 
+	without specifying the length, for instance <SPAN CLASS="nowrap"><CODE>[&#39;nvarchar&#39;, $value]</CODE></SPAN>, 
 	Win32::SqlServer would infer the length of the value of the parameter. This 
 	has been changed, so that Win32::SqlServer now uses the maximum value, that 
 	is 8000 for <B><CODE>varbinary</CODE></B> and <B><CODE>varchar</CODE></B> 
@@ -104,13 +135,13 @@ it is installed.</P>
 	char/nchar/binary, Win32::SqlServer still infers the length from the actual 
 	value when none is explicitly provided, but now issues a warning to inform 
 	you that this is not good practice.</LI>
-	<LI>The variables <CODE><NOBR>$Win32:SqlServer::VERSION</NOBR></CODE> and
-	<CODE><NOBR>$Win32::SqlServer::Version</NOBR></CODE> are now
+	<LI>The variables <CODE><SPAN CLASS="nowrap">$Win32:SqlServer::VERSION</SPAN></CODE> and
+	<CODE><SPAN CLASS="nowrap">$Win32::SqlServer::Version</SPAN></CODE> are now
 	<A HREF="Win32-SqlServer.html#Versionnumbers">documented</A>.</LI>
 	<LI>Bugfix: character-set conversion did not work when there was no default 
-	handle. (Which there isn&#39;t if you connect with <NOBR>
-	<A HREF="Win32-SqlServer.html#setloginproperty">setloginproperty()</A></NOBR> 
-	and <A HREF="Win32-SqlServer.html#connect"><NOBR>connect()</NOBR></A> rather 
+	handle. (Which there isn&#39;t if you connect with <SPAN CLASS="nowrap">
+	<A HREF="Win32-SqlServer.html#setloginproperty">setloginproperty()</A></SPAN> 
+	and <A HREF="Win32-SqlServer.html#connect"><SPAN CLASS="nowrap">connect()</SPAN></A> rather 
 	than <A HREF="Win32-SqlServer.html#sql_init">sql_init()</A>.)</LI>
 	<LI>Despite that the manual said that you could use <B><CODE>rowversion</CODE></B> 
 	as an alternative to <B><CODE>timestamp</CODE></B>, this was not the case. 
@@ -138,12 +169,12 @@ source distribution for further details.
    is still unsupported. Note that the <CODE><B>
    <A HREF="Win32-SqlServer.html#bigint">bigint</A></B></CODE> data type is
    handled differently on 64-bit.</LI>
-   <LI>Added a mid-level routine <NOBR>
-   <A HREF="Win32-SqlServer.html#getcolumninfo">getcoluminfo()</A></NOBR> that returns information about
+   <LI>Added a mid-level routine <SPAN CLASS="nowrap">
+   <A HREF="Win32-SqlServer.html#getcolumninfo">getcoluminfo()</A></SPAN> that returns information about
    the columns in the result set(s).</LI>
-   <LI>Added a new parameter to <NOBR><A HREF="Win32-SqlServer.html#sql">sql()</A></NOBR> and
-   <A HREF="Win32-SqlServer.html#sql_sp"><NOBR>sql_sp()</NOBR></A>, <CODE>
-   <NOBR STYLE="text-align: left"><A HREF="Win32-SqlServer.html#colinfostyles">$colinfostyle</A></NOBR></CODE>, that permits you
+   <LI>Added a new parameter to <SPAN CLASS="nowrap"><A HREF="Win32-SqlServer.html#sql">sql()</A></SPAN> and
+   <A HREF="Win32-SqlServer.html#sql_sp"><SPAN CLASS="nowrap">sql_sp()</SPAN></A>, <CODE>
+   <NOBR STYLE="text-align: left"><A HREF="Win32-SqlServer.html#colinfostyles">$colinfostyle</A></SPAN></CODE>, that permits you
    to specify that you want information about the columns in the result set
    included in the return structure. You can opt get only names, only position,
    or get a hash with detail information.</LI>
@@ -151,13 +182,13 @@ source distribution for further details.
    but which has row counts instead of&nbsp; empty arrays for INSERT, UPDATE and
    DELETE statements.</LI>
    <LI>Re-implemented the conversion initiated by
-   <A HREF="Win32-SqlServer.html#sql_set_conversion"><NOBR>sql_set_conversion()</NOBR></A> to
+   <A HREF="Win32-SqlServer.html#sql_set_conversion"><SPAN CLASS="nowrap">sql_set_conversion()</SPAN></A> to
    use the Windows API, rather than relying on certain files being available in
    System32. This makes about any code-page conversion accessible from Win32::SqlServer.
    There is a new routine, <A HREF="Win32-SqlServer.html#codepage_convert">
-   <NOBR>codepage_convert()</NOBR></A>, to convert a single value.</LI>
+   <SPAN CLASS="nowrap">codepage_convert()</SPAN></A>, to convert a single value.</LI>
    <LI><A HREF="Win32-SqlServer.html#sql_init">sql_init()</A> now has a fifth parameter,
-   <CODE><NOBR>$provider</NOBR></CODE>.</LI>
+   <CODE><SPAN CLASS="nowrap">$provider</SPAN></CODE>.</LI>
    <LI>Fixed bug that caused a crash on Vista when an <CODE><B>sql_variant</B></CODE> value had
    certain base types.</LI>
 </UL>
@@ -182,7 +213,7 @@ source distribution for further details.
 
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 11-08-07 23:00 <!-- $-->
+Last updated <!--$$Modtime:--> 12-08-25 23:45 <!-- $-->
 </I>
 </BODY>
 </HTML>

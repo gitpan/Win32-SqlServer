@@ -1,12 +1,23 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/errcheck.cpp 4     11-08-07 23:23 Sommar $
+ $Header: /Perl/OlleDB/errcheck.cpp 6     12-09-23 22:52 Sommar $
 
   This file holds routines for checking for errors and reporting
   errors and messages.
 
-  Copyright (c) 2004-2011   Erland Sommarskog
+  Copyright (c) 2004-2012   Erland Sommarskog
 
   $History: errcheck.cpp $
+ * 
+ * *****************  Version 6  *****************
+ * User: Sommar       Date: 12-09-23   Time: 22:52
+ * Updated in $/Perl/OlleDB
+ * Updated Copyright note.
+ * 
+ * *****************  Version 5  *****************
+ * User: Sommar       Date: 12-08-08   Time: 23:20
+ * Updated in $/Perl/OlleDB
+ * Added an overload of olledb_message that accepts an SV* - good for
+ * calls from Perl.
  * 
  * *****************  Version 4  *****************
  * User: Sommar       Date: 11-08-07   Time: 23:23
@@ -209,7 +220,7 @@ void olledb_message (SV    * olle_ptr,
                NULL, NULL, 0, NULL, L"Win32::SqlServer", 1, 1);
 }
 
-// The same with msg in 8-bit, this one is called from Perl code.
+// The same with msg in 8-bit.
 void olledb_message (SV          * olle_ptr,
                      int           msgno,
                      int           state,
@@ -224,6 +235,20 @@ void olledb_message (SV          * olle_ptr,
    va_end(ap);
    BSTR  bstr_msg = SysAllocStringLen(NULL, 4000);
    _snwprintf_s(bstr_msg, 4000, _TRUNCATE, L"%S", expandmsg);
+   msg_handler(olle_ptr, msgno, state, severity, bstr_msg,
+               NULL, NULL, 0, NULL, L"Win32::SqlServer", 1, 1);
+   SysFreeString(bstr_msg);
+}
+
+// And one with an SV, called from Perl-code. This one does not take
+// format codes.
+void olledb_message (SV   * olle_ptr,
+                     int    msgno,
+                     int    state,
+                     int    severity,
+                     SV   * msg)
+{
+   BSTR  bstr_msg = SV_to_BSTR(msg);
    msg_handler(olle_ptr, msgno, state, severity, bstr_msg,
                NULL, NULL, 0, NULL, L"Win32::SqlServer", 1, 1);
    SysFreeString(bstr_msg);

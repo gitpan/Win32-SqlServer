@@ -1,10 +1,24 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/7_objectnames.t 10    08-05-04 23:14 Sommar $
+# $Header: /Perl/OlleDB/t/7_objectnames.t 12    12-08-19 14:53 Sommar $
 #
 # This test suite tests that we interpret object names passed to sql_sp
 # and sql_insert correctly.
 #
 # $History: 7_objectnames.t $
+# 
+# *****************  Version 12  *****************
+# User: Sommar       Date: 12-08-19   Time: 14:53
+# Updated in $/Perl/OlleDB/t
+# Corrected for restrictions on SQL 6.5.
+# 
+# *****************  Version 11  *****************
+# User: Sommar       Date: 12-08-08   Time: 23:16
+# Updated in $/Perl/OlleDB/t
+# Original intent was to add tests for alias types with parameterised
+# SQL, but a bug was revealed so that failed tests for checks of error
+# messages were not registered. This lead to some restructuring and also
+# some "dummy" tests to make it easier to compute the total number of
+# tests. (The previous hard-coding masked the bug.)
 # 
 # *****************  Version 10  *****************
 # User: Sommar       Date: 08-05-04   Time: 23:14
@@ -69,6 +83,7 @@ sub blurb{
     print "#------ Testing @_ ------\n" if $verbose;
 }
 
+
 $verbose = shift @ARGV;
 
 $^W = 1;
@@ -90,9 +105,28 @@ $X->{ErrInfo}{MaxSeverity} = 17;
 # test.
 $X->{ErrInfo}{CheckRetStat} = 0;
 
+# But when we test for error messages, we want different settings.
+sub setup_for_error_test {
+   delete $X->{ErrInfo}{Messages};
+   $X->{ErrInfo}{PrintMsg} = 17;
+   $X->{ErrInfo}{PrintLines} = 17;
+   $X->{ErrInfo}{PrintText} = 17;
+   $X->{ErrInfo}{CarpLevel} = 17;
+   $X->{ErrInfo}{SaveMessages} = 1;
+}
+
+sub reset_after_error_test {
+    $X->{ErrInfo}{PrintMsg} = 1;
+    $X->{ErrInfo}{PrintLines} = 11;
+    $X->{ErrInfo}{PrintText} = 1;
+    $X->{ErrInfo}{CarpLevel} = 10;
+    $X->{ErrInfo}{SaveMessages} = 0;
+}
+
 
 # This becomes "räksmörgås" - but in Greek script.
 my $shrimp = "\x{03A1}\x{03B5}\x{03BA}\x{03C3}\x{03BC}\x{03BF}\x{03B5}\x{03C1}\x{03BD}\x{03B3}\x{03C9}\x{03C2}";
+
 
 # Database names we use. They are some absymal to avoid collisions with existing
 # databases. Names with embedded dots does not work on 6.5, although in theory
@@ -112,14 +146,17 @@ my @procnames = ('plain_sp', '"space sp"');
 push (@procnames, '"dot.sp"', '"dot.dot.sp"', '[bracket sp.]', '[bracket]]sp]',
                   $shrimp) if $sqlver > 6;
 
+# And add some really crazy names that SQLOLEDB cannot handle.
+push(@procnames, '"""quote_sp"', '[]]"]]]') if $sqlncli;
+
 
 # Drop existing databases. This is commented out normally as a safety
 # precaution, so that we don't drop existing databases.
 $X->sql("USE master");
-foreach my $db (@dbs) {
-   my $N = ($sqlver >= 7 ? 'N' : '');
-   $X->sql("IF object_id($N'$db.dbo.sysobjects') IS NOT NULL DROP DATABASE $db");
-}
+#foreach my $db (@dbs) {
+#   my $N = ($sqlver >= 7 ? 'N' : '');
+#   $X->sql("IF object_id($N'$db.dbo.sysobjects') IS NOT NULL DROP DATABASE $db");
+#}
 
 
 # Go on and create databases, schemas and procedures. Note that we don't drop
@@ -145,7 +182,6 @@ foreach my $db (@dbs) {
       unless ($sch =~ /^(dbo|guest)$/) {
          if ($sqlver >= 9) {
             $X->sql("CREATE SCHEMA $sch");
-            $X->sql("GRANT VIEW DEFINITION ON SCHEMA::$sch TO public");
          }
          else {
             # No direct CREATE SCHEMA in previous version, but creating a
@@ -154,13 +190,54 @@ foreach my $db (@dbs) {
          }
       }
 
-      # And so the procedures. Each procedure has a unique signature with
-      # the parameter name, and we save this in %procmap.
+      if ($sqlver >= 9) {
+         $X->sql("GRANT VIEW DEFINITION ON SCHEMA::$sch TO public");
+      }   
+
+      # And so the procedures and type. Each procedure and type has a 
+      # unique signature with the parameter name, and we save this in %procmap.
       foreach my $proc (@procnames) {
          $n++;
          $X->sql ("CREATE PROCEDURE $sch.$proc \@a$n int AS RETURN \@a$n + $n");
          $X->sql ("GRANT EXECUTE ON $sch.$proc TO public");
          $procmap{$db}{$sch}{$proc} = $n;
+
+         # We also create types. Exactly how depends on version etc.
+         # and on the latter, types does not have a schema.
+         if ($sqlver >= 10 and $sqlncli10) {
+            # On SQL 2008 and SQLNCLI10 we do table types, so we can
+            # test both type names and typeinfo.
+            $X->sql("CREATE TYPE $sch.$proc AS TABLE (Olle$n int NOT NULL)");
+            $X->sql(<<SQLEND);
+            CREATE PROCEDURE $sch.Olletbl$n \@t $sch.$proc READONLY AS
+                SELECT * FROM \@t
+SQLEND
+            $X->sql("GRANT EXECUTE ON TYPE::$sch.$proc TO public");
+            $X->sql("GRANT EXECUTE ON $sch.Olletbl$n TO public");
+         }
+         elsif ($sqlver >= 9) {
+            # For other versions we use a plain type.
+            $X->sql("CREATE TYPE $sch.$proc FROM char($n)");
+         }
+         elsif ($sch eq 'dbo') {
+            # On SQL 2000 and earlier, type does not have schema.
+            # Furthermore, names are entered as is, that is quotedid are
+            # not handled.
+            my $type = $proc;
+            if ($type =~ /^".+"$/) {
+               $type =~ s/""/\"/g;
+               $type = substr($type, 1, length($type) - 2);
+            }
+            elsif ($type =~ /^\[.+\]$/) {
+               $type =~ s/\]\]/\]/g;
+               $type = substr($type, 1, length($type) - 2);
+            }
+
+            # And on SQL 6.5, there can be no specials at all, so we skip
+            # such type, and we will skip it below as well.
+            $X->sql_sp("sp_addtype", [$type, "char($n)"]) 
+                   unless $sqlver == 6 and $type =~ /[^\#\w]/;
+         }
 
          # On SQL 2005 and later, also create schema collections to test
          # handling of typeinfo if we have SQL Native client.
@@ -173,31 +250,34 @@ CREATE XML SCHEMA COLLECTION $sch.$proc AS '
 SQLEND
          $X->sql ("GRANT EXECUTE ON XML SCHEMA COLLECTION::$sch.$proc TO public");
          }
-
-         # And on SQL 2008 with SQL Native Client 10 we also test with
-         # table types.
-         if ($sqlver >= 10 and $sqlncli10) {
-            $X->sql("CREATE TYPE $sch.$proc AS TABLE (Olle$n int NOT NULL)");
-            $X->sql(<<SQLEND);
-            CREATE PROCEDURE $sch.Olletbl$n \@t $sch.$proc READONLY AS
-                SELECT * FROM \@t
-SQLEND
-            $X->sql("GRANT EXECUTE ON TYPE::$sch.$proc TO public");
-            $X->sql("GRANT EXECUTE ON $sch.Olletbl$n TO public");
-         }
       }
    }
 }
 
-# Also create a temporary stored procedure.
-$X->sql('CREATE PROCEDURE #temp_sp @a4711 int AS RETURN 14711');
+# Also create a temporary stored procedure and other objects starting
+# with a hash mark
+$X->sql("USE $dbs[0]");
+$n = ($sqlver >= 7 ? 4711 : 47);
+$X->sql("CREATE PROCEDURE #temp_sp \@a$n int AS RETURN 10000 + $n");
 if ($sqlver >= 9  and $sqlncli) {
   $X->sql(<<SQLEND);
 CREATE XML SCHEMA COLLECTION #temp_sp AS
 '<schema xmlns="http://www.w3.org/2001/XMLSchema">
-      <element name="Olle4711" type="string"/>
+      <element name="Olle$n" type="string"/>
 </schema>'
 SQLEND
+}
+if ($sqlver >= 10 and $sqlncli10) {
+   # SQL Server does not accept table types starting with #, so we
+   # cannot create a type. But we create a stored procedure to fake
+   # success in the SP call test.
+   $X->sql("CREATE PROCEDURE Olletbl$n \@x char(1) AS SELECT Olle$n = 100000");
+}
+elsif ($sqlver >= 9) {
+   $X->sql("CREATE TYPE #temp_sp FROM char($n)");
+}
+else {
+   $X->sql("EXEC sp_addtype '#temp_sp', 'char($n)'");
 }
 
 # First try all SP without schema qualification in the first database.
@@ -206,51 +286,69 @@ $X->sql("USE $db");
 my $sch = 'dbo';
 foreach my $proc (@procnames) {
    my $expect = $procmap{$db}{$sch}{$proc};
-   do_test($db, $sch, $proc, $expect, 1, 1);
-   do_test($db, $sch, ".$proc", $expect);
-   do_test($db, $sch, "..$proc", $expect);
-   do_test($db, $sch, "...$proc", $expect);
-   do_test($db, $sch, "$db. .$proc", $expect, 1);
-   do_test($db, $sch, "....$proc", 'ERROR');
-   do_test($db, $sch, ".$db.$sch.$proc", $expect);
-   do_test($db, $sch, ". $db . $sch . $proc", $expect);
-   do_test($db, $sch, ". $db . $sch . $proc", $expect);  # Do it twice to test look-up.
-   do_test($db, $sch, "...$sch.$proc", 'ERROR');
-   do_test($db, $sch, "server.$db.$sch.$proc", 'ERROR', 1, 0);
-   do_test($db, $sch, "..$db.$sch.$proc", 'ERROR');
+   do_test($db, $sch, $proc,                   $expect);
+   do_test($db, $sch, ".$proc",                $expect);
+   do_test($db, $sch, "..$proc",               $expect);
+   do_test($db, $sch, "...$proc",              $expect);
+   do_test($db, $sch, "$db. .$proc",           $expect, 'db');
+   do_test($db, $sch, "....$proc",             'TOOMANY');
+   do_test($db, $sch, ".$db.$sch.$proc",       $expect, 'db');
+   do_test($db, $sch, ". $db . $sch . $proc",  $expect, 'db');
+   do_test($db, $sch, ". $db . $sch . $proc",  $expect, 'db');  # Do it twice to test look-up.
+   do_test($db, $sch, "...$sch.$proc",         'TOOMANY');
+   do_test($db, $sch, "server.$db.$sch.$proc", 'SERVER');
+   do_test($db, $sch, "a.b.$db.$sch.$proc",    'TOOMANY');
 }
+my $portioncombos = 12;
+
+# Test bad quoting
+do_test($db, $sch, '[plain_sp',               'UNTERM');
+do_test(undef, undef, 'db.[sch]].plain_sp',   'UNTERM');
+do_test(undef, undef, '"db.sch.plain_sp',     'UNTERM');
+do_test(undef, undef, '[]]"]]',               'UNTERM');
+do_test(undef, undef, 'db."sch"s.plain_sp',   'ILLQUOTE');
+do_test(undef, undef, 'db. "sch" s.plain_sp', 'ILLQUOTE');
+my $badquoting = 6;
 
 # Redo for the guest schema. We must flush the proc cache here.
 if ($sqlver >= 9) {
    $X->sql("EXECUTE AS USER = 'olle'");
 }
 else {
-    $X->sql("SETUSER 'guest'");
+   $X->sql("SETUSER 'guest'");
 }
 $X->{'procs'} = {};
 $X->{'tabletypes'} = {};
+$X->{'usertypes'} = {};
 $sch = 'guest';
 foreach my $proc (@procnames) {
+   # When running this test, there is a special case: types in SQL 2000
+   # and earlier are always in dbo.
    my $expect = $procmap{$db}{$sch}{$proc};
-   do_test($db, $sch, $proc, $expect, 1, 1);
-   do_test($db, $sch, "guest.$proc", $expect, 1, 1);
-   do_test($db, $sch, "..$proc", $expect);
-   do_test($db, $sch, ". ..$proc", $expect);
+   my $expect_dbo = $procmap{$db}{'dbo'}{$proc};
+   do_test($db, $sch, $proc,         $expect, undef, 'dbo', $expect_dbo);
+   do_test($db, $sch, "guest.$proc", $expect);
+   do_test($db, $sch, "..$proc",     $expect, undef, 'dbo', $expect_dbo);
+   do_test($db, $sch, ". ..$proc",   $expect, undef, 'dbo', $expect_dbo);
 }
 # The semi-colon is needed, because else SQLOLEDB adds "exec" before REVERT.
 $X->sql(($sqlver >= 9 ? "; REVERT" : "SETUSER"));
+my $testsasguest = 4;
+
 
 # Now try all combinations of schema and procedure.
 $X->{'procs'} = {};
 $X->{'tabletypes'} = {};
+$X->{'usertypes'} = {};
 foreach $sch (@schemas) {
    foreach my $proc (@procnames) {
       my $expect = $procmap{$db}{$sch}{$proc};
-      do_test($db, $sch, " $sch.$proc ", $expect, 1, 1);
-      do_test($db, $sch, ".$sch.$proc", $expect);
+      do_test($db, $sch, " $sch.$proc ", $expect);
+      do_test($db, $sch, ".$sch.$proc",  $expect);
       do_test($db, $sch, "..$sch.$proc", $expect);
    }
 }
+my $allschproccombos = 3;
 
 # And now all combinations of databases, schemas and procedeurs.
 $X->sql("USE master");
@@ -258,14 +356,17 @@ foreach $db (@dbs) {
    foreach $sch (@schemas) {
       foreach my $proc (@procnames) {
          my $expect = $procmap{$db}{$sch}{$proc};
-         do_test($db, $sch, "$db.$sch.$proc", $expect, 1, 0);
+         do_test($db, $sch, "$db.$sch.$proc", $expect, 'db');
       }
    }
 }
+my $alldbcombos = 1;
 
 # Test the temporary stored procedure.
-blurb("#temp_sp");
-do_test('master', 'dbo', "#temp_sp", 4711);
+$db = $dbs[0];
+$X->sql("USE $db");
+do_test($db, 'dbo', "#temp_sp", ($sqlver >= 7 ? 4711 : 47));
+my $temptest = 1;
 
 # Finnaly test system stored procedures.
 my $resset = ($sqlver ==  6 ? 2 : 1);
@@ -273,12 +374,14 @@ $X->sql("USE $dbs[0]");
 blurb("sp_help plain_sp");
 my @result = sql_sp('sp_help', ['plain_sp']);
 push(@testres,
-     $result[$resset]{'Parameter_name'} eq '@a' . $procmap{$dbs[0]}{'dbo'}{'plain_sp'});
+     $result[$resset]{'Parameter_name'} eq 
+        '@a' . $procmap{$dbs[0]}{'dbo'}{'plain_sp'});
 foreach $db (@dbs) {
    blurb("$db..sp_help plain_sp");
    @result = sql_sp("$db..sp_help", ['plain_sp']);
    push(@testres,
-         $result[$resset]{'Parameter_name'} eq '@a' . $procmap{$db}{'dbo'}{'plain_sp'});
+        $result[$resset]{'Parameter_name'} eq 
+          '@a' . $procmap{$db}{'dbo'}{'plain_sp'});
 }
 
 
@@ -287,18 +390,29 @@ foreach my $db (@dbs) {
    $X->sql("DROP DATABASE $db");
 }
 
+# Now computer the number of tests for each configuration.
+my $tests_per_objref;
 if ($sqlver >= 10 and $sqlncli10) {
-   $no_of_tests = 1526;
+   $tests_per_objref = 5;
 }
 elsif ($sqlver >= 9 and $sqlncli) {
-   $no_of_tests = 917;
-}
-elsif ($sqlver > 6) {
-   $no_of_tests =  553;
+   $tests_per_objref = 3;
 }
 else {
-   $no_of_tests = 52;
+   $tests_per_objref = 2;
 }
+
+$no_of_tests = 
+   $tests_per_objref * (
+               $portioncombos * scalar(@procnames) +
+               $badquoting +
+               $testsasguest * scalar(@procnames) +
+               $allschproccombos * scalar(@procnames) * scalar(@schemas) +
+               $alldbcombos * scalar(@procnames) * scalar(@schemas) *
+                              scalar(@dbs) +
+               $temptest) + 
+               scalar(@dbs) + 1;  # System procedures.
+
 
 finally:
 
@@ -323,62 +437,185 @@ foreach my $result (@testres) {
 exit;
 
 sub do_test {
-    my($db, $sch, $objref, $mapvalue, $doxml, $dotvpadhoc) = @_;
-    blurb($objref);
+    my($db, $sch, $objref, $mapvalue, $hasdbspec, 
+       $ss2000_typeschema, $ss2000_expect) = @_;
+    $ss2000_typeschema = $sch unless $ss2000_typeschema;
+    $ss2000_expect     = $mapvalue unless $ss2000_expect;
     if ($mapvalue =~ /^\d+$/) {
+
+       # First test call to stored procedure.
        my $retvalue;
        my $params;
        $$params{"a$mapvalue"} = 10000;
        my $expect = 10000 + $mapvalue;
+       blurb("SP Call $objref");
        $X->sql_sp($objref, \$retvalue, $params);
        push(@testres, $retvalue == $expect);
 
-       if ($sqlver >= 9 and $sqlncli and $doxml) {
+
+       # XML schema collections.
+       if ($sqlver >= 9 and $sqlncli) {
           blurb($objref . ' XML ');
+          my $errorexpect;
           $expect = "<Olle$mapvalue>$mapvalue</Olle$mapvalue>";
+          if ($objref =~ /^\./) {
+             setup_for_error_test();
+             $errorexpect = qr/Incorrect syntax near/;
+          }
           my $sqlparams = ['xml', '<?xml version="1.0"?>' . $expect, $objref];
           $retvalue = $X->sql('SELECT convert(nvarchar(MAX), ?)', [$sqlparams],
                                SCALAR, SINGLEROW);
-          push(@testres, $retvalue eq $expect);
+          if ($errorexpect) {
+             my $errmsg = $X->{ErrInfo}{Messages}[0]{'text'};
+             push(@testres, scalar($errmsg =~ $errorexpect));
+          }
+          else {
+             push(@testres, $retvalue eq $expect);
+          }
+          reset_after_error_test();
        }
 
-       if ($sqlver >= 10 and $sqlncli10 and $objref !~ /^#/) {
+       # Test types. This is done different depending on SQL Server
+       # version.
+       if ($sqlver >= 10 and $sqlncli10) {
+          # For "modern" platforms we test table types, for which
+          # there are restrictions for which syntaxes that are legal.
+          # Some of the test case will result in error.
+
+          # First SP call with TVP. These tests always passes.
           $expect = "Olle$mapvalue";
-          if ($dotvpadhoc) {
-              blurb("Table type $objref param sql");
-              $retvalue = $X->sql('SELECT * FROM ?', [['table', [], $objref]],
-                                  COLINFO_NAMES, LIST);
-              push(@testres, $$retvalue[0][0] eq $expect);
-          }
           blurb("Table type $objref SP call");
-          $retvalue = $X->sql_sp("$db.$sch.Olletbl$mapvalue", [[]], COLINFO_NAMES, LIST);
+          $retvalue = $X->sql_sp("$db.$sch.Olletbl$mapvalue", 
+                                  [[]], COLINFO_NAMES, LIST);
           push(@testres,
                (ref $retvalue eq 'ARRAY' and $$retvalue[0][0] eq $expect));
+
+          # The adhoc stuff is worse, here errors may occur:
+          my ($errorexpect1, $errorexpect2);
+          if ($hasdbspec) {
+             $errorexpect1 = $errorexpect2 = 
+                  qr/\Q'$objref'\E.*database portion/;
+          }
+          elsif ($objref =~ /^\./) {
+             $errorexpect1 = $errorexpect2 = qr/Incorrect syntax near/;
+          }
+          elsif ($objref =~ /^\#/) {
+             $errorexpect1 = qr/Unable to find.*\'\Q$objref\E\'/;
+             $errorexpect2 = qr/Unknown data type '\Q$objref\E\'/;
+          }
+          if ($errorexpect1) {
+             setup_for_error_test();
+          }
+
+          blurb("Table type $objref param sql");
+          $retvalue = $X->sql('SELECT * FROM ?', [['table', [], $objref]],
+                              COLINFO_NAMES, LIST);
+          if ($errorexpect1) {
+             my $errmsg = $X->{ErrInfo}{Messages}[0]{'text'};
+             push(@testres, scalar($errmsg =~ $errorexpect1));
+          }
+          else {
+             push(@testres, $$retvalue[0][0] eq $expect);
+          }
+
+          delete $X->{ErrInfo}{Messages};
+          blurb("Table type $objref param sql, with type name");
+          $retvalue = $X->sql('SELECT * FROM ?', [[$objref, []]],
+                              COLINFO_NAMES, LIST);
+          if ($errorexpect2) {
+             my $errmsg = $X->{ErrInfo}{Messages}[0]{'text'};
+             push(@testres, scalar($errmsg =~ $errorexpect2));
+          }
+          else {
+             push(@testres, $$retvalue[0][0] eq $expect);
+          }
+
+          reset_after_error_test();
+       }
+       elsif ($sqlver >= 9 or $ss2000_typeschema eq 'dbo') {
+          # With plain types we can test it all. No errors are expected.
+          # But we skip this for names with special characters on 
+          # SQL 6.5, since you cannot have such types there.
+          unless ($sqlver == 6 or $objref =~ /[^\#\w]/) {
+             blurb("Type $objref");
+
+             $expect = ($sqlver >= 9 ? $mapvalue : $ss2000_expect);
+             $retvalue = $X->sql_one('SELECT datalength(?)', 
+                                    [[$objref, ' ']], SCALAR);
+             push(@testres, $retvalue eq $expect);
+          }
+          else {
+             blurb ("Dummy test");
+             push(@testres, 1);
+          }
+       }
+       else {
+          # On SQL 2000 and we don't accept any other schema than dbo.
+          setup_for_error_test();
+
+          blurb("Type $objref (error expected in SQL 2000)");
+          $X->sql('SELECT ?', [[$objref, undef]]);       
+          my $errmsg = $X->{ErrInfo}{Messages}[0]{'text'};
+          push(@testres, 
+                scalar ($errmsg =~ /has a schema different from/));
+
+          reset_after_error_test();
        }
     }
     else {
-       delete $X->{ErrInfo}{Messages};
-       $X->{ErrInfo}{PrintMsg} = 17;
-       $X->{ErrInfo}{PrintLines} = 17;
-       $X->{ErrInfo}{PrintText} = 17;
-       $X->{ErrInfo}{CarpLevel} = 17;
-       $X->{ErrInfo}{SaveMessages} = 1;
-       $X->sql_sp($objref);
-       my $errmsg = $X->{ErrInfo}{Messages}[0]{'text'};
-       push(@testres, $errmsg =~ /Stored procedure .* not accessible/);
+       setup_for_error_test();
 
-       if ($sqlver >= 9 and $sqlncli and $doxml) {
-          delete $X->{ErrInfo}{Messages};
-          $X->sql('SELECT ?', ['xml', undef, $objref]);
-          $errmsg = $X->{ErrInfo}{Messages}[0]{'text'};
-          push(@testres, $errmsg =~ /Incorrect syntax near/);
+       my $expect;
+       if ($mapvalue eq 'TOOMANY') {
+          $expect = qr/'\Q$objref\E'.*includes more than four/;
+       }
+       elsif ($mapvalue eq 'SERVER') {
+          $expect = qr/'\Q$objref\E'.*server (portion|component)/;
+       }
+       elsif ($mapvalue eq 'UNTERM') {
+          $expect = qr/'\Q$objref\E'.*unterminated/;
+       }
+       elsif ($mapvalue eq 'ILLQUOTE') {
+          $expect = qr/'\Q$objref\E'.*incorrectly quoted/;
+       }
+       else {
+          die "Mapvalue has an unexpected value: '$mapvalue'.";
        }
 
-       $X->{ErrInfo}{PrintMsg} = 1;
-       $X->{ErrInfo}{PrintLines} = 11;
-       $X->{ErrInfo}{PrintText} = 1;
-       $X->{ErrInfo}{CarpLevel} = 10;
-       $X->{ErrInfo}{SaveMessages} = 0;
+       $X->sql_sp($objref);
+       my $errmsg = $X->{ErrInfo}{Messages}[0]{'text'};
+       blurb("SP call $objref (expected $expect, got '$errmsg')");
+       push(@testres, scalar($errmsg =~ $expect));
+
+       delete $X->{ErrInfo}{Messages};
+       $X->sql('SELECT ?', [[$objref, undef]]);       
+       $errmsg = $X->{ErrInfo}{Messages}[0]{'text'};
+       blurb("Type $objref (expected $expect, got '$errmsg')");
+       push(@testres, scalar($errmsg =~ $expect));
+
+       if ($sqlver >= 9 and $sqlncli) {
+          delete $X->{ErrInfo}{Messages};
+          $X->sql('SELECT ?', [['xml', undef, $objref]]);
+          $errmsg = $X->{ErrInfo}{Messages}[0]{'text'};
+          blurb("XML $objref (expected $expect, got '$errmsg')");
+          push(@testres, scalar($errmsg =~ $expect));
+       }
+
+       if ($sqlver >= 10 and $sqlncli10) {
+          delete $X->{ErrInfo}{Messages};
+          $X->sql('SELECT * FROM ?', [['table', [], $objref]],
+                  COLINFO_NAMES, LIST);
+          blurb("Table type $objref param sql (expected $expect, got '$errmsg')");
+          push(@testres, scalar($errmsg =~ $expect));
+
+          # This is a dummy "test" to have equally many tests for
+          # errors and success. This makes it easier to compute the
+          # total.
+          blurb("Dummy test");
+          push(@testres, 1);
+       }
+
+       reset_after_error_test();
     }
 }
 

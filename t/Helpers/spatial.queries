@@ -16,11 +16,11 @@ SELECT @str += ltrim(str(@start)) + ' ' + ltrim(str(@start)) + '))'
 SET @g = geometry::STPolyFromText(@str, 10);
 SET @g = @g.MakeValid()
 SELECT datalength(@g);
-SELECT datalength(@g.STBuffer(2)), datalength(@g.STBuffer(3));
-SELECT @g, @g.STBuffer(2), @g.STBuffer(3)
-
+SELECT datalength(@g.STEndPoint()), datalength(@g.STPointN(3));
+SELECT @g, @g.STEndPoint(), @g.STPointN(3)
+go
 
 
 DECLARE @g geography;
-SET @g = geography::STPolyFromText('POLYGON((47.653 -122.358, 47.649 -122.348, 47.658 -122.348, 47.658 -122.358, 47.653 -122.358))', 4326);
+SET @g = geography::STPolyFromText('POLYGON((-122.358 47.653, -122.348 47.649, -122.348 47.658, -122.358 47.658, -122.358 47.653))', 4326)
 SELECT @g, @g.STStartPoint(), @g.STPointN(2)

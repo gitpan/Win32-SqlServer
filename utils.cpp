@@ -1,13 +1,26 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/utils.cpp 4     11-08-07 23:31 Sommar $
+ $Header: /Perl/OlleDB/utils.cpp 6     12-09-23 22:52 Sommar $
 
   This file includes various utility routines. In difference to
   the convenience routines, these may call the error handler and
   that. Several of these are called from Perl code as well.
 
-  Copyright (c) 2004-2011   Erland Sommarskog
+  Copyright (c) 2004-2012   Erland Sommarskog
 
   $History: utils.cpp $
+ * 
+ * *****************  Version 6  *****************
+ * User: Sommar       Date: 12-09-23   Time: 22:52
+ * Updated in $/Perl/OlleDB
+ * Updated Copyright note.
+ * 
+ * *****************  Version 5  *****************
+ * User: Sommar       Date: 12-08-08   Time: 23:24
+ * Updated in $/Perl/OlleDB
+ * Rewrote parsename as the old implementation had several bugs and did
+ * not consider all possible errors there could be. The new version is
+ * more robust and detects more errors which are signaled through
+ * olledb_message and there is now a return value to indicate failure.
  * 
  * *****************  Version 4  *****************
  * User: Sommar       Date: 11-08-07   Time: 23:31
@@ -46,15 +59,15 @@
 // around the identifiers and returns the result in sv_server, sv_db,
 // sv_schema and sv_object.
 //------------------------------------------------------------------
-void parsename(SV   * olle_ptr,
-               SV   * sv_namestr,
-               int    retain_quotes,
-               SV   * sv_server,
-               SV   * sv_db,
-               SV   * sv_schema,
-               SV   * sv_object)
-{
-   STRLEN namelen;
+int parsename(SV   * olle_ptr,
+              SV   * sv_namestr,
+              int    retain_quotes,
+              SV   * sv_server,
+              SV   * sv_db,
+              SV   * sv_schema,
+              SV   * sv_object)
+{  STRLEN  namelen;
+   BSTR    namebstr = SV_to_BSTR(sv_namestr);
    char  * namestr = SvPV(sv_namestr, namelen);
    char  * server = NULL;
    char  * db = NULL;
@@ -64,12 +77,13 @@ void parsename(SV   * olle_ptr,
    STRLEN  outix = 0;
    int     dotno = 0;
    char    endtoken = '\0';
-   BOOL    lastwasendtoken = FALSE;
+   BOOL    indoubledendtoken = FALSE;
+   BOOL    nextmustbedot = FALSE;
+   BOOL    ret = TRUE;
 
    New(902, object, namelen + 1, char);
    memset(object, 0, namelen + 1);
    outix = 0;
-
    while (inix < namelen) {
       char chr = namestr[inix++];
 
@@ -81,91 +95,115 @@ void parsename(SV   * olle_ptr,
             endtoken = '"';
          if (chr == '[')
             endtoken = ']';
-         if (endtoken && ! retain_quotes)
+
+         if (endtoken) {
+            // If the string is quoted, proceed to next character, 
+            // but the character if we are retaining quotes.
+            if (retain_quotes) 
+               object[outix++] = chr;
             continue;
+         }
       }
 
-      if (endtoken) {
-         if (retain_quotes) {
-            // We are in a quoted element, and with retain_quotes, we should
-            // in this case always copy to the output, which always is
-            // object (could be moved, see below.)
-               object[outix++] = chr;
+      if (indoubledendtoken) {
+         // At this point we know already that we have two consecutive
+         // endtokens, and we should clear this flag. But assert!
+         if (chr != endtoken) {
+            croak("Internal error in parsname. chr is '%c' when it should be '%c'.", chr, endtoken);
+         }
+         indoubledendtoken = FALSE;
+         object[outix++] = chr;
+      }
+      else if (endtoken && chr == endtoken || nextmustbedot) {
+         // We have and end token, or we have passed the closing endtoken
+         // and are now in white space hoping for the end of string or a dot.
 
-            // Check if we are at end of the delimiter. Note that if outix == 1
-            // we are looking at the opening quote character.
-            if (outix > 1 && chr == endtoken && namestr[inix] != endtoken) {
-               endtoken = '\0';
-            }
+         // Save the endtoken if retain quotes is on. (But not if we are
+         // in trailing white-space.
+         if (retain_quotes && endtoken) {        
+             object[outix++] = chr;
+         }
+;
+         // We need a lookahead.
+         char lookahead = namestr[inix];
+
+         if (lookahead == '.' || lookahead == '\0') {
+            // This is the closing quote, and it is followed by a dot
+            // or end-of-string. 
+            endtoken = '\0';
+            nextmustbedot = FALSE;
+         }
+         else if (lookahead == endtoken) {
+            // The endtoken is doubled to signifiy itself. We set a 
+            // flag to note this.
+            indoubledendtoken = TRUE;
+         }
+         else if (isspace(lookahead)) {
+            // Whitespace, this is legal if next real character is
+            // a dot or end-of string. But we don't have an endtoken
+            // anymore.
+            endtoken = '\0';
+            nextmustbedot = TRUE;
          }
          else {
-            // If we are not retaining quotes, we should only copy an endtoken
-            // if previous was also an end token. And never the first character!
-            if (chr != endtoken || (chr == endtoken && lastwasendtoken)) {
-               object[outix++] = chr;
-            }
-            else if (chr == endtoken && namestr[inix] != endtoken) {
-            // Else if we have an endtoken and next character is not one, we
-            // are at the end.
-               endtoken = '\0';
-            }
-
-            // Set lastwasendtoken. It never stays true very long.
-            lastwasendtoken = (lastwasendtoken ? FALSE : (chr == endtoken));
+            // The endtoken is follwed by more characters this is bad.
+            olledb_message(olle_ptr, -1, -1, 16,
+                   L"The name '%s' has an incorrectly quoted identifier.\n",
+                   namebstr);
+            ret = FALSE;
+            goto wayout;
          }
-
       }
-      else {
-         switch (chr) {
-            case ' '  :
-            case '\t' :
-            case '\n' :
-               // White-space. Ignore.
-               break;
-
-            case '.' : {
-               // Found a dot. Move what we save in object to schema, and
-               // schema to db if this was the second dot.
-               dotno++;
-               switch (dotno) {
-                  case 1 : schema = object;
-                           break;
-
-                  case 2 : db = schema;
-                           schema = object;
-                           break;
-
-                  case 3 : server = db;
-                           db = schema;
-                           schema = object;
-                           break;
-
-                  default :
-                     // Too many dots, just copy.
-                     object[outix++] = chr;
+      else if (endtoken) {
+         // Just save the character.
+         object[outix++] = chr;
+      }
+      else if (chr == '.') {
+         // Found a dot that terminates the current name part. 
+         // Move what we saved in object to schema, and so on.
+         dotno++;
+         switch (dotno) {
+            case 1 : schema = object;
                      break;
-               }
 
-               // Allocate new buffer.
-               New(902, object, namelen + 1, char);
-               memset(object, 0, namelen + 1);
-               outix = 0;
+            case 2 : db = schema;
+                     schema = object;
+                     break;
 
-               break;
-            }
+            case 3 : server = db;
+                     db = schema;
+                     schema = object;
+                     break;
 
             default :
-              // Plain copy.
-              object[outix++] = chr;
-              break;
+               // Too many dots, call the police.
+                olledb_message(olle_ptr, -1, -1, 16,
+                   L"The name '%s' includes more than four components.\n",
+                   namebstr);
+                ret = FALSE;
+                goto wayout;
          }
+
+         // Allocate new buffer.
+         New(902, object, namelen + 1, char);
+         memset(object, 0, namelen + 1);
+         outix = 0;
+      }
+      else if (! isspace(chr)) {
+         // Any other non-space character outside a quoted identifier.
+         // Save.
+         object[outix++] = chr;
       }
    }
 
    if (endtoken) {
-      // Input string is terminated, but the identifier was not closed. Cry foul.
-      olle_croak(olle_ptr, "Object specification '%s' has an unterminated quoted identifier",
-                 namestr);
+      // Input string is exhausted, but the identifier was not closed. 
+      // Cry foul.
+      olledb_message(olle_ptr, -1, -1, 16,
+                     L"The name '%s' has an unterminated quoted identifier",
+                     namebstr);
+      ret = FALSE;
+      goto wayout;
    }
 
    // Set output parameters.
@@ -177,7 +215,6 @@ void parsename(SV   * olle_ptr,
       else {
           SvUTF8_off(sv_server);
       }
-      Safefree(server);
    }
    else {
       sv_setpvn(sv_server, "", 0);
@@ -192,7 +229,6 @@ void parsename(SV   * olle_ptr,
       else {
           SvUTF8_off(sv_db);
       }
-      Safefree(db);
    }
    else {
       sv_setpvn(sv_db, "", 0);
@@ -206,7 +242,6 @@ void parsename(SV   * olle_ptr,
       else {
           SvUTF8_off(sv_schema);
       }
-      Safefree(schema);
    }
    else {
       sv_setpvn(sv_schema, "", 0);
@@ -219,7 +254,15 @@ void parsename(SV   * olle_ptr,
    else {
        SvUTF8_off(sv_object);
    }
+
+wayout:
+   if (server) Safefree(server);
+   if (db)     Safefree(db);
+   if (schema) Safefree(schema);
    Safefree(object);
+   SysFreeString(namebstr);
+   
+   return ret;
 }
 
 //----------------------------------------------------------------------

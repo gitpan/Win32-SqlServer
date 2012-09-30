@@ -1,14 +1,24 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/senddata.cpp 13    11-08-07 23:28 Sommar $
+ $Header: /Perl/OlleDB/senddata.cpp 15    12-09-23 22:52 Sommar $
 
   Implements the routines for sending data and command to SQL Server:
   initbatch, enterparameter and executebatch, including routines to
   convert from Perl variables to SQL Server data types, save datetime
   data; those are in datetime.cpp.
 
-  Copyright (c) 2004-2011   Erland Sommarskog
+  Copyright (c) 2004-2012   Erland Sommarskog
 
   $History: senddata.cpp $
+ * 
+ * *****************  Version 15  *****************
+ * User: Sommar       Date: 12-09-23   Time: 22:52
+ * Updated in $/Perl/OlleDB
+ * Updated Copyright note.
+ * 
+ * *****************  Version 14  *****************
+ * User: Sommar       Date: 12-08-08   Time: 23:20
+ * Updated in $/Perl/OlleDB
+ * parsename now has a return value.
  * 
  * *****************  Version 13  *****************
  * User: Sommar       Date: 11-08-07   Time: 23:28
@@ -525,13 +535,15 @@ static void add_param_props (SV        * olle_ptr,
     DBPROPID  objectpropid;
 
     // First extract components from typeinfo.
-    parsename(olle_ptr, typeinfo, 0, server, database, schema, object);
+    if (! parsename(olle_ptr, typeinfo, 0, server, database, schema, object)) {
+       return;
+    }
 
     // If there was a server, cry foul.
     if (sv_len(server) > 0) {
        BSTR typeinfo_str = SV_to_BSTR(typeinfo);
        olledb_message(olle_ptr, -1, -1, 16,
-                      L"Type name/XML schema '%s' includes a server compenent.\n",
+                      L"Type name/XML schema '%s' includes a server component.\n",
                       typeinfo_str);
        SysFreeString(typeinfo_str);
        SvREFCNT_dec(server);
@@ -1076,7 +1088,7 @@ int enterparameter(SV   * olle_ptr,
    // and find all his errors.
    if (this_param->datatype == DBTYPE_EMPTY) {
       olledb_message(olle_ptr, -1, 1, 10,
-                     L"The data type '%s' for parameter '%S' is illegal.",
+                     L"Unknown data type '%s' for parameter '%S'.",
                      bstr_nameoftype, SvPV_nolen(paramname));
       mydata->all_params_OK = FALSE;
       return TRUE;

@@ -1,17 +1,30 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/A_tableparam.t 6     11-08-07 23:34 Sommar $
+# $Header: /Perl/OlleDB/t/A_tableparam.t 8     12-08-18 21:34 Sommar $
 #
 # This test script tests table parameters with sql_sp and sql in with
 # all data types.
 #
 # $History: A_tableparam.t $
 # 
+# *****************  Version 8  *****************
+# User: Sommar       Date: 12-08-18   Time: 21:34
+# Updated in $/Perl/OlleDB/t
+# Fix XML test with Latin-1 so that it does not fail on servers with a
+# different code page than 1252.
+# 
+# *****************  Version 7  *****************
+# User: Sommar       Date: 12-07-19   Time: 0:18
+# Updated in $/Perl/OlleDB/t
+# Force collation to make sure that test works on servers with an SC
+# collation (which does not support text & co). Changed functions for
+# geometry test to one that are not subject to fuzziness.
+#
 # *****************  Version 6  *****************
 # User: Sommar       Date: 11-08-07   Time: 23:34
 # Updated in $/Perl/OlleDB/t
 # Added test for empty strings with sql_variant. Different data files for
 # the spatial data types depending on the SQL Server version.
-# 
+#
 # *****************  Version 5  *****************
 # User: Sommar       Date: 09-08-16   Time: 13:58
 # Updated in $/Perl/OlleDB/t
@@ -42,7 +55,7 @@ use strict;
 use IO::File;
 use English;
 
-use vars qw($sqlver $x86 @tbltypes @tblcols @paramnames @paramtypes
+use vars qw($sqlver $x86 @tbltypes @tblcols @paramnames @paramtypes $collate
             $unnamedparambatch $namedparambatch $no_of_tests @testres %inparam
             %expectpar %expectcol %expectfile %test %filetest %comment);
 
@@ -146,15 +159,15 @@ sub create_character {
 
    sql(<<SQLEND);
       CREATE TYPE character_type AS TABLE
-             (charcol     char(20)      NULL,
-              varcharcol  varchar(20)   NULL,
-              varmaxcol   varchar(MAX)  NULL,
-              textcol     text          NULL,
-              ncharcol    nchar(20)     NULL,
-              ident       int           IDENTITY,
-              nvarcharcol nvarchar(20)  NULL,
-              nvarmaxcol  nvarchar(MAX) NULL,
-              ntextcol    ntext         NULL)
+             (charcol     char(20)      $collate  NULL,
+              varcharcol  varchar(20)   $collate  NULL,
+              varmaxcol   varchar(MAX)  $collate  NULL,
+              textcol     text          $collate  NULL,
+              ncharcol    nchar(20)     $collate  NULL,
+              ident       int                     IDENTITY,
+              nvarcharcol nvarchar(20)  $collate  NULL,
+              nvarmaxcol  nvarchar(MAX) $collate  NULL,
+              ntextcol    ntext         $collate  NULL)
 SQLEND
 
    @tblcols = qw(charcol varcharcol varmaxcol textcol ncharcol nvarcharcol
@@ -512,7 +525,7 @@ SQLEND
 
     $namedparambatch = <<SQLEND;
     SELECT hiercol      = hiercol.GetDescendant(NULL, NULL),
-           geometrycol  = geometrycol.STBuffer(2),
+           geometrycol  = geometrycol.STEndPoint(),
            geographycol = geographycol.STStartPoint()
     FROM   \@clr_builtin_table
 SQLEND
@@ -825,6 +838,8 @@ $no_of_tests = 0;
 
 my $X = testsqllogin();
 
+my $is_latin1 = is_latin1($X);
+
 $X->{'ErrInfo'}{RetStatOK}{4711}++;
 $X->{'ErrInfo'}{NoWhine}++;
 $X->{'ErrInfo'}{NeverPrint}{1708}++;  # Suppresses message for sql_variant table.
@@ -837,6 +852,7 @@ if ($sqlver < 10 or $X->{Provider} < Win32::SqlServer::PROVIDER_SQLNCLI10) {
    exit;
 }
 
+$collate = 'COLLATE Latin1_General_CS_AS';
 
 
 # Make sure that we have standard settings, except for ANSI_WARNINGS
@@ -1686,7 +1702,7 @@ my @vartable;
              [6, 1e202],
              [7, "abc\x{010B}\x{FFFD}"],
              [8, "Lycksele"],
-	     [9, '']);
+        [9, '']);
 
 %inparam   = (vartable => \@vartable);
 %expectcol = (basetype => "date;datetimeoffset;datetime2;time;int;" .
@@ -1742,7 +1758,9 @@ my @xmltable;
 @xmltable = ({xmlcol    => "<R\x{00C4}KSM\x{00D6}RG\x{00C5}S>" .
                            "21 pa\x{017A}dziernika 2004 " x 2000 .
                            "</R\x{00C4}KSM\x{00D6}RG\x{00C5}S>",
-              xmlsccol  => '<?xml version="1.0" encoding="iso-8859-1"?>' . "\n" .
+              xmlsccol  => ($is_latin1
+                               ? '<?xml version="1.0" encoding="iso-8859-1"?>' . "\n" 
+                               : '') .
                             "<TÄST>" .
                             "Vi är alltid bäst i räksmörgåstäster! " x 1500 .
                             "</TÄST>\n<TÄST>I alla fall nästan alltid!</TÄST>"});

@@ -1,10 +1,20 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/makefile.pl 22    11-08-07 23:27 Sommar $
+# $Header: /Perl/OlleDB/makefile.pl 24    12-09-23 22:53 Sommar $
 #
 # Makefile.pl for MSSQL::OlleDB. Note that you may need to specify where
 # you ave the include files for OLE DB.
 #
 # $History: makefile.pl $
+# 
+# *****************  Version 24  *****************
+# User: Sommar       Date: 12-09-23   Time: 22:53
+# Updated in $/Perl/OlleDB
+# No longer need /DELAYLOAD, but there is one more object file.
+# 
+# *****************  Version 23  *****************
+# User: Sommar       Date: 12-07-19   Time: 0:20
+# Updated in $/Perl/OlleDB
+# Move to SQL Native Client 11.
 # 
 # *****************  Version 22  *****************
 # User: Sommar       Date: 11-08-07   Time: 23:27
@@ -143,7 +153,7 @@ elsif ($clversion < 13) {
    exit 0
 }
 
-my $SQLDIR  = '\Program Files\Microsoft SQL Server\100\SDK';
+my $SQLDIR  = '\Program Files\Microsoft SQL Server\110\SDK';
 my $sqlnclih = "$SQLDIR\\INCLUDE\\SQLNCLI.H";
 foreach my $device ('C'..'Z') {
    if (-r "$device:$sqlnclih") {
@@ -159,7 +169,7 @@ if ($SQLDIR !~ /^[C-Z]:/) {
 }
 
 my $archlibdir = ($ENV{PROCESSOR_ARCHITECTURE} eq 'AMD64' ? 'x64' : $ENV{PROCESSOR_ARCHITECTURE});
-my $libfile = qq!"$SQLDIR\\LIB\\$archlibdir\\sqlncli10.lib"!;
+my $libfile = qq!"$SQLDIR\\LIB\\$archlibdir\\sqlncli11.lib"!;
 
 # Set specific flags we want for compilation.
 my $ccflags = $Config{'ccflags'};
@@ -183,15 +193,12 @@ WriteMakefile(
     'OBJECT'       => 'SqlServer.obj handleattributes.obj convenience.obj ' .
                       'datatypemap.obj init.obj internaldata.obj ' .
                       'errcheck.obj connect.obj utils.obj datetime.obj ' .
-                      'tableparam.obj senddata.obj getdata.obj',
+                      'tableparam.obj senddata.obj getdata.obj filestream.obj',
     'LIBS'         => [":nosearch :nodefault $libfile psapi.lib delayimp.lib kernel32.lib user32.lib ole32.lib oleaut32.lib uuid.lib libcmt.lib"],
     'VERSION_FROM' => 'SqlServer.pm',
     'XS'           => { 'SqlServer.xs' => 'SqlServer.cpp' },
     'dist'         => {ZIP => '"C:\Program Files (x86)\Winzip\wzzip"',
-                       ZIPFLAGS => '-r -P'},
-    'dynamic_lib'  => { OTHERLDFLAGS => '/DELAYLOAD:sqlncli10.dll'}
-    # Set base address to avoid DLL collision, makes startup speedier. Remove
-    # if your compiler don't have this option.
+                       ZIPFLAGS => '-r -P'}
 );
 
 sub MY::xs_c {

@@ -1,9 +1,14 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/B_filestream.t 6     11-08-07 23:34 Sommar $
+# $Header: /Perl/OlleDB/t/B_filestream.t 7     12-09-23 22:50 Sommar $
 #
 # Tests for OpenSqlFilestream.
 #
 # $History: B_filestream.t $
+# 
+# *****************  Version 7  *****************
+# User: Sommar       Date: 12-09-23   Time: 22:50
+# Updated in $/Perl/OlleDB/t
+# Added test for earlier providers, since we now check this in code.
 # 
 # *****************  Version 6  *****************
 # User: Sommar       Date: 11-08-07   Time: 23:34
@@ -54,8 +59,16 @@ if ($sqlver < 10) {
    exit;
 }
 
+# If we have an old provider, check that we produces an error message.
 if ($X->{Provider} < PROVIDER_SQLNCLI10) {
-   print "1..0 # Skipped: Need SQL Server Client 10 to use Filestream.\n";
+   print "1..1\n";
+   eval('$X->OpenSqlFilestream("undef", FILESTREAM_READ, "undef")');
+   if ($@ =~ /must use the SQLNCLI10 provider/) {
+       print "ok 1\n";
+   }
+   else {
+       print "not ok 1 # $@\n"; 
+   }
    exit;
 }
 

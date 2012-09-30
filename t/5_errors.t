@@ -1,9 +1,31 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/5_errors.t 25    08-08-17 23:30 Sommar $
+# $Header: /Perl/OlleDB/t/5_errors.t 29    12-08-08 23:14 Sommar $
 #
 # Tests sql_message_handler and errors raised by OlleDB itself.
 #
 # $History: 5_errors.t $
+# 
+# *****************  Version 29  *****************
+# User: Sommar       Date: 12-08-08   Time: 23:14
+# Updated in $/Perl/OlleDB/t
+# Some more testing about incorrect data types. Error messages have been
+# changed.
+# 
+# *****************  Version 28  *****************
+# User: Sommar       Date: 12-07-26   Time: 18:05
+# Updated in $/Perl/OlleDB/t
+# Added test that raise an error for typeinfo elements for data types to
+# which typeinfo does not apply.
+# 
+# *****************  Version 27  *****************
+# User: Sommar       Date: 12-07-21   Time: 0:09
+# Updated in $/Perl/OlleDB/t
+# Add support for SQLNCLI11.
+# 
+# *****************  Version 26  *****************
+# User: Sommar       Date: 12-07-19   Time: 0:20
+# Updated in $/Perl/OlleDB/t
+# Removed superfluous \E, which Perl 5.16 compains about.
 # 
 # *****************  Version 25  *****************
 # User: Sommar       Date: 08-08-17   Time: 23:30
@@ -158,7 +180,7 @@ sub setup_a_test {
 $^W = 1;
 $| = 1;
 
-print "1..234\n";
+print "1..237\n";
 
 my $X = testsqllogin();
 my $sqlver = (split(/\./, $X->{SQL_version}))[0];
@@ -172,8 +194,11 @@ if ($X->{Provider} == Win32::SqlServer::PROVIDER_SQLOLEDB) {
 elsif ($X->{Provider} == Win32::SqlServer::PROVIDER_SQLNCLI) {
    $PROVIDERNAME = 'Microsoft SQL Native Client';
 }
-else {
+elsif ($X->{Provider} == Win32::SqlServer::PROVIDER_SQLNCLI10) {
    $PROVIDERNAME = 'Microsoft SQL Server Native Client 10.0';
+}
+else {
+   $PROVIDERNAME = 'Microsoft SQL Server Native Client 11.0';
 }
 
 
@@ -187,7 +212,7 @@ setup_a_test(11);
 $expect_print = ["=~ /^$msg_part\\n/i",
                  "=~ /Procedure\\s+#nisse_sp[_0-9A-F]+,\\s+Line 2/",
                  "eq '$msgtext\n'",
-                 "=~ /$linestart$sp_sql\E\n/"];
+                 "=~ /$linestart$sp_sql\n/"];
 do_test($sp_call, 1, 1, $expect_print);
 
 # Default setting for warning message. Should print message details but not
@@ -567,7 +592,7 @@ $X->sql('SELECT ?, ?', [['bludder', 12],
 PERLEND
 $expect_print =
     ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
-     q!=~ /'bludder' .+ parameter '\@P1' .*illegal/!,
+     q!=~ /Unknown .+ 'bludder' .+ parameter '\@P1'/!,
      "=~ /Message from Win32::SqlServer at/",
      '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
      "=~ /Could not convert Perl value .+12345.+ decimal.+parameter/",
@@ -589,7 +614,7 @@ else {
 $expect_msgs = [{State    => '>= 1',
                  Errno    => '<= -1',
                  Severity => '== 10',
-                 Text     => q!=~ /'bludder' .+ parameter '\@P1' .*illegal/!,
+                 Text     => q!=~ /Unknown .+ 'bludder' .+ parameter '\@P1'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"},
                 {State    => '>= 1',
@@ -609,40 +634,50 @@ do_test($sql_call, 88, 1, $expect_print, $expect_msgs);
 # Malformed data types
 delete $X->{ErrInfo}{Messages};
 $sql_call = <<'PERLEND';
-$X->sql('SELECT ?, ?', [['float(53)', 12],
-                        ['binary(5,2)', 12345]]);
+$X->sql('SELECT ?, ?, ?', [['float(53)', 12],
+                           ['binary(5,2)', 12345],
+                           ['nosuchtype', undef]]);
 PERLEND
 $expect_print =
     ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
-     q!=~ /'float\(53\)' .+ parameter '\@P1' .*illegal/!,
+     q!=~ /Unknown .+ 'float\(53\)' .+ parameter '\@P1'/!,
      "=~ /Message from Win32::SqlServer at/",
      '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
-     q!=~ /'binary\(5,2\)' .+ parameter '\@P2' .*illegal/!,
+     q!=~ /Unknown .+ 'binary\(5,2\)' .+ parameter '\@P2'/!,
+     "=~ /Message from Win32::SqlServer at/",
+     '=~ /^Message -1.+Win32::SqlServer.+Severity:? 10/',
+     q!=~ /Unknown .+ 'nosuchtype' .+ parameter '\@P3'/!,
      "=~ /Message from Win32::SqlServer at/",
      '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
      "=~ /One or more parameters .+ Cannot execute/"];
 if ($sqlver > 6) {
    push(@$expect_print,
-         q!=~ / 1> EXEC sp_executesql\s+N'SELECT \@P1, \@P2'/!,
-         q!=~ / 2> \s+N'\@P1 float\(53\), \@P2 binary\(5,2\)',/!,
-         q!=~ / 3> \s+\@P1 = 12, \@P2 = 12345\s/!);
+         q!=~ / 1> EXEC sp_executesql\s+N'SELECT \@P1, \@P2, \@P3'/!,
+         q!=~ / 2> \s+N'\@P1 float\(53\), \@P2 binary\(5,2\), \@P3 nosuchtype'/!,
+         q!=~ / 3> \s+\@P1 = 12, \@P2 = 12345, \@P3 = NULL\s/!);
 }
 else {
    push(@$expect_print,
-         q!=~ / 1> SELECT \?, \?/!,
-         q!=~ / 2> \/\*\s+N'\@P1 float\(53\), \@P2 binary\(5,2\)',/!,
-         q!=~ / 3> \s+\@P1 = 12, \@P2 = 12345\s*\*\//!);
+         q!=~ / 1> SELECT \?, \?, \?/!,
+         q!=~ / 2> \/\*\s+N'\@P1 float\(53\), \@P2 binary\(5,2\), \@P3 nosuchtype'/!,
+         q!=~ / 3> \s+\@P1 = 12, \@P2 = 12345, \@P3 = NULL\s*\*\//!);
 }
 $expect_msgs = [{State    => '>= 1',
                  Errno    => '<= -1',
                  Severity => '== 10',
-                 Text     => q!=~ /'float\(53\)' .+ parameter '\@P1' .*illegal/!,
+                 Text     => q!=~ /Unknown .+ 'float\(53\)' .+ parameter '\@P1'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"},
                 {State    => '>= 1',
                  Errno    => '<= -1',
                  Severity => '== 10',
-                 Text     => q!=~ /'binary\(5,2\)' .+ parameter '\@P2' .*illegal/!,
+                 Text     => q!=~ /Unknown .+ 'binary\(5,2\)' .+ parameter '\@P2'/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"},
+                {State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 10',
+                 Text     => q!=~ /Unknown .+ 'nosuchtype' .+ parameter '\@P3'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"},
                 {State    => '>= 1',
@@ -924,7 +959,7 @@ $expect_msgs = [{State    => '>= 1',
                  SQLstate => 'eq "01000"'}];
 do_test($sql_call, 118, 0, $expect_print, $expect_msgs);
 
-# Samma parameternamn två gånger:
+# Duplicate parameter names.
 delete $X->{ErrInfo}{Messages};
 $sql_call = <<'PERLEND';
    $X->sql('RAISERROR(@P1, 4, 1)', {P1    => ['varchar', 'This is jazz'],
@@ -952,7 +987,7 @@ $expect_msgs = [{State    => '>= 1',
                  SQLstate => 'eq "01000"'}];
 do_test($sql_call, 121, 0, $expect_print, $expect_msgs, 7);
 
-# Using UDT without specifying user-type. (We can to this on all platforms,
+# Using UDT without specifying user-type. (We can do this on all platforms,
 # because this is trapped early by OlleDB itself.)
 delete $X->{ErrInfo}{Messages};
 $sql_call = q!$X->sql('SELECT ?', [['UDT', undef]])!;
@@ -995,6 +1030,20 @@ $expect_msgs = [{State    => '>= 1',
                  Source   => "eq 'Win32::SqlServer'"}];
 do_test($sql_call, 130, 1, $expect_print, $expect_msgs);
 
+# Typeinfo for data types that does not have typeinfo.
+delete $X->{ErrInfo}{Messages};
+$sql_call = q!$X->sql('SELECT ?', [['varbinary', undef, 5]])!;
+$expect_print =
+    ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
+    q!=~ /^The third element in the parameter array/!];
+$expect_msgs = [{State    => '>= 1',
+                 Errno    => '<= -1',
+                 Severity => '== 16',
+                 Text     => q!=~ /^The third element in the parameter array/!,
+                 Line     => "== 0",
+                 Source   => "eq 'Win32::SqlServer'"}];
+do_test($sql_call, 133, 1, $expect_print, $expect_msgs);
+
 
 # We will now test sql_has_errors. First get a default connection.
 undef $X;
@@ -1008,63 +1057,63 @@ $X->sql("RAISERROR('Test', 11, 10)", NORESULT);
 
    # Since SaveMessages is off we should not get false back
    if (not $X->sql_has_errors) {
-      print "ok 133\n";
+      print "ok 136\n";
    }
    else {
-      print "not ok 133\n";
+      print "not ok 136\n";
    }
 
    # ...but we should be warned.
    if (@warns) {
-      print "ok 134\n";
+      print "ok 137\n";
    }
    else {
-      print "not ok 134\n";
+      print "not ok 137\n";
    }
 }
 
 $X->{ErrInfo}{SaveMessages} = 1;
 $X->sql("RAISERROR('Test', 11, 10)", NORESULT);
 if ($X->sql_has_errors) {
-   print "ok 135\n";
-}
-else {
-   print "not ok 135\n";
-}
-
-
-# The error should still be there.
-if (exists $X->{ErrInfo}{Messages}) {
-   print "ok 136\n";
-}
-else {
-   print "not ok 136\n";
-}
-
-delete $X->{ErrInfo}{Messages};
-$X->sql("RAISERROR('Test', 9, 10)", NORESULT);
-if (not $X->sql_has_errors(1)) {
-   print "ok 137\n";
-}
-else {
-   print "not ok 137\n";
-}
-
-# The message should still be there, as we said to sql_has_errors.
-if (scalar(@{$X->{ErrInfo}{Messages}}) == 1) {
    print "ok 138\n";
 }
 else {
    print "not ok 138\n";
 }
 
-# But after this.
-$X->sql_has_errors();
-if (not exists $X->{ErrInfo}{Messages}) {
+
+# The error should still be there.
+if (exists $X->{ErrInfo}{Messages}) {
    print "ok 139\n";
 }
 else {
    print "not ok 139\n";
+}
+
+delete $X->{ErrInfo}{Messages};
+$X->sql("RAISERROR('Test', 9, 10)", NORESULT);
+if (not $X->sql_has_errors(1)) {
+   print "ok 140\n";
+}
+else {
+   print "not ok 140\n";
+}
+
+# The message should still be there, as we said to sql_has_errors.
+if (scalar(@{$X->{ErrInfo}{Messages}}) == 1) {
+   print "ok 141\n";
+}
+else {
+   print "not ok 141\n";
+}
+
+# But after this.
+$X->sql_has_errors();
+if (not exists $X->{ErrInfo}{Messages}) {
+   print "ok 142\n";
+}
+else {
+   print "not ok 142\n";
 }
 
 $X->sql(<<SQLEND, NORESULT);
@@ -1073,17 +1122,17 @@ RAISERROR('Test2', 11, 10)
 RAISERROR('Test3', 0, 10)
 SQLEND
 if ($X->sql_has_errors()) {
-   print "ok 140\n";
+   print "ok 143\n";
 }
 else {
-   print "not ok 140\n";
+   print "not ok 143\n";
 }
 
 if (scalar(@{$X->{ErrInfo}{Messages}}) == 3) {
-   print "ok 141\n";
+   print "ok 144\n";
 }
 else {
-   print "not ok 141\n";
+   print "not ok 144\n";
 }
 
 # Lots of tests around date/time data types. Use a new connection for this.
@@ -1146,7 +1195,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 142, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 145, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["1750-12-20", "20010101"])';
@@ -1178,7 +1227,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 145, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 148, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", [{Year => 1991, Month => 65537, Day => 17},
@@ -1229,7 +1278,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 148, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 151, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", [{Year => -1991, Month => 12, Day => 17},
@@ -1280,7 +1329,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 151, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 154, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["1997-02-29", "1999-11-31"])';
@@ -1330,7 +1379,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 154, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 157, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["1997-01-31 12:60:60", "1999-03-31 12:59:60"])';
@@ -1380,7 +1429,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 157, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 160, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["1997-05-31 00:00:00.9999999",
@@ -1414,7 +1463,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 160, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 163, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["1997-04-30 14:12:10 +25:00",
@@ -1467,7 +1516,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 163, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 166, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["1997-0829 12:00:00",
@@ -1511,7 +1560,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 166, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 169, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["1997-08-29 12:00:00.12323 +0200",
@@ -1555,7 +1604,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 169, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 172, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["19970225 12:00.00", "1997"])';
@@ -1587,7 +1636,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 172, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 175, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["1997-02-25Z12:00", "1997-12-12 12"])';
@@ -1619,7 +1668,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 175, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 178, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["1997-02-25 12:00:", "1997-09-23 12:00:00."])';
@@ -1651,7 +1700,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 178, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 181, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime_sp", ["1925-08-07T", "1925-08-07T12"])';
@@ -1683,7 +1732,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 181, 1, $expect_print, $expect_msgs);
+do_test($sql_call, 184, 1, $expect_print, $expect_msgs);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#date_sp", [{Month => 10, Day => 17}])';
@@ -1715,7 +1764,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 184, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 187, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#time_sp", [{Hour => 10, Second => 17}])';
@@ -1747,7 +1796,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 187, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 190, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#datetime2_sp", [{Year => 1078, Month => 10}])';
@@ -1779,7 +1828,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 190, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 193, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $sql_call = '$X->sql_sp("#dtoffset_sp", [{Year => 2341, Day => 17,
@@ -1813,7 +1862,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 193, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 196, 1, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 # A single test with OpenSqlFilestream.
 delete $X->{ErrInfo}{Messages};
@@ -1828,7 +1877,7 @@ $expect_msgs = [{State    => '>= 1',
                  Line     => '== 0',
                  Text     => "=~ /The parameter is incorrect/",
                  Source   => "eq 'OpenSqlFilestream'"}];
-do_test($sql_call, 196, 1, $expect_print, $expect_msgs, undef, PROVIDER_SQLNCLI10);
+do_test($sql_call, 199, 1, $expect_print, $expect_msgs, undef, PROVIDER_SQLNCLI10);
 
 # Let's test table-valued parameters. First some setup.
 if ($sqlver >= 10) {
@@ -1873,7 +1922,7 @@ else {
    $expect_print = [];
    $expect_msgs = undef;
 }
-do_test($sql_call, 199, 0, $expect_print, $expect_msgs, 10);
+do_test($sql_call, 202, 0, $expect_print, $expect_msgs, 10);
 
 # Also with paramsql.
 delete $X->{ErrInfo}{Messages};
@@ -1899,7 +1948,7 @@ else {
    $expect_print = [];
    $expect_msgs = undef;
 }
-do_test($sql_call, 202, 0, $expect_print, $expect_msgs, 10);
+do_test($sql_call, 205, 0, $expect_print, $expect_msgs, 10);
 
 # Now for the real tests with errors with the table type.
 delete $X->{ErrInfo}{Messages};
@@ -1916,7 +1965,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => q!=~ /No actual user type .+ table .+ '\@P1'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 205, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 208, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $X->{ErrInfo}{SaveMessages} = 1;
@@ -1924,15 +1973,15 @@ $X->{ErrInfo}{MaxSeverity} = 17;
 $sql_call = '$X->sql("SELECT * FROM ?", [["table(nosuchtype)", [[1, "1989-01-01", 1]]]])';
 $expect_print =
     ['=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
-    q!=~ /Not.*table type 'nosuchtype'/!,
+    q!=~ /Unable to find.*table type 'nosuchtype'/!,
     '=~ /Message from Win32::SqlServer at/'];
 $expect_msgs = [{State    => '>= 1',
                  Errno    => '<= -1',
                  Severity => '== 16',
-                 Text     => q!=~ /Not.*table type 'nosuchtype'/!,
+                 Text     => q!=~ /Unable to find.*table type 'nosuchtype'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 208, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 211, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $X->{ErrInfo}{SaveMessages} = 1;
@@ -1953,7 +2002,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => q!=~ /value '12'.*table parameter '\@P1'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 211, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 214, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $X->{ErrInfo}{SaveMessages} = 1;
@@ -1972,7 +2021,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => q!=~ /value '12'.*table parameter '\@t'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 214, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 217, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $X->{ErrInfo}{SaveMessages} = 1;
@@ -1993,7 +2042,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => q!=~ /value '1' for row.*table parameter '\@P1'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 217, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 220, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $X->{ErrInfo}{SaveMessages} = 1;
@@ -2012,7 +2061,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => q!=~ /value '1' for row.*table parameter '\@t'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 220, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 223, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 
 delete $X->{ErrInfo}{Messages};
@@ -2032,7 +2081,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => q!=~ /Illegal value 'HASH\(.*'.*table parameter '\@t'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 223, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 226, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $X->{ErrInfo}{SaveMessages} = 1;
@@ -2061,7 +2110,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => q!=~ /Warning: input array.*5 elements.*only 4 columns/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 226, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 229, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $X->{ErrInfo}{SaveMessages} = 1;
@@ -2132,7 +2181,7 @@ $expect_msgs = [{State    => '>= 1',
                  Text     => "=~ /One or more parameters .+ Cannot execute/",
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 229, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 232, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 delete $X->{ErrInfo}{Messages};
 $X->{ErrInfo}{SaveMessages} = 1;
@@ -2147,7 +2196,7 @@ $expect_print =
     q!=~ /Type name 'tempdb\.dbo\.olle\$tvptest'.*database.*ad-hoc/!,
      '=~ /Message from Win32::SqlServer at/',
      '=~ /^Message -1.+Win32::SqlServer.+Severity:? 16/',
-    q!=~ /Not.*table type 'tempdb\.dbo\.olle\$tvptest'/!,
+    q!=~ /Unable to find.*table type 'tempdb\.dbo\.olle\$tvptest'/!,
      '=~ /Message from Win32::SqlServer at/'];
 $expect_msgs = [{State    => '>= 1',
                  Errno    => '<= -1',
@@ -2158,10 +2207,10 @@ $expect_msgs = [{State    => '>= 1',
                 {State    => '>= 1',
                  Errno    => '<= -1',
                  Severity => '== 16',
-                 Text     => q!=~ /Not.*table type 'tempdb\.dbo\.olle\$tvptest'/!,
+                 Text     => q!=~ /Unable to find.*table type 'tempdb\.dbo\.olle\$tvptest'/!,
                  Line     => "== 0",
                  Source   => "eq 'Win32::SqlServer'"}];
-do_test($sql_call, 232, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
+do_test($sql_call, 235, 0, $expect_print, $expect_msgs, 10, PROVIDER_SQLNCLI10);
 
 
 # That's enough!

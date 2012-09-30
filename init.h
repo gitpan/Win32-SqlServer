@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/init.h 2     08-01-06 23:33 Sommar $
+ $Header: /Perl/OlleDB/init.h 4     12-08-15 21:27 Sommar $
 
   This file holds code associated with module and object initialitaion.
   This file also declares global variables that exist through the lifetime
@@ -11,6 +11,17 @@
   Copyright (c) 2004-2008   Erland Sommarskog
 
   $History: init.h $
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 12-08-15   Time: 21:27
+ * Updated in $/Perl/OlleDB
+ * One new login property for SQL 2012 and two new for SQL 2008. Now track
+ * the number of properties per version of  the OLE DB provider.
+ * 
+ * *****************  Version 3  *****************
+ * User: Sommar       Date: 12-07-20   Time: 23:50
+ * Updated in $/Perl/OlleDB
+ * Add support for SQLNCLI11.
  * 
  * *****************  Version 2  *****************
  * User: Sommar       Date: 08-01-06   Time: 23:33
@@ -28,13 +39,15 @@
 
 // Definitions of all possible providers as an enum.
 typedef enum provider_enum {
-    provider_default, provider_sqloledb, provider_sqlncli, provider_sqlncli10
+    provider_default, provider_sqloledb, provider_sqlncli, 
+    provider_sqlncli10, provider_sqlncli11
 } provider_enum;
 
 // And here is global variables for the classids for the possible providers.
 extern CLSID  clsid_sqloledb;
 extern CLSID  clsid_sqlncli;
 extern CLSID  clsid_sqlncli10;
+extern CLSID  clsid_sqlncli11;
 
 
 // This is stuff for init properties. When the module starts up, we set up a
@@ -49,6 +62,7 @@ init_propsets;
 typedef struct {
    char             name[INIT_PROPNAME_LEN];  // Name of prop exposed to user.
    init_propsets    propset_enum;    // In which property set property belongs.
+   BOOL             is_sqloledb;     // This is a property that SQLOLEDB 2.6 supports.
    DBPROPID         property_id;    // ID for property in OLE DB.
    VARTYPE          datatype;       // Datatype of the property.
    VARIANT          default_value;  // Default value for the property.
@@ -58,10 +72,6 @@ typedef struct {
 
 extern init_property gbl_init_props[MAX_INIT_PROPERTIES];
 
-// This global holds how many of the SSINIT properties that applies to
-// SQLOLEDB - there are some that only applies to SQL Native Client.
-extern int no_of_sqloledb_ssprops;
-
 // This array holds where each property set starts in gbl_init_props;
 typedef struct {
    int start;
@@ -69,6 +79,10 @@ typedef struct {
 } propset_info_struct;
 extern propset_info_struct init_propset_info[NO_OF_INIT_PROPSETS];
 
+
+// Returns the number of properties in the SSPROP structure for the 
+// given provider.
+extern int no_of_ssprops(provider_enum);
 
 // Global pointer to OLE DB Services. Set once when we intialize, and
 // never released.

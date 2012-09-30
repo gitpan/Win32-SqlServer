@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/testsqllogin.pl 6     08-05-01 10:48 Sommar $
+# $Header: /Perl/OlleDB/t/testsqllogin.pl 7     12-08-18 21:32 Sommar $
 #
 # This file is C<required> by all test scripts. It defines a sub that
 # connects to SQL Server, and changes current directory to the test
@@ -7,6 +7,11 @@
 # are written there.
 #
 # $History: testsqllogin.pl $
+# 
+# *****************  Version 7  *****************
+# User: Sommar       Date: 12-08-18   Time: 21:32
+# Updated in $/Perl/OlleDB/t
+# Added utilitity routine to retrieve codepage.
 # 
 # *****************  Version 6  *****************
 # User: Sommar       Date: 08-05-01   Time: 10:48
@@ -72,6 +77,35 @@ sub testsqllogin
       return $X;
   }
 }
+
+sub is_latin1 {
+   # Retrieves whether the server has Latin1 as the code page.
+   my($X) = @_;
+
+   my ($sqlver) = split(/\./, $X->{SQL_version});
+
+   if ($sqlver >= 8) {
+      my ($codepage) = $X->sql_one(<<SQLEND, Win32::SqlServer::SCALAR);
+       SELECT collationproperty(
+                   convert(nvarchar(1000), serverproperty('Collation')), 
+              'CodePage')
+SQLEND
+       return ($codepage == 1252);
+    }
+   else {
+      # On SQL7 and earlier we get the value from syscurconfigs and syscharsets. The
+      # latter is a crazy table, but csid = 1 means Latin-1, and that is what we care
+      # about.
+      my ($csid) = $X->sql_one(<<SQLEND, Win32::SqlServer::SCALAR);
+      SELECT ch.csid
+      FROM   master.dbo.syscurconfigs cf
+      JOIN   master.dbo.syscharsets ch ON cf.value = ch.id
+      WHERE  cf.config = 1123
+SQLEND
+      return ($csid == 1);
+   }
+}
+
 
 chdir dirname($0);
 if (not -d 'output') {

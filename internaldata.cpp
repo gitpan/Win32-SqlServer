@@ -1,12 +1,23 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/OlleDB/internaldata.cpp 9     11-08-07 23:26 Sommar $
+ $Header: /Perl/OlleDB/internaldata.cpp 11    12-09-23 22:52 Sommar $
 
   This file holds routines setting up the internaldata struct, and
   also release memory allocated in it.
 
-  Copyright (c) 2004-2011   Erland Sommarskog
+  Copyright (c) 2004-2012   Erland Sommarskog
 
   $History: internaldata.cpp $
+ * 
+ * *****************  Version 11  *****************
+ * User: Sommar       Date: 12-09-23   Time: 22:52
+ * Updated in $/Perl/OlleDB
+ * Updated Copyright note.
+ * 
+ * *****************  Version 10  *****************
+ * User: Sommar       Date: 12-08-15   Time: 21:26
+ * Updated in $/Perl/OlleDB
+ * Change the check for not set by SQLOLEDB to only check options set by
+ * SQLOLEDB 2.6.
  * 
  * *****************  Version 9  *****************
  * User: Sommar       Date: 11-08-07   Time: 23:26
@@ -102,7 +113,7 @@ void dump_properties(DBPROP init_properties[MAX_INIT_PROPERTIES],
                ststxt = "DBPROPSTATUS_NOTSUPPORTED"; break;
           case -1 :
                ststxt = "(not set by OLE DB provider)";
-               too_old_sqloledb = TRUE;
+               too_old_sqloledb |= gbl_init_props[i].is_sqloledb;
                break;
        }
        PerlIO_printf(PerlIO_stderr(), "Property '%s', Status: %s, Value: ",

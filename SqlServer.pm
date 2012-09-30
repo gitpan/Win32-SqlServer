@@ -1,11 +1,48 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/SqlServer.pm 73    11-08-07 23:29 Sommar $
+# $Header: /Perl/OlleDB/SqlServer.pm 79    12-09-23 22:52 Sommar $
 #
-# Copyright (c) 2004-2011 Erland Sommarskog
+# Copyright (c) 2004-2012 Erland Sommarskog
 #
 #
 # $History: SqlServer.pm $
 # 
+# *****************  Version 79  *****************
+# User: Sommar       Date: 12-09-23   Time: 22:52
+# Updated in $/Perl/OlleDB
+# Updated Copyright note.
+# 
+# *****************  Version 78  *****************
+# User: Sommar       Date: 12-08-19   Time: 14:54
+# Updated in $/Perl/OlleDB
+# Need a special for sysname on SQL 6.5 where the id is below the
+# usertype limit.
+# 
+# *****************  Version 77  *****************
+# User: Sommar       Date: 12-08-12   Time: 20:34
+# Updated in $/Perl/OlleDB
+# Use SELECT @@version rather than xp_msver to get the SQL Server
+# version, since there is no xp_msver on Azure. (And permission to
+# execute it may have been revoked.)
+# 
+# *****************  Version 76  *****************
+# User: Sommar       Date: 12-08-08   Time: 23:29
+# Updated in $/Perl/OlleDB
+# New feature: you can now use alias data types with parameterised sql in
+# sql and sql_one. Reworked how the database name is handled in internal
+# metadata queries: Rather than inlining it, pass the database name as a
+# parameter to internal_sql so that sp_executesql is accessed as
+# $db..sp_excecutesql. 
+# 
+# *****************  Version 75  *****************
+# User: Sommar       Date: 12-07-26   Time: 18:07
+# Updated in $/Perl/OlleDB
+# We now support OUTPUT parameters for parameterised SQL.
+# 
+# *****************  Version 74  *****************
+# User: Sommar       Date: 12-07-21   Time: 0:08
+# Updated in $/Perl/OlleDB
+# Add support for SQLNCLI11. Fixed warning from Perl 5.16.
+#
 # *****************  Version 73  *****************
 # User: Sommar       Date: 11-08-07   Time: 23:29
 # Updated in $/Perl/OlleDB
@@ -207,12 +244,13 @@ use Carp;
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS
             $def_handle $SQLSEP
+            %ALLSYSTEMTYPES
             %TYPESWITHLENGTH %TYPESWITHFIXLEN %STRINGTYPES %QUOTEDTYPES
             %UNICODETYPES %LARGETYPES %CLRTYPES %BINARYTYPES %DECIMALTYPES
             %NEWDATETIMETYPES %MAXTYPES %TYPEINFOTYPES $VERSION);
 
 
-$VERSION = '2.007';
+$VERSION = '2.008';
 
 @ISA = qw(Exporter DynaLoader Tie::StdHash);
 
@@ -231,7 +269,7 @@ bootstrap Win32::SqlServer;
                 RETURN_NEXTROW RETURN_NEXTQUERY RETURN_CANCEL RETURN_ERROR
                 RETURN_ABORT
                 PROVIDER_DEFAULT PROVIDER_SQLOLEDB PROVIDER_SQLNCLI
-                PROVIDER_SQLNCLI10
+                PROVIDER_SQLNCLI10 PROVIDER_SQLNCLI11
                 DATETIME_HASH DATETIME_ISO DATETIME_REGIONAL DATETIME_FLOAT
                 DATETIME_STRFMT
                 CMDSTATE_INIT CMDSTATE_ENTEREXEC CMDSTATE_NEXTRES
@@ -258,7 +296,8 @@ bootstrap Win32::SqlServer;
                 returns      => [qw(RETURN_NEXTROW RETURN_NEXTQUERY RETURN_CANCEL
                                     RETURN_ERROR RETURN_ABORT)],
                 providers    => [qw(PROVIDER_DEFAULT PROVIDER_SQLOLEDB
-                                    PROVIDER_SQLNCLI PROVIDER_SQLNCLI10)],
+                                    PROVIDER_SQLNCLI PROVIDER_SQLNCLI10
+                                    PROVIDER_SQLNCLI11)],
                 datetime     => [qw(DATETIME_HASH DATETIME_ISO DATETIME_REGIONAL
                                     DATETIME_FLOAT DATETIME_STRFMT)],
                 cmdstates    => [qw(CMDSTATE_INIT CMDSTATE_ENTEREXEC CMDSTATE_NEXTRES
@@ -326,8 +365,10 @@ use constant PROVIDER_DEFAULT   => 0;
 use constant PROVIDER_SQLOLEDB  => 1;
 use constant PROVIDER_SQLNCLI   => 2;
 use constant PROVIDER_SQLNCLI10 => 3;
+use constant PROVIDER_SQLNCLI11 => 4;
 use constant PROVIDER_OPTIONS   => (PROVIDER_DEFAULT, PROVIDER_SQLOLEDB,
-                                    PROVIDER_SQLNCLI, PROVIDER_SQLNCLI10);
+                                    PROVIDER_SQLNCLI, PROVIDER_SQLNCLI10,
+                                    PROVIDER_SQLNCLI11);
 
 # Constants for datetime options
 use constant DATETIME_HASH     => 0;
@@ -354,8 +395,21 @@ use constant FILESTREAM_READWRITE => 2;
 use constant PACKAGENAME => 'Win32::SqlServer';
 
 # Constant hashes for datatype combinations, for internal use only.
+%ALLSYSTEMTYPES  = ('bigint' => 1, 'binary' => 1, 'bit' => 1, 
+                    'char' => 1, 'date' => 1, 'datetime' => 1, 
+                    'datetime2' => 1, 'datetimeoffset' => 1, 
+                    'decimal' => 1, 'float' => 1, 'geography' => 1, 
+                    'geometry' => 1, 'hierarchyid' => 1, 'image' => 1, 
+                    'int' => 1, 'money' => 1, 'nchar' => 1, 
+                    'ntext' => 1, 'numeric' => 1, 'nvarchar' => 1, 
+                    'real' => 1, 'rowversion' => 1, 'smalldatetime' => 1, 
+                    'smallint' => 1, 'smallmoney' => 1, 'sql_variant' => 1, 
+                    'text' => 1, 'time' => 1, 'timestamp' => 1, 
+                    'table' => 1, 'tinyint' => 1, 'UDT' => 1, 
+                    'uniqueidentifier' => 1, 'varbinary' => 1, 
+                    'varchar' => 1, 'xml' => 1);
 %TYPESWITHLENGTH = ('char' => 1, 'nchar' => 1, 'varchar' => 1, 'nvarchar' => 1,
-                   'binary' => 1, 'varbinary' => 1, 'UDT' => 1);
+                    'binary' => 1, 'varbinary' => 1);
 %TYPESWITHFIXLEN = ('char' => 1, 'nchar' => 1, 'binary' => 1);
 %STRINGTYPES     = ('char' => 1, 'varchar' => 1, 'nchar' => 1, 'nvarchar' => 1,
                     'xml' => 1, 'text'=> 1, 'ntext' => 1);
@@ -365,9 +419,10 @@ use constant PACKAGENAME => 'Win32::SqlServer';
                     'datetime' => 1 , 'smalldatetime'=> 1, 'date' => 1,
                     'time' => 1, 'datetime2' => 1, 'datetimeoffset' => 1);
 %UNICODETYPES     = ('nchar' => 1, 'nvarchar' => 1, 'ntext' => 1);
-%CLRTYPES         = ('geometry' => 1, 'geography' => 1, 'hierarchyid' => 1);
+%CLRTYPES         = ('UDT' => 1, 'geometry' => 1, 'geography' => 1, 
+                     'hierarchyid' => 1);
 %BINARYTYPES      = ('binary' => 1, 'varbinary' => 1, 'timestamp' => 1,
-                     'rowversion', => 1, 'image' => 1, 'UDT' => 1, %CLRTYPES);
+                     'rowversion', => 1, 'image' => 1, %CLRTYPES);
 %DECIMALTYPES     = ('decimal' => 1, 'numeric' => 1);
 %NEWDATETIMETYPES = ('time' => 1, 'datetime2' => 1, 'datetimeoffset' => 1);
 %MAXTYPES         = ('varchar' => 1, 'nvarchar' => 1, 'varbinary' => 1,
@@ -387,7 +442,7 @@ use constant XS_ATTRIBUTES =>   # Used by the XS code.
                 MsecFormat CommandTimeout MsgHandler QueryNotification);
 use constant PERL_ATTRIBUTES => # Attributes used by the Perl code.
              qw(ErrInfo SQL_version to_server to_client NoExec procs tables
-                tabletypes LogHandle UserData);
+                tabletypes usertypes LogHandle UserData);
 use constant ALL_ATTRIBUTES => (XS_ATTRIBUTES, PERL_ATTRIBUTES);
 
 foreach my $attr (ALL_ATTRIBUTES) {
@@ -643,7 +698,7 @@ sub sql_set_conversion
     if (not $server_cs) {
        if ($X->{SQL_version} =~ /^[467]\./) {
           # SQL Server 7.0 or earlier.
-          $server_cs = $X->internal_sql(<<SQLEND, SCALAR, SINGLEROW);
+          $server_cs = $X->internal_sql(<<SQLEND, undef, SCALAR, SINGLEROW);
                SELECT chs.name
                FROM   master..syscharsets sor, master..syscharsets chs,
                       master..syscurconfigs cfg
@@ -654,7 +709,7 @@ SQLEND
        }
        else {
           # Modern stuff, SQL 2000 or later.
-          $server_cs = $X->internal_sql(<<SQLEND, SCALAR, SINGLEROW);
+          $server_cs = $X->internal_sql(<<SQLEND, undef, SCALAR, SINGLEROW);
              SELECT collationproperty(
                     CAST(serverproperty ('collation') as nvarchar(255)),
                     'CodePage')
@@ -768,7 +823,9 @@ sub sql_one
     $X->do_conversion('to_server', $sql);
 
     # Set up the command - run initbatch and enter parameters if necessary.
-    my $ret = $X->setup_sqlcmd($sql, $arrayparams, $hashparams);
+    my @outputparams;
+    my $ret = $X->setup_sqlcmd($sql, undef, $arrayparams, $hashparams, 
+                               \@outputparams);
     if (not $ret) {
         $X->olle_croak("Single-row query '$sql' had parameter errors");
     }
@@ -817,6 +874,9 @@ sub sql_one
     # Apply server-to-client conversion
     $X->do_conversion('to_client', $saveref);
 
+    # Any output parameters.
+    $X->do_output_parameters(\@outputparams);
+
     if (wantarray) {
        return (($rowstyle == HASH) ? %$saveref : @$saveref);
     }
@@ -849,7 +909,9 @@ sub sql
     $X->do_conversion('to_server', $sql);
 
     # Set up the SQL command - initbatch and enter parameters if necesary.
-    my $ret = $X->setup_sqlcmd($sql, $arrayparams, $hashparams);
+    my @outputparams;
+    my $ret = $X->setup_sqlcmd($sql, undef, $arrayparams, $hashparams, 
+                               \@outputparams);
     if (not $ret) {
        return (wantarray ? () : undef);
     }
@@ -868,8 +930,20 @@ sub sql
     }
 
     # And get the resultsets.
-    return $X->do_result_sets($exec_ok, $rowstyle, $resultstyle, $colinfostyle,
-                              $keys);
+    my (@results, $resultsref);
+    if (wantarray) {
+        @results = $X->do_result_sets($exec_ok, $rowstyle, $resultstyle, 
+                                      $colinfostyle, $keys);
+    }
+    else {
+        $resultsref = $X->do_result_sets($exec_ok, $rowstyle, $resultstyle, 
+                                         $colinfostyle, $keys);
+    }
+
+    # And output parameters.
+    $X->do_output_parameters(\@outputparams);
+
+    return (wantarray ? @results : $resultsref);
 }
 
 #-------------------------- sql_sp ------------------------------------
@@ -893,7 +967,7 @@ sub sql_sp {
        $retvalueref = \$dummy;
     }
 
-    # Reference to a array with named parameters.
+    # Reference to an array with named parameters.
     if (ref $_[0] eq "ARRAY") {
        $unnamed = shift @_;
     }
@@ -958,7 +1032,7 @@ SQLEND
        }
        elsif ($X->{SQL_version} =~ /^[78]\./) {
           # The CASE for is_output because SQL 2000 says 0 for ret value from UDF.
-          $getcols = <<SQLEND;
+          $getcols = <<'SQLEND';
               SELECT name = CASE colid WHEN 0 THEN NULL ELSE name END,
                      paramno = colid, type = type_name(xtype),
                      max_length = length, "precision" = coalesce(prec, 0),
@@ -967,13 +1041,13 @@ SQLEND
                      is_output = CASE colid WHEN 0 THEN 1 ELSE isoutparam END,
                      is_retstatus = 0, typeinfo = NULL, is_table_type = 0,
                      needstypeinfo = 0
-              FROM   $objdb.dbo.syscolumns
-              WHERE  id = \@objid
+              FROM   dbo.syscolumns
+              WHERE  id = @objid
               UNION
               SELECT NULL, 0, 'int', 4, 0, 0, 0, 1, 1, NULL, 0, 0
               WHERE  NOT EXISTS (SELECT *
-                                 FROM   $objdb.dbo.syscolumns
-                                 WHERE  id = \@objid
+                                 FROM   dbo.syscolumns
+                                 WHERE  id = @objid
                                    AND  colid = 0)
               ORDER   BY paramno
 SQLEND
@@ -1011,19 +1085,19 @@ SQLEND
                                           THEN 1
                                           ELSE 0
                                      END
-              FROM   $objdb.sys.all_parameters p
-              LEFT   JOIN ($objdb.sys.types t
-                          JOIN  $objdb.sys.schemas s1 ON t.schema_id = s1.schema_id)
+              FROM   sys.all_parameters p
+              LEFT   JOIN (sys.types t
+                          JOIN  sys.schemas s1 ON t.schema_id = s1.schema_id)
                   ON  p.user_type_id = t.user_type_id
                  AND  t.is_assembly_type | $tabletypecol = 1
-              LEFT   JOIN ($objdb.sys.xml_schema_collections x
-                           JOIN  $objdb.sys.schemas s2 ON x.schema_id = s2.schema_id)
+              LEFT   JOIN (sys.xml_schema_collections x
+                           JOIN  sys.schemas s2 ON x.schema_id = s2.schema_id)
                   ON  p.xml_collection_id = x.xml_collection_id
               WHERE  object_id = \@objid
               UNION
               SELECT NULL, 0, 'int', 4, 0, 0, 0, 1, 1, NULL, 0, 0
               WHERE  NOT EXISTS (SELECT *
-                                 FROM   $objdb.sys.all_parameters
+                                 FROM   sys.all_parameters
                                  WHERE  object_id = \@objid
                                    AND  parameter_id = 0)
               ORDER   BY paramno
@@ -1034,12 +1108,13 @@ SQLEND
        $getcols =~ s/\s{2,}/ /g;
 
        # Get the data. 6.5 has a special call since it does not support
-       # named parameters.
+       # named parameters, nor can we specify the database to run the 
+       # query in.
        if ($X->{SQL_version} =~ /^6\./) {
-          $paramdefs = $X->internal_sql($getcols, [['int', $objid]], HASH);
+          $paramdefs = $X->internal_sql($getcols, undef, [['int', $objid]], HASH);
        }
        else {
-          $paramdefs = $X->internal_sql($getcols,
+          $paramdefs = $X->internal_sql($getcols, $objdb,
                                        {'@objid' => ['int',           $objid],
                                         '@objdb' => ['nvarchar(127)', $objdb]},
                                         HASH);
@@ -1153,7 +1228,7 @@ SQLEND
        $$paramdefs[$par_ix]{'tabledef'} =
              $X->get_table_type_info($$paramdefs[$par_ix]{'typeinfo'});
        if (not $$paramdefs[$par_ix]{'tabledef'}) {
-            my $msg = "Not able to find information about table type " .
+            my $msg = "Unable to find information about table type " .
                       $$paramdefs[$par_ix]{'typeinfo'} .
                       ". This is somewhat unexpected.";
             $X->olledb_message(-1, 1, 16, $msg);
@@ -1305,16 +1380,7 @@ SQLEND
     # Retrieve output parameters. They are not available if command was
     # cancelled or some such.
     if ($X->getcmdstate == CMDSTATE_GETPARAMS) {
-       my ($output_from_sp);
-
-       # Retrieve output parameters
-       $X->getoutputparams(undef, $output_from_sp);
-       $X->do_conversion('to_client', $output_from_sp);
-
-       # And map values to the input parameters.
-       foreach my $ix (0..$#output_params) {
-          ${$output_params[$ix]} = $$output_from_sp[$ix];
-       }
+       $X->do_output_parameters(\@output_params);
 
        # Check the return status if there was one. (The return value is
        # $$retvalueref now.)
@@ -1379,16 +1445,16 @@ sub sql_insert {
 SQLEND
        }
        elsif ($X->{SQL_version} =~ /^[78]\./) {
-          $getcols = <<SQLEND;
+          $getcols = <<'SQLEND';
               SELECT name, type = type_name(xtype), length,
                      "precision" = prec, scale, typeinfo = NULL
-              FROM   $objdb.dbo.syscolumns
-              WHERE  id = \@objid
+              FROM   syscolumns
+              WHERE  id = @objid
 SQLEND
        }
        else {
           # SQL Server 2005 or later.
-          $getcols = <<SQLEND;
+          $getcols = <<'SQLEND';
               SELECT c.name,
                      type = CASE c.system_type_id
                                  WHEN 240 THEN 'UDT' +
@@ -1402,23 +1468,23 @@ SQLEND
                      typeinfo =
                      CASE c.system_type_id
                           WHEN 240
-                          THEN  coalesce(nullif(\@objdb, ''),
+                          THEN  coalesce(nullif(@objdb, ''),
                                          quotename(db_name())) + '.' +
                                 quotename(s1.name) + '.' + quotename(t.name)
                           WHEN 241
-                          THEN  coalesce(nullif(\@objdb, ''),
+                          THEN  coalesce(nullif(@objdb, ''),
                                          quotename(db_name())) + '.' +
                                 quotename(s2.name) + '.' + quotename(x.name)
                      END
-              FROM   $objdb.sys.all_columns c
-              LEFT   JOIN ($objdb.sys.types t
-                          JOIN  $objdb.sys.schemas s1 ON t.schema_id = s1.schema_id)
+              FROM   sys.all_columns c
+              LEFT   JOIN (sys.types t
+                          JOIN  sys.schemas s1 ON t.schema_id = s1.schema_id)
                   ON  c.user_type_id = t.user_type_id
                  AND  t.is_assembly_type = 1
-              LEFT   JOIN ($objdb.sys.xml_schema_collections x
-                           JOIN  $objdb.sys.schemas s2 ON x.schema_id = s2.schema_id)
+              LEFT   JOIN (sys.xml_schema_collections x
+                           JOIN  sys.schemas s2 ON x.schema_id = s2.schema_id)
                   ON  c.xml_collection_id = x.xml_collection_id
-              WHERE  c.object_id = \@objid
+              WHERE  c.object_id = @objid
 SQLEND
        }
 
@@ -1428,11 +1494,11 @@ SQLEND
        # Get the columns. Need special call for 6.5 as we do not support
        # named parameters there.
        if ($X->{SQL_version} =~ /^6\./) {
-          $tbldef = $X->internal_sql($getcols, [['int', $objid]],
+          $tbldef = $X->internal_sql($getcols, undef, [['int', $objid]],
                                      HASH, KEYED, ['name']);
        }
        else {
-          $tbldef = $X->internal_sql($getcols,
+          $tbldef = $X->internal_sql($getcols, $objdb,
                                      {'@objid' => ['int', $objid],
                                       '@objdb' => ['nvarchar', $objdb]},
                                      HASH, KEYED, ['name']);
@@ -1703,13 +1769,17 @@ sub sql_message_handler {
 }
 
 #---------------------  internal_sql  --------------------------------------
-# Very similar to the official sql, but does not check NoExec and Loghandle.
-# Use for internal calls to support sql_sp and sql_insert.
+# Very similar to the official sql, but does not check NoExec and 
+# Loghandle. Nor does it do output parameters. On the other hand it has
+# an extra mandatory parameter $targetdb which specifies the statement
+# to run the statement in. This argument as no effect on 6.5.
+# Used for internal calls to support sql_sp and sql_insert.
 sub internal_sql
 {
     my ($X) = get_handle(\@_);
 
     my $sql = shift @_;
+    my $targetdb = shift @_;
 
     # Get parameter array if any.
     my ($arrayparams, $hashparams);
@@ -1728,7 +1798,7 @@ sub internal_sql
     $X->do_conversion('to_server', $sql);
 
     # Set up the SQL command - initbatch and enter parameters if necesary.
-    $X->setup_sqlcmd($sql, $arrayparams, $hashparams);
+    $X->setup_sqlcmd($sql, $targetdb, $arrayparams, $hashparams);
 
     my $exec_ok = $X->executebatch;
 
@@ -1987,11 +2057,13 @@ sub check_style_params {
 
 #------------------- setup_sqlcmd, internal --------------------------
 sub setup_sqlcmd {
-   my($X, $sql, $arrayparams, $hashparams) = @_;
-   # Common routine for sql and sql_one. If both $params parameters are
-   # undef, just calls initbatch. Else runs through the parameters and
+   my($X, $sql, $targetdb, $arrayparams, $hashparams, $outputparams) = @_;
+   # Common routine for sql and sql_one. If both $arraypams and $hashparame 
+   # are undef, just calls initbatch. Else runs through the parameters and
    # Generates a call to sp_executesql for $sql, the parameter list and
-   # the parameters in %$params. (With a twist for SQL 6.5.)
+   # the parameters in %$params. (With a twist for SQL 6.5.) $targetdb
+   # says which statement the statement is to run in, currently only 
+   # used by internal_sql and ignored on 6.5.
 
    # Initial cleanup.
    delete $X->{ErrInfo}{SP_call};
@@ -2039,7 +2111,7 @@ sub setup_sqlcmd {
          $parname = '@' . $parname;
       }
 
-      # If name is @P1 or simlar, checj for clash with named parameter.
+      # If name is @P1 or simlar, check for clash with named parameter.
       if ($parname =~ /^\@P(\d+)$/) {
          my $parno = $1;
          if ($parno <= $no_of_unnamed and $^W) {
@@ -2058,8 +2130,8 @@ sub setup_sqlcmd {
 
    # Now we can iterate over all parameters.
    foreach my $ix (0..$#$arrayparams) {
-      my ($par, $parname, $value, $datatype, $isoutput, $length, $precision,
-          $scale, $dtypstr, $typeinfo);
+      my ($par, $parname, $value, $datatype, $isoutput, $typename,
+          $typequal, $length, $precision, $scale, $typeinfo, $typestring);
 
       $par = $$arrayparams[$ix];
       $parname = $paramnames[$ix];
@@ -2082,72 +2154,99 @@ sub setup_sqlcmd {
          $datatype = 'varchar';
       }
 
-      # Normalize $datatype to be lowercase, except UDT that should be
-      # uppercase. Only the part before the first paren should be handled.
-      $datatype =~ s/^(\w+)(\(|$)/\L$1\E$2/g;
-      $datatype =~ s/^(udt)(\(|$)/\U$1\E$2/g;
+      # Is this an output parameter?
+      $isoutput = 0;
+      if (ref $value eq 'SCALAR' or
+          ref $value eq 'REF' and ref $$value eq 'HASH') {
+         # Not of SQL 6.5 though.
+         if ($X->{SQL_version} =~ /^6\./) {
+            $X->olle_croak('OUTPUT parameters not supported on SQL Server 6.5');
+         }
+         $isoutput = 1;
+         push(@$outputparams, $value);
+         $value = $$value;
+      }
 
-      # if datatype includes length or prec/scale, extract it.
-      if ($datatype =~ /\(([^\)]+)\)\s*$/) {
-         $dtypstr = $datatype;
-         my $paren = $1;
+      # Time to tackle the data type. The first step is to separate any
+      # part in parenthses from the rest. 
+      if ($datatype =~ /(^.*)\s*\(([^\)]+)\)\s*$/) {
+         $typename = $1;
+         $typequal = $2;
+      }
+      else {
+         $typename = $datatype;
+      }
+      
+      # Normalise the typname to be lowercase (save for UDT).
+      $typename = lc($typename);
+      $typename = 'UDT' if $typename eq 'udt';
 
-         # Save the datatype name temporarily, stripped from the paren stuff.
-         # Once we know that the paren value is OK, we save the type in
-         # $datatype. This is so that if things are not OK, enterparameter
-         # will invoke the message handler, because we should not croak on
-         # on this error here.
-         my $dtyptemp = $datatype;
-         $dtyptemp =~ s/\s*\(.*$//g;
+      # Trim leading/trailing spaces and any quoting.
+      $typename =~ s/(^\s+|\s+$)//g;
+      if ($typename =~ /^\[.+\]$/ or $typename =~ /^".+"$/) {
+         $typename = substr($typename, 1, length($typename) - 2);
+      }
 
-         if ($paren =~ /^\s*(\d+)\s*$/) {
-            # One number in parens. This is OK for strings, binary and
+      # If this is not a known type, see it this is user-defined type
+      # and in such case replace with the definition. (And this case 
+      # we should look at the full type string.) 
+      if (not $ALLSYSTEMTYPES{$typename}) {
+         # Note that if there is no match, $typename will be = $datatype. 
+         # But it's undef if there is an error.
+         ($typename, $typequal) = get_usertype_info($X, $datatype);
+         if (not defined $typename) {
+            return 0;
+         }
+      }
+
+      # If there is a qualifier, analyse it further. If qualifier does
+      # not fit with the type, consider the datatype specification to 
+      # be the name, and enterparameter will hold the axe later on.
+      if (defined $typequal) {
+         if ($typequal =~ /^\s*\d+\s*$/) {
+            # A single number. This is OK for strings, binary and
             # decimal types
-            if ($TYPESWITHLENGTH{$dtyptemp}) {
-               $length = $1;
-               $datatype = $dtyptemp;
+            if ($TYPESWITHLENGTH{$typename}) {
+               $length = $typequal;
             }
-            elsif ($DECIMALTYPES{$dtyptemp}) {
-               $precision = $1;
-               $datatype = $dtyptemp;
+            elsif ($DECIMALTYPES{$typename}) {
+               $precision = $typequal;
             }
-            elsif ($NEWDATETIMETYPES{$dtyptemp}) {
-               $scale = $1;
-               $datatype = $dtyptemp;
+            elsif ($NEWDATETIMETYPES{$typename}) {
+               $scale = $typequal;
             }
-         }
-         elsif ($paren =~ /^\s*MAX\s*$/i) {
-            # MAX, OK for strings and binary.
-            if ($MAXTYPES{$dtyptemp}) {
-               $dtypstr = "$dtyptemp(MAX)";
-               $datatype = $dtyptemp;
-               $length = -1;
+            else {
+               $typename = $datatype;
             }
          }
-         elsif ($paren =~ /^\s*(\d+)\s*,\s*(\d+)\s*$/ and
-                $DECIMALTYPES{$dtyptemp}) {
+         elsif ($typequal =~ /^\s*MAX\s*$/i and $MAXTYPES{$typename}) {
+            $length = -1;
+         }
+         elsif ($typequal =~ /^\s*(\d+)\s*,\s*(\d+)\s*$/ and
+                $DECIMALTYPES{$typename}) {
              $precision = $1;
              $scale     = $2;
-             $datatype = $dtyptemp;
          }
-         elsif ($TYPEINFOTYPES{$dtyptemp}) {
-             if (defined $typeinfo and $typeinfo ne $paren) {
-                my $msg = "Conflicting type information ('$paren' and " .
+         elsif ($TYPEINFOTYPES{$typename}) {
+             if (defined $typeinfo and $typeinfo ne $typequal) {
+                my $msg = "Conflicting type information ('$typequal' and " .
                           "'$typeinfo') provided for parameter '$parname' " .
-                          "of datatype $dtyptemp.";
+                          "of datatype $typename.";
                 $X->olledb_message(-1, 1, 16, $msg);
                 return 0;
              }
-             $datatype = $dtyptemp;
-             $typeinfo = $paren;
+             $typeinfo = $typequal;
+         }
+         else {
+            $typename = $datatype;
          }
       }
 
       # Get length for variable length types.
-      if (($TYPESWITHLENGTH{$datatype} or $CLRTYPES{$datatype})) {
-          unless (defined $length) {
+      if (($TYPESWITHLENGTH{$typename} or $CLRTYPES{$typename})) {
+         unless (defined $length) {
             my $maxlen = ($X->{SQL_version} =~ /^6\./ ? 255  :
-                         ($UNICODETYPES{$datatype}    ? 4000 :
+                         ($UNICODETYPES{$typename}    ? 4000 :
                                                         8000));
             my $valuelen = 1;
 
@@ -2156,7 +2255,7 @@ sub setup_sqlcmd {
                $valuelen = (length($value) or 1);
 
                # For binary as string, length passed is only half of value.
-               if ($BINARYTYPES{$datatype} and $X->{BinaryAsStr}) {
+               if ($BINARYTYPES{$typename} and $X->{BinaryAsStr}) {
                   $valuelen -= 2 if $value =~ /^0x/ and $valuelen > 2;
                   $valuelen++ if $valuelen % 2;   # Make sure it's an even number.
                   $valuelen = $valuelen / 2;
@@ -2165,12 +2264,12 @@ sub setup_sqlcmd {
 
             # For varchar etc, we can set the default length to be the
             # maxlen, to always use the same value to avoid cache bloat.
-            if ($TYPESWITHFIXLEN{$datatype} and defined $value) {
+            if ($TYPESWITHFIXLEN{$typename}) {
                # For fixed-length types (char etc) we use the length of the
                # string, but warn the user that this is a bad habit.
                $length = $valuelen;
                if ($^W) {
-                  my $msg = "Warning: length not specified data type " .
+                  my $msg = "Warning: length not specified for data type " .
                             "'$datatype'.";
                   $X->olledb_message(-1, 1, 10, $msg);
                }
@@ -2182,7 +2281,7 @@ sub setup_sqlcmd {
                   }
                   else {
                      # On SQL 2005 and later we can use MAX for some datatypes
-                     $length = ($MAXTYPES{$datatype} ? -1 : $maxlen);
+                     $length = ($MAXTYPES{$typename} ? -1 : $maxlen);
                   }
                }
             }
@@ -2194,21 +2293,13 @@ sub setup_sqlcmd {
                # But on SQL 2005 and later, we should use the MAX types
                # where applicable.
                if (defined $value and $valuelen > $maxlen and
-                   $MAXTYPES{$datatype} and $X->{SQL_version} !~ /^[678]\./) {
+                   $MAXTYPES{$typename} and $X->{SQL_version} !~ /^[678]\./) {
                   $length = -1;
                }
             }
          }
-
-         # Form the data type string.
-         unless (defined $dtypstr) {
-            $dtypstr = $datatype .
-                       ($TYPESWITHLENGTH{$datatype} ?
-                       ('(' . (($length >= 0) ? $length : 'MAX') . ')') : '');
-         }
       }
-      elsif ($LARGETYPES{$datatype} or
-             defined $dtypstr and $dtypstr =~ m!\(MAX\)!) {
+      elsif ($LARGETYPES{$typename}) {
          $length = -1;
       }
       else {
@@ -2217,7 +2308,7 @@ sub setup_sqlcmd {
 
       # Set precision/scale for decimal types and new date/time types
       # if not provided.
-      if ($DECIMALTYPES{$datatype}) {
+      if ($DECIMALTYPES{$typename}) {
          if (not defined $precision or not defined $scale) {
             if ($^W and defined $value) {
                my $msg = "Precision and/or scale missing for decimal parameter '$parname'.";
@@ -2226,53 +2317,37 @@ sub setup_sqlcmd {
             $precision = 18 if not defined $precision;
             $scale     = 0  if not defined $scale;
          }
-         unless (defined $dtypstr) {
-            $dtypstr = "$datatype($precision, $scale)";
-         }
       }
-      elsif ($NEWDATETIMETYPES{$datatype}) {
+      elsif ($NEWDATETIMETYPES{$typename}) {
       # Things missing does not render a warning here, because the default
       # is max scale.
          $scale = 7 if not defined $scale;
-         unless (defined $dtypstr) {
-            $dtypstr = "$datatype($scale)";
-         }
       }
 
       # Check that typeinfo not provided when not applicable, and that is
       # specified for UDT
-      if ($TYPEINFOTYPES{$datatype}) {
-         if ($datatype ne 'xml' and not defined $typeinfo) {
-            my $msg = "No actual user type specified for $datatype parameter '$parname'.";
+      if ($TYPEINFOTYPES{$typename}) {
+         if ($typename ne 'xml' and not defined $typeinfo) {
+            my $msg = "No actual user type specified for $typename parameter '$parname'.";
             $X->olledb_message(-1, 1, 16, $msg);
             $X->cancelbatch;
             return 0;
          }
-
-         if ($datatype eq 'xml') {
-             $dtypstr = $datatype . ($typeinfo ? "($typeinfo)" : "");
-         }
-         elsif ($datatype eq 'table') {
-            $dtypstr  = "$typeinfo READONLY";
-         }
-         else {
-            $dtypstr  = $typeinfo;
-         }
       }
       elsif (defined $typeinfo) {
-         undef $typeinfo;
-      }
-
-      unless (defined $dtypstr) {
-         $dtypstr = $datatype;
+         my $msg = "The third element in the parameter array does not " .
+                   "apply to the data type $datatype.";
+         $X->olledb_message(-1, 1, 16, $msg);
+         $X->cancelbatch;
+         return 0;
       }
 
       # If the parameter is a table parameter, get the type information
       # from cache.
-      if ($datatype eq 'table') {
+      if ($typename eq 'table') {
          my $tbldef = $X->get_table_type_info($typeinfo, 1);
          if (not $tbldef) {
-            my $msg = "Not able to find information about table type '$typeinfo'.";
+            my $msg = "Unable to find information about table type '$typeinfo'.";
             $X->olledb_message(-1, 1, 16, $msg);
             $X->cancelbatch;
             return 0;
@@ -2280,39 +2355,76 @@ sub setup_sqlcmd {
          push(@tabledefs, $tbldef);
       }
 
+      # Time to form the string to use for the type in the parameter
+      # list to sp_executesql.
+      if ($TYPESWITHLENGTH{$typename}) {
+          $typestring = "$typename(" . 
+                        ($length == -1 ? 'MAX' : $length) .")";
+      }
+      elsif ($DECIMALTYPES{$typename}) {
+         $typestring = "$typename($precision, $scale)";
+      }
+      elsif ($NEWDATETIMETYPES{$typename}) {
+         $typestring = "$typename($scale)";
+      }
+      elsif ($typename eq 'UDT') {
+         $typestring = $typeinfo;
+      }
+      elsif ($typename eq 'table') {
+         $typestring = "$typeinfo READONLY";
+      }
+      elsif ($typename eq 'xml' and $typeinfo) {
+         $typestring = "$typename($typeinfo)";
+      }
+      else {
+         $typestring = $typename;
+      }
+
+
       # Do conversion of value and parameter name and data types. Typeinfo
       # for tables will be converted later.
       $X->do_conversion('to_server', $value);
       $X->do_conversion('to_server', $parname);
-      $X->do_conversion('to_server', $dtypstr);
+      $X->do_conversion('to_server', $typestring);
       $X->do_conversion('to_server', $typeinfo);
 
       # And save the parameter.
-      push(@parameters, [$datatype, $length, $parname, 1, 0, $value,
-                         $precision, $scale, $typeinfo]);
+      push(@parameters, [$typename, $length, $parname, 1, $isoutput, 
+                         $value, $precision, $scale, $typeinfo]);
 
       # Add to the parameter declaration.
       $paramdecls .= (defined $paramdecls ? ", " : '') .
-                     $parname . " " . $dtypstr;
+                     $parname . " " . $typestring .
+                     ($isoutput ? " OUTPUT" : '');
 
       # Add to the parameter string for logging.
       $paramvalues .= (defined $paramvalues ? ", " : '') .
                        $parname . " = " .
-                       $X->valuestring($datatype, $value, $parname);
+                       $X->valuestring($typename, $value, $parname) .
+                       ($isoutput ? " OUTPUT" : '');
    }
 
    unless ($X->{SQL_version} =~ /^6\./) {
+      # Determine the spec to use for sp_executesql; it could be in a 
+      # different database.
+      my $sp_executesql = 'sp_executesql';
+      if (defined $targetdb and $targetdb =~ /\S/) {
+         $sp_executesql = "$targetdb." . 
+                       ($X->{SQL_version} =~ /^[78]\./ ? 'dbo' : 'sys') .
+                       ".$sp_executesql";
+      }
+
       # Replace ? with @P1 etc in the query string.
       $X->replaceparamholders($sql);
 
       # Build log string for error handling.
-      $X->{errInfo}{SP_call} = "EXEC sp_executesql N" . sql_string($sql) . ",\n" .
+      $X->{errInfo}{SP_call} = "EXEC $sp_executesql N" . sql_string($sql) . ",\n" .
                                ' ' x 5 . 'N'. sql_string($paramdecls) . ",\n" .
                                ' ' x 5 . $paramvalues;
 
       # First build the sp_executesql command and init the batch, and enter
       # the first parameter.
-      my $executesql = '{call sp_executesql(?, ?, ' .
+      my $executesql = "{call $sp_executesql(?, ?, " .
                      join(', ', ('?') x scalar(@parameters)) . ')}';
       $X->initbatch($executesql);
 
@@ -2354,6 +2466,130 @@ sub setup_sqlcmd {
    return 1;
 }
 
+#-------------------------- get_usertype_info --------------------------
+# Gets information about a user-defined type a k a "alias type" from the
+# cache or from the database if it's not in cache. The return value is a
+# two-element array with typename and any qualifier.
+sub get_usertype_info {
+   my ($X, $usertype) = @_;
+
+   if (not $X->{'usertypes'}{$usertype}) {
+
+      # First crack the type name into pieces.
+      my ($server, $typedb, $typeschema, $typename);
+      my $ret = $X->parsename($usertype, 1, $server, 
+                              $typedb, $typeschema, $typename);
+      return undef if not $ret;
+
+      # Cannot have a server name in the type specification.
+      if ($server) {
+         my $msg =  "Type name '$usertype' contains a server portion. " .
+                    "This is illegal.";
+         $X->olledb_message(-1, 1, 16, $msg);
+         return undef;
+      }
+
+      # On SQL 2000, the schema cannot be anything else than dbo.
+      if ($X->{SQL_version} =~ /^[678]\./ and 
+          $typeschema and $typeschema ne 'dbo') {
+         my $msg =  "Type name '$usertype' has a schema different from " .
+                    "'dbo'. This is illegal on SQL 2000 and earlier.";
+         $X->olledb_message(-1, 1, 16, $msg);
+         return undef;
+      }
+
+      # Typeinfo we get back from SQL Server
+      my ($systemtype, $maxlength, $prec, $scale);
+
+      # Construct the type query, one for 6.5 (where we must interpolate
+      # the db name, one for SQL 7/2000 and one for SQL 2005 and later.
+      if ($X->{SQL_version} =~ /^6\./) {
+         # On 6.5 we ignore the possibility that the name may be quoted.
+         my $typequery = <<SQLEND;
+         SELECT st.name AS systemtype, 
+                ut.length, ut.prec, ut.scale
+         FROM   $typedb.dbo.systypes ut
+         JOIN   $typedb.dbo.systypes st ON ut.type = st.type
+         WHERE  ut.name = ?
+           AND  st.usertype <= 80
+           AND  st.name <> 'sysname'
+SQLEND
+         ($systemtype, $maxlength, $prec, $scale) =
+                   $X->internal_sql($typequery, undef, 
+                                    [['varchar(30)', $typename]], 
+                                     SINGLEROW, LIST);
+      }
+      elsif ($X->{SQL_version} =~ /^[78]\./) {
+         my $typequery = <<'SQLEND';
+         SELECT st.name, ut.length, ut.prec, ut.scale
+         FROM   dbo.systypes ut
+         JOIN   dbo.systypes st ON ut.xtype = st.xtype
+         WHERE  ut.name = parsename(@name, 1)
+           AND  st.usertype <= 255
+SQLEND
+
+         ($systemtype, $maxlength, $prec, $scale) =
+                   $X->internal_sql($typequery, $typedb, 
+                                    {'@name'   => ['nvarchar', $typename]}, 
+                                     SINGLEROW, LIST);
+      }
+      else {
+         # On "modern" versions we use type_id which sorts out
+         # schema priority for us.
+         my $typeid = $X->internal_sql('SELECT type_id(?)', $typedb,
+                                      [['nvarchar', "$typeschema.$typename"]],
+                                      SCALAR, SINGLEROW);
+
+         my $typequery = <<'SQLEND';
+         SELECT CASE WHEN t.system_type_id = 240 THEN 'UDT'
+                     WHEN t.system_type_id = 243 THEN 'table'
+                     ELSE type_name(t.system_type_id)
+                 END, t.max_length, t.precision, t.scale
+         FROM   sys.types t
+         JOIN   sys.schemas s ON t.schema_id = s.schema_id
+         WHERE  t.user_type_id = @typeid
+SQLEND
+
+         ($systemtype, $maxlength, $prec, $scale) =
+                   $X->internal_sql($typequery, $typedb, 
+                                    {'@typeid' => ['int', $typeid]},
+                                     SINGLEROW, LIST);
+      } 
+
+      # If we did not find any type, return the input.
+      return ($usertype, undef) if not $systemtype;
+
+      # Determine any qualifier (the part in parens);
+      my $qualifier;
+      if ($TYPESWITHLENGTH{$systemtype}) {
+         if ($maxlength == -1) {
+            $qualifier = "MAX";
+         }
+         elsif ($UNICODETYPES{$systemtype}) {
+            $qualifier = $maxlength/2;
+         }
+         else {
+            $qualifier .= $maxlength;
+         }
+      }
+      elsif ($DECIMALTYPES{$systemtype}) {
+         $qualifier = "$prec, $scale";
+      }   
+      elsif ($NEWDATETIMETYPES{$systemtype}) {
+         $qualifier .= $scale;
+      }
+      elsif ($TYPEINFOTYPES{$systemtype}) {
+         $qualifier = $usertype;
+      } 
+   
+      # Save to the cache.
+      $X->{'usertypes'}{$usertype} = [$systemtype, $qualifier];
+   }
+
+   # Return the two-element array.
+   return @{$X->{'usertypes'}{$usertype}};
+}
+
 #------------------------- get_table_type_info---------------------------
 # Gets information about a table type from the cache or from the database
 # if it's not there.
@@ -2362,7 +2598,9 @@ sub get_table_type_info {
 
     # First crack the type name into pieces.
     my ($server, $typedb, $typeschema, $typename);
-    $X->parsename($tabletype, 1, $server, $typedb, $typeschema, $typename);
+    my $ret = $X->parsename($tabletype, 1, $server, 
+                            $typedb, $typeschema, $typename);
+    return undef if not $ret;
 
     # Cannot have a server name in the type specification.
     if ($server) {
@@ -2372,7 +2610,8 @@ sub get_table_type_info {
        return undef;
     }
 
-    # Nor a database name for ad-hoc sql.
+    # Nor a database name for ad-hoc sql. (SQL Server does not
+    # support it.)
     if ($isparamsql and $typedb) {
        my $msg =  "Type name '$tabletype' contains a database portion. " .
                   "This is illegal for ad-hoc batches.";
@@ -2383,24 +2622,18 @@ sub get_table_type_info {
     # Since sql_sp always passes database.schema.type, we cannot have
     # database without a schema. Assert this, because we rely on this below.
     if ($typedb and not $typeschema) {
-        $X->olle_croak("Internal error: There is a typedb ('$typedb'), " .
-                       "but no type schema?\n");
+       $X->olle_croak("Internal error: There is a typedb ('$typedb'), " .
+                      "but no type schema?\n");
     }
 
     if (not defined $X->{tabletypes}{$tabletype}) {
-       # First get the type id. The trick with sp_executesql is because
-       # type_id does not support database names. We use type_id to look
-       # both the default schema and the dbo schema.
-       my $typeid;
-       my $gettypeid = <<SQLEND;
-          EXECUTE $typedb..sp_executesql
-                  N'SELECT type_id(\@tn)', N'\@tn nvarchar(257)',  \@tn = ?
-SQLEND
-       $typeid = $X->internal_sql($gettypeid,
-                                 [['nvarchar', "$typeschema.$typename"]],
-                                  SCALAR, SINGLEROW);
+       # First get the type id. We use type_id to look both the default 
+       # schema and the dbo schema.
+       my $typeid = $X->internal_sql('SELECT type_id(?)', $typedb,
+                                    [['nvarchar', "$typeschema.$typename"]],
+                                    SCALAR, SINGLEROW);
 
-       my $getcols = <<SQLEND;
+       my $getcols = <<'SQLEND';
        SELECT c.name,
               typename = CASE c.system_type_id
                               WHEN 240 THEN 'UDT'
@@ -2416,25 +2649,25 @@ SQLEND
               typeinfo =
               CASE c.system_type_id
                    WHEN 240
-                   THEN  coalesce(nullif(\@typedb, ''),
+                   THEN  coalesce(nullif(@typedb, ''),
                                   quotename(db_name())) + '.' +
                          quotename(s1.name) + '.' + quotename(t.name)
                    WHEN 241
-                   THEN  coalesce(nullif(\@typedb, ''),
+                   THEN  coalesce(nullif(@typedb, ''),
                                   quotename(db_name())) + '.' +
                          quotename(s2.name) + '.' + quotename(x.name)
               END
-       FROM   $typedb.sys.table_types tt
-       JOIN   $typedb.sys.schemas s0 ON tt.schema_id = s0.schema_id
-       JOIN   $typedb.sys.all_columns c ON tt.type_table_object_id = c.object_id
-       LEFT   JOIN ($typedb.sys.types t
-                   JOIN  $typedb.sys.schemas s1 ON t.schema_id = s1.schema_id)
+       FROM   sys.table_types tt
+       JOIN   sys.schemas s0 ON tt.schema_id = s0.schema_id
+       JOIN   sys.all_columns c ON tt.type_table_object_id = c.object_id
+       LEFT   JOIN (sys.types t
+                   JOIN  sys.schemas s1 ON t.schema_id = s1.schema_id)
            ON  c.user_type_id = t.user_type_id
           AND  t.is_assembly_type = 1
-       LEFT   JOIN ($typedb.sys.xml_schema_collections x
-                    JOIN  $typedb.sys.schemas s2 ON x.schema_id = s2.schema_id)
+       LEFT   JOIN (sys.xml_schema_collections x
+                    JOIN  sys.schemas s2 ON x.schema_id = s2.schema_id)
            ON  c.xml_collection_id = x.xml_collection_id
-       WHERE  tt.user_type_id = \@typeid
+       WHERE  tt.user_type_id = @typeid
        ORDER BY c.column_id
 SQLEND
 
@@ -2442,7 +2675,7 @@ SQLEND
        $getcols =~ s/\s{2,}/ /g;
 
        # Get the data, and save it the internal cache.
-       my $tbldef = $X->internal_sql($getcols,
+       my $tbldef = $X->internal_sql($getcols, $typedb,
                                     {'@typedb' => ['nvarchar', $typedb],
                                      '@typeid' => ['int', $typeid]},
                                     HASH);
@@ -2451,7 +2684,6 @@ SQLEND
        if (@$tbldef) {
           $X->{'tabletypes'}{$tabletype} = $tbldef;
        }
-
 
        # Clear SP_call
        undef $X->{ErrInfo}{SP_call};
@@ -2589,15 +2821,17 @@ sub get_sqlserver_version {
 
     my ($exec_ok, $sqlver);
 
-    $self->initbatch("EXEC master.dbo.xp_msver 'ProductVersion'");
+    $self->initbatch('SELECT @@version');
     $exec_ok = $self->executebatch();
     $self->olle_croak("Could not retrieve SQL Server version.\n")
         if not $exec_ok;
     while ($self->nextresultset()) {
-       my $hashref;
-       while ($self->nextrow($hashref, undef)) {
-         $sqlver = $$hashref{'Character_Value'};
-         last if $sqlver;
+       my $arrayref;
+       if ($self->nextrow(undef, $arrayref)) {
+          my $atatversion = $$arrayref[0];
+          $atatversion =~ s/^[^\-]+-\s*//;
+          $atatversion =~ s/\s.*$//s;
+          $sqlver = $atatversion;
        }
        last if $sqlver;
     }
@@ -2616,10 +2850,16 @@ sub get_object_id {
     my(@objspec, $server, $objdb, $schema, $object, $objid, $normalspec);
 
     # Call C++ code to crack the object specification into parts.
-    $X->parsename($objspec, 1, $server, $objdb, $schema, $object);
+    my $ret = $X->parsename($objspec, 1, $server, $objdb, $schema, $object);
+    return (undef, undef) if not $ret;
 
-    # If we get a server, we are not even going to try. This cannot work.
-    return (undef, undef) if $server;
+    # We do currently not support names with server in it.
+    if ($server) {
+       my $msg = "Name '$objspec' includes a server portion. This is " .
+                 "currently not supported.";
+       $X->olledb_message(-1, 1, 16, $msg);
+       return(undef, undef);
+    }
 
     # Construct a normalised object specification. This is basically the
     # input, but spaces between the parts removed.
@@ -2636,7 +2876,8 @@ sub get_object_id {
     $objspec = "$objdb.$schema.$object";
 
     # Get the object-id.
-    $objid = $X->internal_sql("SELECT object_id(?)", [['nvarchar', $objspec]],
+    $objid = $X->internal_sql("SELECT object_id(?)", undef,
+                              [['nvarchar', $objspec]],
                               SCALAR, SINGLEROW);
 
     # Here is a gotcha on SQL 6.5 "db..sp_help" actually gives an object id,
@@ -2644,7 +2885,7 @@ sub get_object_id {
     if ($X->{SQL_version} =~ /^6\./ and $objdb ne '' and
         $object =~ /^[\"\[]?sp_/) {
         my $sql = "SELECT id FROM $objdb..sysobjects WHERE name = ?";
-        $objid = $X->internal_sql($sql, [['nvarchar', $object]],
+        $objid = $X->internal_sql($sql, undef, [['nvarchar', $object]],
                                   SCALAR, SINGLEROW);
     }
 
@@ -2652,7 +2893,8 @@ sub get_object_id {
     if (not defined $objid and $object =~ /^[\"\[]?sp_/) {
        $objdb = "master";
        $objspec = "master.$schema.$object";
-       $objid = $X->internal_sql("SELECT object_id(?)", [['nvarchar', $objspec]],
+       $objid = $X->internal_sql("SELECT object_id(?)", undef, 
+                                 [['nvarchar', $objspec]],
                                  SCALAR, SINGLEROW);
     }
 
@@ -2744,7 +2986,7 @@ sub do_result_sets {
        # For the regular result styles create an empty array, if there is none at
        # the current index.
        if ($isregular) {
-          @{$$resref[$ix]} = () unless defined @{$$resref[$ix]};
+          @{$$resref[$ix]} = () unless defined $$resref[$ix];
        }
        elsif ($resultstyle == KEYED) {
           # For KEYED create result set, now we know we have a result set.
@@ -2953,6 +3195,29 @@ sub store_keyed_result {
    # And write into the result set.
    $$ref{$keyvalue} = $dataref;
 }
+
+
+#------------------------ do_output_parameters ----------------------
+# Internal routine to retrieve the value of output parameters.
+sub do_output_parameters {
+   my($X, $outputparams) = @_;
+
+   # Output parameters are not available if command was cancelled or 
+   # some such.
+   if ($X->getcmdstate == CMDSTATE_GETPARAMS) {
+      my ($outputvalues);
+
+      # Retrieve output parameters
+      $X->getoutputparams(undef, $outputvalues);
+      $X->do_conversion('to_client', $outputvalues);
+
+      # And map values to the input parameters.
+      foreach my $ix (0..$#$outputparams) {
+         ${$$outputparams[$ix]} = $$outputvalues[$ix];
+      }
+   }
+}
+
 
 package Win32::SqlServer::ErrInfo;
 

@@ -1,17 +1,31 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/OlleDB/t/2_datatypes.t 30    11-08-07 23:33 Sommar $
+# $Header: /Perl/OlleDB/t/2_datatypes.t 32    12-08-18 21:33 Sommar $
 #
 # This test script tests using sql_sp and sql_insert in all possible
 # ways and with testing use of all datatypes.
 #
 # $History: 2_datatypes.t $
 # 
+# *****************  Version 32  *****************
+# User: Sommar       Date: 12-08-18   Time: 21:33
+# Updated in $/Perl/OlleDB/t
+# Save all output files for better troubleshooting. Fix the XML test so
+# that it does not fail on servers with different code pages.
+# 
+# *****************  Version 31  *****************
+# User: Sommar       Date: 12-07-19   Time: 0:19
+# Updated in $/Perl/OlleDB/t
+# If server has an SC collation, run in our own database and not tempdb,
+# since text & co does not work with SC. Use different functions for
+# testing geometry to avoid fuzziness problems. Egads! There was a bug in
+# check_data so that "not ok" was not printed in case of an error.
+#
 # *****************  Version 30  *****************
 # User: Sommar       Date: 11-08-07   Time: 23:33
 # Updated in $/Perl/OlleDB/t
 # Added tests for empty strings with sql_variant. Suppot different data
 # files for spatial data types depending on the SQL Server version.
-# 
+#
 # *****************  Version 29  *****************
 # User: Sommar       Date: 09-08-16   Time: 13:58
 # Updated in $/Perl/OlleDB/t
@@ -172,7 +186,6 @@ use English;
 use vars qw($sqlver $x86 @tblcols $no_of_tests @testres %tbl
             %expectpar %expectcol %expectfile %test %filetest %comment);
 
-use constant TESTFILE => "datatypes.log";
 
 sub blurb{
     push(@testres, "#------ Testing @_ ------");
@@ -253,10 +266,10 @@ sub create_character {
    drop_test_objects('character');
 
    sql(<<SQLEND);
-      CREATE TABLE character(charcol      char(20)      NULL,
-                             varcharcol   varchar(20)   NULL,
-                             varcharcol2  varchar(20)   NOT NULL,
-                             textcol      text          NULL);
+      CREATE TABLE character(charcol      char(20)     NULL,
+                             varcharcol   varchar(20)  NULL,
+                             varcharcol2  varchar(20)  NOT NULL,
+                             textcol      text         NULL);
 SQLEND
 
    @tblcols = qw(charcol varcharcol varcharcol2 textcol);
@@ -539,10 +552,10 @@ sub create_unicode {
    drop_test_objects('unicode');
 
    sql(<<SQLEND);
-      CREATE TABLE unicode(ncharcol             nchar(20)    NULL,
-                           \x{0144}varcharcol   nvarchar(20) NULL,
-                           nchärcöl2            nchar(20)    NOT NULL,
-                           ntextcol             ntext        NULL);
+      CREATE TABLE unicode(ncharcol             nchar(20)     NULL,
+                           \x{0144}varcharcol   nvarchar(20)  NULL,
+                           nchärcöl2            nchar(20)     NOT NULL,
+                           ntextcol             ntext         NULL);
 SQLEND
 
    @tblcols = ("ncharcol", "\x{0144}varcharcol", "nchärcöl2", "ntextcol");
@@ -1129,7 +1142,7 @@ SQLEND
     sql(<<SQLEND);
        CREATE TRIGGER sptial_tri ON spatial FOR INSERT AS
        UPDATE spatial
-       SET    geometrycol  = geometrycol.STBuffer(2),
+       SET    geometrycol  = geometrycol.STEndPoint(),
               geographycol = geographycol.STStartPoint()
 SQLEND
 
@@ -1142,7 +1155,7 @@ SQLEND
        INSERT spatial (geometrycol, geographycol)
           VALUES (@geometrycol, @geographycol)
 
-       SELECT @geometrycol = @geometrycol.STBuffer(3),
+       SELECT @geometrycol = @geometrycol.STPointN(3),
               @geographycol = @geographycol.STPointN(2)
 
        SELECT geometrycol, geographycol
@@ -1279,13 +1292,21 @@ sub ISO_to_regional {
 }
 
 
+sub fixfilename {
+   my($testcase) = @_;
+   $testcase =~ s/\W//g;
+   return "$testcase.log";
+}
+
 sub open_testfile {
-   open(TFILE, '>:utf8', TESTFILE);
+   my ($filename) = @_;
+   open(TFILE, '>:utf8', $filename);
    return \*TFILE;
 }
 
 sub get_testfile {
-   open(TFILE, '<:utf8', TESTFILE);
+   my ($filename) = @_;
+   open(TFILE, '<:utf8', $filename);
    my $testfile = join('', <TFILE>);
    close TFILE;
    $testfile =~ s!\s*(\*/)?\ngo\s*$!\n!;
@@ -1293,16 +1314,15 @@ sub get_testfile {
 }
 
 sub check_data {
-   my ($checklogfile, $result, $params, $paramsbyref) = @_;
+   my ($logfile, $result, $params, $paramsbyref) = @_;
 
    my ($ix, $col, $valref, %filevalues);
 
    my $testfile;
 
-   if ($checklogfile) {
-      $testfile = get_testfile();
+   if ($logfile) {
+      $testfile = get_testfile($logfile);
       if (not $params) {
-         $testfile = get_testfile();
          $testfile =~ /\(([^\)]+)\)/;
          my $collist = $1;
          my @collist = split(/\s*,\s*/, $collist);
@@ -1345,7 +1365,7 @@ sub check_data {
               "    $comment $@");
       }
 
-      if ($checklogfile) {
+      if ($logfile) {
          my $filevalue;
          if ($testfile =~ m/\@$col\s*=\s*([^,\n]+)[,\n]/) {
             $filevalue = $1;
@@ -1391,48 +1411,50 @@ sub do_tests {
 
    # Run test for combination.
    blurb("sql_sp $testcase unnamed params, no refs");
-   $X->{LogHandle} = open_testfile();
+   my $logfilename = fixfilename($testcase . '_sql_sp');
+   $X->{LogHandle} = open_testfile($logfilename);
    $result = sql_sp("${typeclass}_sp", \@params, HASH, SINGLEROW);
    undef $X->{LogHandle};
-   check_data((not $runlogfile), $result, \@params, 0);
+   check_data(($runlogfile ? undef : $logfilename), $result, \@params, 0);
 
    if ($runlogfile) {
       blurb("Log file from sql_sp $testcase");
-      my $logfile = get_testfile();
+      my $logfile = get_testfile($logfilename);
       $result = sql($logfile, HASH, SINGLEROW);
-      check_data(0, $result, 0);
+      check_data(undef, $result, 0);
    }
 
    blurb("sql_sp $testcase named params, no refs");
    $result = sql_sp("${typeclass}_sp", \%params, HASH, SINGLEROW);
    undef $X->{LogHandle};
-   check_data(0, $result, \%params, 0);
+   check_data(undef, $result, \%params, 0);
 
    blurb("sql_sp $testcase unnamed params, refs");
    $result = sql_sp("${typeclass}_sp", \@paramrefs, HASH, SINGLEROW);
    undef $X->{LogHandle};
-   check_data(0, $result, \@paramrefs, 1);
+   check_data(undef, $result, \@paramrefs, 1);
 
    blurb("sql_sp $testcase named params, refs");
    $result = sql_sp("${typeclass}_sp", \%paramrefs, HASH, SINGLEROW);
    undef $X->{LogHandle};
-   check_data(0, $result, \%paramrefs, 1);
+   check_data(undef, $result, \%paramrefs, 1);
 
    # Also test sql_insert.
    blurb("sql_insert $testcase");
    sql("TRUNCATE TABLE ${typeclass}");
-   $X->{LogHandle} = open_testfile();
+   $logfilename = fixfilename($testcase . '_sql_insert');
+   $X->{LogHandle} = open_testfile($logfilename);
    sql_insert("${typeclass}", \%tbl);
    undef $X->{LogHandle};
    $result = sql("SELECT * FROM ${typeclass}", HASH, SINGLEROW);
-   check_data((not $runlogfile), $result, 0);
+   check_data(($runlogfile ? undef : $logfilename), $result, 0);
 
    if ($runlogfile and $sqlver >= 7) {
       sql("TRUNCATE TABLE ${typeclass}");
       blurb("Log file from sql_insert $testcase");
-      sql(get_testfile(), NORESULT);
+      sql(get_testfile($logfilename), NORESULT);
       $result = sql("SELECT * FROM ${typeclass}", HASH, SINGLEROW);
-      check_data(0, $result, 0);
+      check_data(undef, $result, 0);
    }
 
    $no_of_tests += 7 * scalar(keys %expectcol) +
@@ -1458,6 +1480,17 @@ $X->{'ErrInfo'}{NeverPrint}{1708}++;  # Suppresses message for sql_variant table
 
 $sqlver = (split(/\./, $X->{SQL_version}))[0];
 $x86 = ($ENV{'PROCESSOR_ARCHITECTURE'} eq 'x86');
+my $havedb;
+if ($sqlver >= 11) {
+   my $collation = $X->sql_one("SELECT serverproperty('Collation')", SCALAR);
+   if ($collation =~ /_SC$/) {
+      $X->sql('CREATE DATABASE Olle$DB COLLATE Latin1_General_CS_AS');
+      $X->sql('USE Olle$DB');
+      $havedb = 1;
+   }
+}
+my $is_latin1 = is_latin1($X);
+
 
 # Make sure that we have standard settings, except for ANSI_WARNINGS
 # that we want to be off, as we test overlong input.
@@ -3510,7 +3543,9 @@ create_xmltest($X, $X->{Provider} >= PROVIDER_SQLNCLI);
 %tbl       = (xmlcol    => "<R\x{00C4}KSM\x{00D6}RG\x{00C5}S>" .
                            "21 pa\x{017A}dziernika 2004 " x 2000 .
                            "</R\x{00C4}KSM\x{00D6}RG\x{00C5}S>",
-              xmlsccol  => '<?xml version="1.0" encoding="iso-8859-1"?>' . "\n" .
+              xmlsccol  => ($is_latin1 
+                              ? '<?xml version="1.0" encoding="iso-8859-1"?>' . "\n"
+                              : '') . 
                             "<TÄST>" .
                             "Vi är alltid bäst i räksmörgåstäster! " x 1500 .
                             "</TÄST>\n<TÄST>I alla fall nästan alltid!</TÄST>",
@@ -4290,6 +4325,10 @@ finally:
    $no_of_tests++;
 }
 
+if ($havedb) {
+   $X->sql('USE tempdb');
+   $X->sql('DROP DATABASE Olle$DB');
+}
 
 print "1..$no_of_tests\n";
 
